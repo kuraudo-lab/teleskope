@@ -10,6 +10,8 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/awseks"
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
+	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/kuraudo-lab/teleskope/internal/k8s"
 	"github.com/kuraudo-lab/teleskope/internal/render"
 	"github.com/spf13/cobra"
 )
@@ -59,17 +61,20 @@ func newScanCommand(stdout io.Writer) *cobra.Command {
 		Short: "Collect inventory from a target environment",
 	}
 	cmd.AddCommand(newScanEKSCommand(stdout))
+	cmd.AddCommand(newScanK8sCommand(stdout))
 	return cmd
 }
 
 func newScanEKSCommand(stdout io.Writer) *cobra.Command {
 	var opts awseks.Options
+	var kubeOpts k8s.Options
 	var output string
 	var timeout time.Duration
+	var skipKubernetes bool
 
 	cmd := &cobra.Command{
 		Use:   "eks",
-		Short: "Collect read-only EKS control plane inventory",
+		Short: "Collect read-only EKS and Kubernetes inventory",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if opts.ClusterName == "" {
 				return fmt.Errorf("--cluster is required")
@@ -100,6 +105,11 @@ func newScanEKSCommand(stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if !skipKubernetes {
+				kubernetes, coverage := k8s.Collect(ctx, kubeOpts)
+				snapshot.Kubernetes = kubernetes
+				snapshot.Coverage = append(snapshot.Coverage, coverage...)
+			}
 			switch strings.ToLower(output) {
 			case "json":
 				return render.JSON(stdout, snapshot)
@@ -110,6 +120,63 @@ func newScanEKSCommand(stdout io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.ClusterName, "cluster", "c", "", "EKS cluster name")
+	cmd.Flags().StringVar(&kubeOpts.Kubeconfig, "kubeconfig", "", "path to kubeconfig for Kubernetes API collection")
+	cmd.Flags().StringVar(&kubeOpts.Context, "kube-context", "", "kubeconfig context for Kubernetes API collection")
+	cmd.Flags().BoolVar(&skipKubernetes, "skip-kubernetes", false, "skip Kubernetes API collection")
+	cmd.Flags().StringVarP(&output, "output", "o", "human", "output format: human, json")
+	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "collection timeout")
+	return cmd
+}
+
+func newScanK8sCommand(stdout io.Writer) *cobra.Command {
+	var opts k8s.Options
+	var output string
+	var timeout time.Duration
+
+	cmd := &cobra.Command{
+		Use:   "k8s",
+		Short: "Collect read-only Kubernetes API inventory",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if output == "" {
+				output = "human"
+			}
+			if !validOutput(output) {
+				return fmt.Errorf("unsupported output %q; expected human or json", output)
+			}
+
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			if timeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, timeout)
+				defer cancel()
+			}
+
+			kubernetes, coverage := k8s.Collect(ctx, opts)
+			snapshot := &inventory.Snapshot{
+				SchemaVersion: "teleskope.io/snapshot/v1alpha1",
+				CollectedAt:   time.Now().UTC(),
+				Source: inventory.Source{
+					Tool:    "teleskope",
+					Version: buildinfo.Version,
+					Mode:    "out-of-cluster/run-once",
+				},
+				Kubernetes: kubernetes,
+				Coverage:   coverage,
+			}
+			switch strings.ToLower(output) {
+			case "json":
+				return render.JSON(stdout, snapshot)
+			default:
+				return render.Human(stdout, snapshot)
+			}
+		},
+	}
+
+	cmd.Flags().StringVar(&opts.Kubeconfig, "kubeconfig", "", "path to kubeconfig for Kubernetes API collection")
+	cmd.Flags().StringVar(&opts.Context, "kube-context", "", "kubeconfig context for Kubernetes API collection")
 	cmd.Flags().StringVarP(&output, "output", "o", "human", "output format: human, json")
 	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "collection timeout")
 	return cmd

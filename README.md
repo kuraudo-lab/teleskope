@@ -12,16 +12,20 @@ capability assessment and migration gap analysis are future work.
 Early EKS collection is implemented for AWS-side inventory. The CLI reads AWS
 shared configuration and credentials through the AWS SDK default config chain,
 then collects cluster metadata, managed add-ons, managed node groups, EKS access
-entries, and Pod Identity associations.
+entries, and Pod Identity associations. It also attempts Kubernetes API
+collection from kubeconfig unless `--skip-kubernetes` is set.
 
 ```sh
 teleskope scan eks --cluster my-cluster
 teleskope scan eks --cluster my-cluster --profile prod --region ap-northeast-1
 teleskope scan eks --cluster my-cluster --output json
+teleskope scan k8s --kube-context prod
 ```
 
 The default terminal output is a compact human-readable summary. JSON preserves
-the full snapshot structure for later renderers and offline browsing.
+the full snapshot structure for later renderers and offline browsing. Kubernetes
+Secret values are not collected; Secrets are currently recorded as metadata-only
+objects.
 
 ## Development
 
@@ -52,6 +56,7 @@ internal/awseks/     AWS-side EKS collector
 internal/buildinfo/  Build metadata
 internal/cli/        Internal command-line implementation
 internal/inventory/  Snapshot data model
+internal/k8s/        Kubernetes API collector
 internal/render/     Output renderers
 docs/                Architecture and design notes
 go.mod               Module definition

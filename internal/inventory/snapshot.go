@@ -10,6 +10,7 @@ type Snapshot struct {
 	Source        Source         `json:"source"`
 	AWS           AWSIdentity    `json:"aws"`
 	EKS           EKSInventory   `json:"eks"`
+	Kubernetes    Kubernetes     `json:"kubernetes"`
 	Coverage      []CoverageItem `json:"coverage"`
 }
 
@@ -178,6 +179,363 @@ type PodIdentityAssociation struct {
 	OwnerARN           string            `json:"ownerArn,omitempty"`
 	DisableSessionTags *bool             `json:"disableSessionTags,omitempty"`
 	Tags               map[string]string `json:"tags,omitempty"`
+}
+
+// Kubernetes contains Kubernetes API inventory facts.
+type Kubernetes struct {
+	Context                   string                     `json:"context,omitempty"`
+	Server                    string                     `json:"server,omitempty"`
+	Version                   KubernetesVersion          `json:"version,omitempty"`
+	APIResources              []APIResource              `json:"apiResources,omitempty"`
+	CustomResourceDefinitions []CustomResourceDefinition `json:"customResourceDefinitions,omitempty"`
+	APIServices               []APIService               `json:"apiServices,omitempty"`
+	Namespaces                []Namespace                `json:"namespaces,omitempty"`
+	Nodes                     []Node                     `json:"nodes,omitempty"`
+	ServiceAccounts           []ServiceAccount           `json:"serviceAccounts,omitempty"`
+	Workloads                 []Workload                 `json:"workloads,omitempty"`
+	Pods                      []Pod                      `json:"pods,omitempty"`
+	Services                  []Service                  `json:"services,omitempty"`
+	EndpointSlices            []EndpointSlice            `json:"endpointSlices,omitempty"`
+	IngressClasses            []IngressClass             `json:"ingressClasses,omitempty"`
+	Ingresses                 []Ingress                  `json:"ingresses,omitempty"`
+	StorageClasses            []StorageClass             `json:"storageClasses,omitempty"`
+	PersistentVolumes         []PersistentVolume         `json:"persistentVolumes,omitempty"`
+	PersistentVolumeClaims    []PersistentVolumeClaim    `json:"persistentVolumeClaims,omitempty"`
+	CSIDrivers                []CSIDriver                `json:"csiDrivers,omitempty"`
+	CSINodes                  []CSINode                  `json:"csiNodes,omitempty"`
+	VolumeAttachments         []VolumeAttachment         `json:"volumeAttachments,omitempty"`
+	RuntimeClasses            []RuntimeClass             `json:"runtimeClasses,omitempty"`
+	ConfigMaps                []ConfigObject             `json:"configMaps,omitempty"`
+	Secrets                   []Secret                   `json:"secrets,omitempty"`
+	RBAC                      RBAC                       `json:"rbac,omitempty"`
+	Policies                  Policies                   `json:"policies,omitempty"`
+}
+
+// KubernetesVersion records the Kubernetes API server version.
+type KubernetesVersion struct {
+	GitVersion string `json:"gitVersion,omitempty"`
+	Major      string `json:"major,omitempty"`
+	Minor      string `json:"minor,omitempty"`
+	Platform   string `json:"platform,omitempty"`
+}
+
+// APIResource records a discoverable Kubernetes resource type.
+type APIResource struct {
+	GroupVersion string   `json:"groupVersion"`
+	Group        string   `json:"group,omitempty"`
+	Version      string   `json:"version,omitempty"`
+	Resource     string   `json:"resource"`
+	Kind         string   `json:"kind,omitempty"`
+	Namespaced   bool     `json:"namespaced"`
+	Verbs        []string `json:"verbs,omitempty"`
+	Categories   []string `json:"categories,omitempty"`
+}
+
+// CustomResourceDefinition records CRD registration metadata.
+type CustomResourceDefinition struct {
+	ObjectRef
+	Group    string       `json:"group,omitempty"`
+	Scope    string       `json:"scope,omitempty"`
+	Kind     string       `json:"kind,omitempty"`
+	Plural   string       `json:"plural,omitempty"`
+	Versions []CRDVersion `json:"versions,omitempty"`
+}
+
+// CRDVersion records one served CRD version.
+type CRDVersion struct {
+	Name    string `json:"name"`
+	Served  bool   `json:"served"`
+	Storage bool   `json:"storage"`
+}
+
+// APIService records aggregated APIService registration metadata.
+type APIService struct {
+	ObjectRef
+	Group            string `json:"group,omitempty"`
+	Version          string `json:"version,omitempty"`
+	ServiceNamespace string `json:"serviceNamespace,omitempty"`
+	ServiceName      string `json:"serviceName,omitempty"`
+	Available        string `json:"available,omitempty"`
+}
+
+// ObjectRef identifies a Kubernetes object without embedding the full object.
+type ObjectRef struct {
+	APIVersion string `json:"apiVersion,omitempty"`
+	Kind       string `json:"kind,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	Name       string `json:"name"`
+	UID        string `json:"uid,omitempty"`
+}
+
+// Namespace records namespace metadata and lifecycle state.
+type Namespace struct {
+	ObjectRef
+	Phase  string            `json:"phase,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
+// Node records node facts visible through the Kubernetes API.
+type Node struct {
+	ObjectRef
+	ProviderID          string            `json:"providerId,omitempty"`
+	Unschedulable       bool              `json:"unschedulable,omitempty"`
+	Labels              map[string]string `json:"labels,omitempty"`
+	Taints              []Taint           `json:"taints,omitempty"`
+	KubeletVersion      string            `json:"kubeletVersion,omitempty"`
+	ContainerRuntime    string            `json:"containerRuntime,omitempty"`
+	OSImage             string            `json:"osImage,omitempty"`
+	KernelVersion       string            `json:"kernelVersion,omitempty"`
+	Architecture        string            `json:"architecture,omitempty"`
+	OperatingSystem     string            `json:"operatingSystem,omitempty"`
+	Capacity            map[string]string `json:"capacity,omitempty"`
+	Allocatable         map[string]string `json:"allocatable,omitempty"`
+	Ready               string            `json:"ready,omitempty"`
+	NodeLocalBlindSpots []string          `json:"nodeLocalBlindSpots,omitempty"`
+}
+
+// ServiceAccount records ServiceAccount metadata and identity annotations.
+type ServiceAccount struct {
+	ObjectRef
+	Annotations      map[string]string `json:"annotations,omitempty"`
+	ImagePullSecrets []string          `json:"imagePullSecrets,omitempty"`
+	Secrets          []string          `json:"secrets,omitempty"`
+}
+
+// Workload records a controller and its pod template summary.
+type Workload struct {
+	ObjectRef
+	Replicas             *int32            `json:"replicas,omitempty"`
+	ReadyReplicas        int32             `json:"readyReplicas,omitempty"`
+	AvailableReplicas    int32             `json:"availableReplicas,omitempty"`
+	Selector             map[string]string `json:"selector,omitempty"`
+	ServiceAccountName   string            `json:"serviceAccountName,omitempty"`
+	RuntimeClassName     string            `json:"runtimeClassName,omitempty"`
+	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
+	Containers           []Container       `json:"containers,omitempty"`
+	InitContainers       []Container       `json:"initContainers,omitempty"`
+	Volumes              []Volume          `json:"volumes,omitempty"`
+	VolumeClaimTemplates []ObjectRef       `json:"volumeClaimTemplates,omitempty"`
+	ConfigRefs           []ObjectRef       `json:"configRefs,omitempty"`
+	SecretRefs           []ObjectRef       `json:"secretRefs,omitempty"`
+	ImagePullSecretRefs  []ObjectRef       `json:"imagePullSecretRefs,omitempty"`
+	OwnerReferences      []ObjectRef       `json:"ownerReferences,omitempty"`
+}
+
+// Pod records a running or historical Pod summary.
+type Pod struct {
+	ObjectRef
+	Phase              string      `json:"phase,omitempty"`
+	NodeName           string      `json:"nodeName,omitempty"`
+	ServiceAccountName string      `json:"serviceAccountName,omitempty"`
+	RuntimeClassName   string      `json:"runtimeClassName,omitempty"`
+	PodIP              string      `json:"podIp,omitempty"`
+	HostIP             string      `json:"hostIp,omitempty"`
+	Containers         []Container `json:"containers,omitempty"`
+	InitContainers     []Container `json:"initContainers,omitempty"`
+	Volumes            []Volume    `json:"volumes,omitempty"`
+	OwnerReferences    []ObjectRef `json:"ownerReferences,omitempty"`
+}
+
+// Container records image and runtime facts visible in a pod template or status.
+type Container struct {
+	Name          string            `json:"name"`
+	Image         string            `json:"image,omitempty"`
+	ImageID       string            `json:"imageId,omitempty"`
+	ContainerID   string            `json:"containerId,omitempty"`
+	Ready         *bool             `json:"ready,omitempty"`
+	RestartCount  *int32            `json:"restartCount,omitempty"`
+	Resources     map[string]string `json:"resources,omitempty"`
+	EnvConfigRefs []ObjectRef       `json:"envConfigRefs,omitempty"`
+	EnvSecretRefs []ObjectRef       `json:"envSecretRefs,omitempty"`
+	VolumeMounts  []string          `json:"volumeMounts,omitempty"`
+}
+
+// Volume records pod volume references without reading Secret values.
+type Volume struct {
+	Name                  string      `json:"name"`
+	Type                  string      `json:"type"`
+	PersistentVolumeClaim string      `json:"persistentVolumeClaim,omitempty"`
+	ConfigMap             string      `json:"configMap,omitempty"`
+	Secret                string      `json:"secret,omitempty"`
+	CSI                   string      `json:"csi,omitempty"`
+	ProjectedRefs         []ObjectRef `json:"projectedRefs,omitempty"`
+}
+
+// Service records Service selector and endpoint-facing configuration.
+type Service struct {
+	ObjectRef
+	Type        string            `json:"type,omitempty"`
+	ClusterIP   string            `json:"clusterIp,omitempty"`
+	ExternalIPs []string          `json:"externalIps,omitempty"`
+	Selector    map[string]string `json:"selector,omitempty"`
+	Ports       []ServicePort     `json:"ports,omitempty"`
+}
+
+// ServicePort records a service port mapping.
+type ServicePort struct {
+	Name       string `json:"name,omitempty"`
+	Protocol   string `json:"protocol,omitempty"`
+	Port       int32  `json:"port"`
+	TargetPort string `json:"targetPort,omitempty"`
+	NodePort   int32  `json:"nodePort,omitempty"`
+}
+
+// EndpointSlice records endpoint backends and topology hints.
+type EndpointSlice struct {
+	ObjectRef
+	AddressType string           `json:"addressType,omitempty"`
+	ServiceName string           `json:"serviceName,omitempty"`
+	Ports       []EndpointPort   `json:"ports,omitempty"`
+	Endpoints   []EndpointTarget `json:"endpoints,omitempty"`
+}
+
+// EndpointPort records an EndpointSlice port.
+type EndpointPort struct {
+	Name     string `json:"name,omitempty"`
+	Protocol string `json:"protocol,omitempty"`
+	Port     *int32 `json:"port,omitempty"`
+}
+
+// EndpointTarget records an EndpointSlice endpoint target.
+type EndpointTarget struct {
+	Addresses []string  `json:"addresses,omitempty"`
+	Ready     *bool     `json:"ready,omitempty"`
+	NodeName  string    `json:"nodeName,omitempty"`
+	Zone      string    `json:"zone,omitempty"`
+	TargetRef ObjectRef `json:"targetRef,omitempty"`
+}
+
+// IngressClass records an IngressClass.
+type IngressClass struct {
+	ObjectRef
+	Controller string    `json:"controller,omitempty"`
+	Parameters ObjectRef `json:"parameters,omitempty"`
+}
+
+// Ingress records L7 routing references.
+type Ingress struct {
+	ObjectRef
+	ClassName string        `json:"className,omitempty"`
+	Rules     []IngressRule `json:"rules,omitempty"`
+	TLSHosts  []string      `json:"tlsHosts,omitempty"`
+	Backends  []ObjectRef   `json:"backends,omitempty"`
+}
+
+// IngressRule records a host/path routing rule.
+type IngressRule struct {
+	Host        string `json:"host,omitempty"`
+	Path        string `json:"path,omitempty"`
+	PathType    string `json:"pathType,omitempty"`
+	ServiceName string `json:"serviceName,omitempty"`
+	ServicePort string `json:"servicePort,omitempty"`
+}
+
+// StorageClass records provisioner and parameters.
+type StorageClass struct {
+	ObjectRef
+	Provisioner          string            `json:"provisioner,omitempty"`
+	Parameters           map[string]string `json:"parameters,omitempty"`
+	ReclaimPolicy        string            `json:"reclaimPolicy,omitempty"`
+	VolumeBindingMode    string            `json:"volumeBindingMode,omitempty"`
+	AllowVolumeExpansion *bool             `json:"allowVolumeExpansion,omitempty"`
+}
+
+// PersistentVolume records PV storage facts.
+type PersistentVolume struct {
+	ObjectRef
+	StorageClassName string     `json:"storageClassName,omitempty"`
+	Capacity         string     `json:"capacity,omitempty"`
+	AccessModes      []string   `json:"accessModes,omitempty"`
+	VolumeMode       string     `json:"volumeMode,omitempty"`
+	Phase            string     `json:"phase,omitempty"`
+	ClaimRef         ObjectRef  `json:"claimRef,omitempty"`
+	CSI              *CSIVolume `json:"csi,omitempty"`
+}
+
+// PersistentVolumeClaim records PVC storage facts.
+type PersistentVolumeClaim struct {
+	ObjectRef
+	StorageClassName string   `json:"storageClassName,omitempty"`
+	VolumeName       string   `json:"volumeName,omitempty"`
+	RequestedStorage string   `json:"requestedStorage,omitempty"`
+	AccessModes      []string `json:"accessModes,omitempty"`
+	VolumeMode       string   `json:"volumeMode,omitempty"`
+	Phase            string   `json:"phase,omitempty"`
+}
+
+// CSIVolume records CSI details on a PV.
+type CSIVolume struct {
+	Driver       string `json:"driver,omitempty"`
+	VolumeHandle string `json:"volumeHandle,omitempty"`
+	FSType       string `json:"fsType,omitempty"`
+}
+
+// CSIDriver records a CSIDriver object.
+type CSIDriver struct {
+	ObjectRef
+	AttachRequired       *bool    `json:"attachRequired,omitempty"`
+	PodInfoOnMount       *bool    `json:"podInfoOnMount,omitempty"`
+	VolumeLifecycleModes []string `json:"volumeLifecycleModes,omitempty"`
+}
+
+// CSINode records CSI drivers installed on a node.
+type CSINode struct {
+	ObjectRef
+	Drivers []CSINodeDriver `json:"drivers,omitempty"`
+}
+
+// CSINodeDriver records a single CSINode driver entry.
+type CSINodeDriver struct {
+	Name         string   `json:"name"`
+	NodeID       string   `json:"nodeId,omitempty"`
+	TopologyKeys []string `json:"topologyKeys,omitempty"`
+}
+
+// VolumeAttachment records CSI volume attachment state.
+type VolumeAttachment struct {
+	ObjectRef
+	Attacher    string `json:"attacher,omitempty"`
+	NodeName    string `json:"nodeName,omitempty"`
+	PVName      string `json:"pvName,omitempty"`
+	Attached    bool   `json:"attached"`
+	AttachError string `json:"attachError,omitempty"`
+}
+
+// RuntimeClass records declared runtime handlers.
+type RuntimeClass struct {
+	ObjectRef
+	Handler string `json:"handler,omitempty"`
+}
+
+// ConfigObject records metadata for ConfigMaps and similar config resources.
+type ConfigObject struct {
+	ObjectRef
+	Data       map[string]string `json:"data,omitempty"`
+	BinaryKeys []string          `json:"binaryKeys,omitempty"`
+}
+
+// Secret records Secret metadata without data values.
+type Secret struct {
+	ObjectRef
+	Type string   `json:"type,omitempty"`
+	Keys []string `json:"keys,omitempty"`
+}
+
+// RBAC records role and binding counts with object names.
+type RBAC struct {
+	Roles               []ObjectRef `json:"roles,omitempty"`
+	RoleBindings        []ObjectRef `json:"roleBindings,omitempty"`
+	ClusterRoles        []ObjectRef `json:"clusterRoles,omitempty"`
+	ClusterRoleBindings []ObjectRef `json:"clusterRoleBindings,omitempty"`
+}
+
+// Policies records policy-like Kubernetes resources.
+type Policies struct {
+	HorizontalPodAutoscalers []ObjectRef `json:"horizontalPodAutoscalers,omitempty"`
+	PodDisruptionBudgets     []ObjectRef `json:"podDisruptionBudgets,omitempty"`
+	NetworkPolicies          []ObjectRef `json:"networkPolicies,omitempty"`
+	ResourceQuotas           []ObjectRef `json:"resourceQuotas,omitempty"`
+	LimitRanges              []ObjectRef `json:"limitRanges,omitempty"`
 }
 
 // HealthIssue records health issues surfaced by EKS.
