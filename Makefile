@@ -4,7 +4,7 @@ VERSION ?= dev
 .PHONY: build run test vet fmt check clean
 
 build:
-	$(GO) build -trimpath -ldflags "-X github.com/kuraudo-lab/teleskope/internal/cli.Version=$(VERSION)" -o bin/teleskope ./cmd/teleskope
+	$(GO) build -trimpath -ldflags "-X github.com/kuraudo-lab/teleskope/internal/buildinfo.Version=$(VERSION)" -o bin/teleskope ./cmd/teleskope
 
 run:
 	$(GO) run ./cmd/teleskope

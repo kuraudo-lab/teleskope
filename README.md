@@ -9,8 +9,19 @@ capability assessment and migration gap analysis are future work.
 
 ## Status
 
-Project scaffold only. The CLI currently provides help and version output;
-collection and reporting are not implemented yet.
+Early EKS collection is implemented for AWS-side inventory. The CLI reads AWS
+shared configuration and credentials through the AWS SDK default config chain,
+then collects cluster metadata, managed add-ons, managed node groups, EKS access
+entries, and Pod Identity associations.
+
+```sh
+teleskope scan eks --cluster my-cluster
+teleskope scan eks --cluster my-cluster --profile prod --region ap-northeast-1
+teleskope scan eks --cluster my-cluster --output json
+```
+
+The default terminal output is a compact human-readable summary. JSON preserves
+the full snapshot structure for later renderers and offline browsing.
 
 ## Development
 
@@ -37,10 +48,14 @@ Set a build version with `make build VERSION=0.1.0`.
 
 ```text
 cmd/teleskope/  Executable entry point
-internal/cli/  Internal command-line implementation
-docs/          Architecture and design notes
-go.mod         Module definition
-Makefile       Local development commands
+internal/awseks/     AWS-side EKS collector
+internal/buildinfo/  Build metadata
+internal/cli/        Internal command-line implementation
+internal/inventory/  Snapshot data model
+internal/render/     Output renderers
+docs/                Architecture and design notes
+go.mod               Module definition
+Makefile             Local development commands
 ```
 
 Internal packages are added as their functionality is implemented. See
