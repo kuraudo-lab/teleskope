@@ -18,6 +18,29 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		Source:        inventory.Source{Tool: "teleskope", Version: "test", Mode: "out-of-cluster/run-once"},
 		Kubernetes: inventory.Kubernetes{
 			Context: "prod",
+			RunningImages: []inventory.RunningImage{
+				{
+					Image:          "repo/web:v1",
+					PodCount:       1,
+					ContainerCount: 1,
+					ImageIDs:       []string{"docker-pullable://repo/web@sha256:aaaaaaaaaaaaaaaa"},
+					Runtimes:       []string{"containerd"},
+					Namespaces:     []string{"app"},
+					Workloads:      []inventory.ObjectRef{{APIVersion: "apps/v1", Kind: "Deployment", Namespace: "app", Name: "web"}},
+				},
+			},
+			RunningContainers: []inventory.RunningContainer{
+				{
+					Namespace:     "app",
+					Pod:           "web-abc",
+					Container:     "web",
+					ContainerType: "app",
+					Image:         "repo/web:v1",
+					ImageID:       "docker-pullable://repo/web@sha256:aaaaaaaaaaaaaaaa",
+					NodeName:      "node-a",
+					Workload:      inventory.ObjectRef{APIVersion: "apps/v1", Kind: "Deployment", Namespace: "app", Name: "web"},
+				},
+			},
 			Services: []inventory.Service{
 				{
 					ObjectRef: inventory.ObjectRef{Kind: "Service", Namespace: "app", Name: "web"},
@@ -54,6 +77,10 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	for _, want := range []string{
 		"# Teleskope scan summary",
 		"Target: `Prod Cluster`",
+		"| Running images | 1 |",
+		"| Running containers | 1 |",
+		"| repo/web:v1 (pods=1) | 1 | containerd | app | deployment/app/web | sha256:aaaaaaaaaaaa |",
+		"| app | web-abc | web | app | repo/web:v1 | sha256:aaaaaaaaaaaa | node-a | deployment/app/web |",
 		"| Service | service/app/web | ClusterIP | app=web | TCP/80->http |",
 	} {
 		if !strings.Contains(string(summary), want) {

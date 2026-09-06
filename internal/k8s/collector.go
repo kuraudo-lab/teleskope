@@ -98,6 +98,8 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 	collectRuntime(ctx, client, &kubernetes, &coverage, now)
 	collectRBAC(ctx, client, &kubernetes, &coverage, now)
 	collectPolicies(ctx, client, &kubernetes, &coverage, now)
+	kubernetes.RunningContainers = runningContainers(kubernetes)
+	kubernetes.RunningImages = runningImages(kubernetes.RunningContainers)
 
 	return kubernetes, coverage
 }
@@ -570,16 +572,17 @@ func mapPod(pod corev1.Pod) inventory.Pod {
 	_ = secretRefs
 	_ = pullSecrets
 	out := inventory.Pod{
-		ObjectRef:          objectRef("v1", "Pod", pod.Namespace, pod.Name, pod.UID),
-		Phase:              string(pod.Status.Phase),
-		NodeName:           pod.Spec.NodeName,
-		ServiceAccountName: pod.Spec.ServiceAccountName,
-		PodIP:              pod.Status.PodIP,
-		HostIP:             pod.Status.HostIP,
-		Containers:         containersWithStatus(containers, pod.Status.ContainerStatuses),
-		InitContainers:     containersWithStatus(initContainers, pod.Status.InitContainerStatuses),
-		Volumes:            volumes,
-		OwnerReferences:    ownerRefs(pod.OwnerReferences),
+		ObjectRef:           objectRef("v1", "Pod", pod.Namespace, pod.Name, pod.UID),
+		Phase:               string(pod.Status.Phase),
+		NodeName:            pod.Spec.NodeName,
+		ServiceAccountName:  pod.Spec.ServiceAccountName,
+		PodIP:               pod.Status.PodIP,
+		HostIP:              pod.Status.HostIP,
+		Containers:          containersWithStatus(containers, pod.Status.ContainerStatuses),
+		InitContainers:      containersWithStatus(initContainers, pod.Status.InitContainerStatuses),
+		EphemeralContainers: containersFromStatuses("ephemeral", pod.Status.EphemeralContainerStatuses),
+		Volumes:             volumes,
+		OwnerReferences:     ownerRefs(pod.OwnerReferences),
 	}
 	if pod.Spec.RuntimeClassName != nil {
 		out.RuntimeClassName = *pod.Spec.RuntimeClassName
@@ -972,11 +975,261 @@ func containersWithStatus(containers []inventory.Container, statuses []corev1.Co
 		}
 		containers[i].ImageID = status.ImageID
 		containers[i].ContainerID = status.ContainerID
+		containers[i].State = containerState(status.State)
+		containers[i].StartedAt = containerStartedAt(status.State)
 		containers[i].Ready = &status.Ready
 		restarts := int32(status.RestartCount)
 		containers[i].RestartCount = &restarts
 	}
 	return containers
+}
+
+func containersFromStatuses(_ string, statuses []corev1.ContainerStatus) []inventory.Container {
+	containers := make([]inventory.Container, 0, len(statuses))
+	for _, status := range statuses {
+		restarts := int32(status.RestartCount)
+		containers = append(containers, inventory.Container{
+			Name:         status.Name,
+			Image:        status.Image,
+			ImageID:      status.ImageID,
+			ContainerID:  status.ContainerID,
+			State:        containerState(status.State),
+			StartedAt:    containerStartedAt(status.State),
+			Ready:        &status.Ready,
+			RestartCount: &restarts,
+		})
+	}
+	return containers
+}
+
+func containerState(state corev1.ContainerState) string {
+	switch {
+	case state.Running != nil:
+		return "running"
+	case state.Waiting != nil:
+		return "waiting"
+	case state.Terminated != nil:
+		return "terminated"
+	default:
+		return ""
+	}
+}
+
+func containerStartedAt(state corev1.ContainerState) *time.Time {
+	if state.Running == nil {
+		return nil
+	}
+	startedAt := state.Running.StartedAt.Time
+	return &startedAt
+}
+
+func runningContainers(kubernetes inventory.Kubernetes) []inventory.RunningContainer {
+	workloads := workloadByOwnerKey(kubernetes.Workloads)
+	out := make([]inventory.RunningContainer, 0)
+	for _, pod := range kubernetes.Pods {
+		podOwner := controllerOwner(pod.OwnerReferences, pod.Namespace)
+		workload := resolveWorkload(podOwner, workloads, pod.Namespace)
+		out = append(out, runningContainersFromPod(pod, "app", pod.Containers, podOwner, workload)...)
+		out = append(out, runningContainersFromPod(pod, "init", pod.InitContainers, podOwner, workload)...)
+		out = append(out, runningContainersFromPod(pod, "ephemeral", pod.EphemeralContainers, podOwner, workload)...)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].Namespace, out[i].Pod, out[i].ContainerType, out[i].Container}, "\x00")
+		right := strings.Join([]string{out[j].Namespace, out[j].Pod, out[j].ContainerType, out[j].Container}, "\x00")
+		return left < right
+	})
+	return out
+}
+
+func runningImages(containers []inventory.RunningContainer) []inventory.RunningImage {
+	type aggregate struct {
+		item       inventory.RunningImage
+		pods       map[string]struct{}
+		imageIDs   map[string]struct{}
+		runtimes   map[string]struct{}
+		namespaces map[string]struct{}
+		workloads  map[string]inventory.ObjectRef
+	}
+	byImage := map[string]*aggregate{}
+	for _, container := range containers {
+		image := container.Image
+		if image == "" {
+			continue
+		}
+		agg, ok := byImage[image]
+		if !ok {
+			agg = &aggregate{
+				item:       inventory.RunningImage{Image: image},
+				pods:       map[string]struct{}{},
+				imageIDs:   map[string]struct{}{},
+				runtimes:   map[string]struct{}{},
+				namespaces: map[string]struct{}{},
+				workloads:  map[string]inventory.ObjectRef{},
+			}
+			byImage[image] = agg
+		}
+		agg.item.ContainerCount++
+		agg.pods[namespacedName(container.Namespace, container.Pod)] = struct{}{}
+		if container.ImageID != "" {
+			agg.imageIDs[container.ImageID] = struct{}{}
+		}
+		if container.Runtime != "" {
+			agg.runtimes[container.Runtime] = struct{}{}
+		}
+		if container.Namespace != "" {
+			agg.namespaces[container.Namespace] = struct{}{}
+		}
+		if container.Workload.Name != "" {
+			agg.workloads[refKey(container.Workload)] = container.Workload
+		}
+	}
+
+	out := make([]inventory.RunningImage, 0, len(byImage))
+	for _, agg := range byImage {
+		agg.item.PodCount = len(agg.pods)
+		agg.item.ImageIDs = sortedSet(agg.imageIDs)
+		agg.item.Runtimes = sortedSet(agg.runtimes)
+		agg.item.Namespaces = sortedSet(agg.namespaces)
+		agg.item.Workloads = sortedObjectRefs(agg.workloads)
+		out = append(out, agg.item)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].PodCount != out[j].PodCount {
+			return out[i].PodCount > out[j].PodCount
+		}
+		return out[i].Image < out[j].Image
+	})
+	return out
+}
+
+func runningContainersFromPod(pod inventory.Pod, containerType string, containers []inventory.Container, podOwner, workload inventory.ObjectRef) []inventory.RunningContainer {
+	out := make([]inventory.RunningContainer, 0)
+	for _, container := range containers {
+		if container.State != "running" {
+			continue
+		}
+		image := container.Image
+		if image == "" {
+			image = container.ImageID
+		}
+		out = append(out, inventory.RunningContainer{
+			Namespace:        pod.Namespace,
+			Pod:              pod.Name,
+			NodeName:         pod.NodeName,
+			Container:        container.Name,
+			ContainerType:    containerType,
+			Image:            image,
+			ImageID:          container.ImageID,
+			ContainerID:      container.ContainerID,
+			Runtime:          containerRuntime(container.ContainerID),
+			StartedAt:        container.StartedAt,
+			Ready:            container.Ready,
+			RestartCount:     container.RestartCount,
+			PodOwner:         podOwner,
+			Workload:         workload,
+			RuntimeClassName: pod.RuntimeClassName,
+			ServiceAccount:   pod.ServiceAccountName,
+		})
+	}
+	return out
+}
+
+func workloadByOwnerKey(workloads []inventory.Workload) map[string]inventory.Workload {
+	out := make(map[string]inventory.Workload, len(workloads))
+	for _, workload := range workloads {
+		out[ownerKey(workload.ObjectRef.Namespace, workload.ObjectRef)] = workload
+	}
+	return out
+}
+
+func resolveWorkload(owner inventory.ObjectRef, workloads map[string]inventory.Workload, namespace string) inventory.ObjectRef {
+	if owner.Name == "" {
+		return inventory.ObjectRef{}
+	}
+	current := owner
+	if current.Namespace == "" {
+		current.Namespace = namespace
+	}
+	for i := 0; i < 8; i++ {
+		workload, ok := workloads[ownerKey(namespace, current)]
+		if !ok {
+			return current
+		}
+		if len(workload.OwnerReferences) == 0 {
+			return workload.ObjectRef
+		}
+		next := controllerOwner(workload.OwnerReferences, workload.Namespace)
+		if next.Name == "" {
+			return workload.ObjectRef
+		}
+		current = next
+		if current.Namespace == "" {
+			current.Namespace = workload.Namespace
+		}
+	}
+	return current
+}
+
+func controllerOwner(refs []inventory.ObjectRef, namespace string) inventory.ObjectRef {
+	if len(refs) == 0 {
+		return inventory.ObjectRef{}
+	}
+	ref := refs[0]
+	if ref.Namespace == "" {
+		ref.Namespace = namespace
+	}
+	return ref
+}
+
+func ownerKey(defaultNamespace string, ref inventory.ObjectRef) string {
+	namespace := ref.Namespace
+	if namespace == "" {
+		namespace = defaultNamespace
+	}
+	return strings.Join([]string{strings.ToLower(ref.Kind), namespace, ref.Name}, "\x00")
+}
+
+func namespacedName(namespace, name string) string {
+	if namespace == "" {
+		return name
+	}
+	return namespace + "/" + name
+}
+
+func sortedSet(values map[string]struct{}) []string {
+	out := make([]string, 0, len(values))
+	for value := range values {
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func sortedObjectRefs(values map[string]inventory.ObjectRef) []inventory.ObjectRef {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	out := make([]inventory.ObjectRef, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, values[key])
+	}
+	return out
+}
+
+func refKey(ref inventory.ObjectRef) string {
+	return strings.Join([]string{ref.APIVersion, ref.Kind, ref.Namespace, ref.Name}, "\x00")
+}
+
+func containerRuntime(containerID string) string {
+	if containerID == "" {
+		return ""
+	}
+	if idx := strings.Index(containerID, "://"); idx > 0 {
+		return containerID[:idx]
+	}
+	return ""
 }
 
 func containerResources(requirements corev1.ResourceRequirements) map[string]string {

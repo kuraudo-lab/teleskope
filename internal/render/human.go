@@ -77,7 +77,7 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 		}
 		fmt.Fprintf(w, "  api      resources=%d crds=%d apiServices=%d\n", len(snapshot.Kubernetes.APIResources), len(snapshot.Kubernetes.CustomResourceDefinitions), len(snapshot.Kubernetes.APIServices))
 		fmt.Fprintf(w, "  compute  nodes=%d runtimeClasses=%d\n", len(snapshot.Kubernetes.Nodes), len(snapshot.Kubernetes.RuntimeClasses))
-		fmt.Fprintf(w, "  workload workloads=%d pods=%d images=%d\n", len(snapshot.Kubernetes.Workloads), len(snapshot.Kubernetes.Pods), imageCount(snapshot))
+		fmt.Fprintf(w, "  workload workloads=%d pods=%d images=%d runningImages=%d runningContainers=%d\n", len(snapshot.Kubernetes.Workloads), len(snapshot.Kubernetes.Pods), imageCount(snapshot), len(snapshot.Kubernetes.RunningImages), len(snapshot.Kubernetes.RunningContainers))
 		fmt.Fprintf(w, "  network  services=%d endpointSlices=%d ingresses=%d classes=%d\n", len(snapshot.Kubernetes.Services), len(snapshot.Kubernetes.EndpointSlices), len(snapshot.Kubernetes.Ingresses), len(snapshot.Kubernetes.IngressClasses))
 		fmt.Fprintf(w, "  storage  classes=%d pv=%d pvc=%d csiDrivers=%d csiNodes=%d attachments=%d\n", len(snapshot.Kubernetes.StorageClasses), len(snapshot.Kubernetes.PersistentVolumes), len(snapshot.Kubernetes.PersistentVolumeClaims), len(snapshot.Kubernetes.CSIDrivers), len(snapshot.Kubernetes.CSINodes), len(snapshot.Kubernetes.VolumeAttachments))
 		fmt.Fprintf(w, "  config   configMaps=%d secrets=%d(metadata only)\n", len(snapshot.Kubernetes.ConfigMaps), len(snapshot.Kubernetes.Secrets))
@@ -100,8 +100,55 @@ func writeKubernetesDetails(w io.Writer, snapshot *inventory.Snapshot) {
 	writeRouting(w, kubernetes)
 	writeStorage(w, kubernetes)
 	writeRuntime(w, kubernetes)
+	writeRunningImages(w, kubernetes)
+	writeRunningContainers(w, kubernetes)
 	writePlatformComponents(w, kubernetes)
 	writeWorkloadRelations(w, kubernetes)
+}
+
+func writeRunningImages(w io.Writer, kubernetes inventory.Kubernetes) {
+	if len(kubernetes.RunningImages) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "running-images")
+	table := newTable(w)
+	fmt.Fprintln(table, "IMAGE\tCONTAINERS\tRUNTIMES\tNAMESPACES\tWORKLOADS\tIMAGE IDS")
+	for _, image := range sortedRunningImages(kubernetes.RunningImages) {
+		fmt.Fprintf(table, "%s (pods=%d)\t%d\t%s\t%s\t%s\t%s\n",
+			value(image.Image),
+			image.PodCount,
+			image.ContainerCount,
+			stringList(image.Runtimes),
+			stringList(image.Namespaces),
+			refsValue(image.Workloads),
+			shortImageIDs(image.ImageIDs),
+		)
+	}
+	table.Flush()
+	fmt.Fprintln(w)
+}
+
+func writeRunningContainers(w io.Writer, kubernetes inventory.Kubernetes) {
+	if len(kubernetes.RunningContainers) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "running-containers")
+	table := newTable(w)
+	fmt.Fprintln(table, "NAMESPACE\tPOD\tCONTAINER\tTYPE\tIMAGE\tIMAGE ID\tNODE\tWORKLOAD")
+	for _, container := range sortedRunningContainers(kubernetes.RunningContainers) {
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			value(container.Namespace),
+			value(container.Pod),
+			value(container.Container),
+			value(container.ContainerType),
+			value(container.Image),
+			shortImageID(container.ImageID),
+			value(container.NodeName),
+			refValue(container.Workload),
+		)
+	}
+	table.Flush()
+	fmt.Fprintln(w)
 }
 
 func writeRouting(w io.Writer, kubernetes inventory.Kubernetes) {
@@ -455,6 +502,27 @@ func sortedWorkloads(items []inventory.Workload) []inventory.Workload {
 	return out
 }
 
+func sortedRunningContainers(items []inventory.RunningContainer) []inventory.RunningContainer {
+	out := append([]inventory.RunningContainer(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].Namespace, out[i].Pod, out[i].ContainerType, out[i].Container}, "\x00")
+		right := strings.Join([]string{out[j].Namespace, out[j].Pod, out[j].ContainerType, out[j].Container}, "\x00")
+		return left < right
+	})
+	return out
+}
+
+func sortedRunningImages(items []inventory.RunningImage) []inventory.RunningImage {
+	out := append([]inventory.RunningImage(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].PodCount != out[j].PodCount {
+			return out[i].PodCount > out[j].PodCount
+		}
+		return out[i].Image < out[j].Image
+	})
+	return out
+}
+
 func endpointTargetCounts(slices []inventory.EndpointSlice) map[string]int {
 	counts := map[string]int{}
 	for _, slice := range slices {
@@ -640,6 +708,36 @@ func stringList(values []string) string {
 		return "-"
 	}
 	return strings.Join(values, ",")
+}
+
+func shortImageID(value string) string {
+	value = strings.TrimPrefix(value, "docker-pullable://")
+	value = strings.TrimPrefix(value, "docker://")
+	value = strings.TrimPrefix(value, "containerd://")
+	const digestPrefix = "sha256:"
+	if idx := strings.LastIndex(value, digestPrefix); idx >= 0 {
+		digest := value[idx+len(digestPrefix):]
+		if len(digest) > 12 {
+			return digestPrefix + digest[:12]
+		}
+		return digestPrefix + digest
+	}
+	if len(value) > 32 {
+		return value[:32]
+	}
+	return value
+}
+
+func shortImageIDs(values []string) string {
+	if len(values) == 0 {
+		return "-"
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		out = append(out, shortImageID(value))
+	}
+	sort.Strings(out)
+	return strings.Join(out, ",")
 }
 
 func uniqueStrings(values []string) []string {

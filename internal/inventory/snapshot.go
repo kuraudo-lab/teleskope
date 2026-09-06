@@ -194,6 +194,8 @@ type Kubernetes struct {
 	ServiceAccounts           []ServiceAccount           `json:"serviceAccounts,omitempty"`
 	Workloads                 []Workload                 `json:"workloads,omitempty"`
 	Pods                      []Pod                      `json:"pods,omitempty"`
+	RunningImages             []RunningImage             `json:"runningImages,omitempty"`
+	RunningContainers         []RunningContainer         `json:"runningContainers,omitempty"`
 	Services                  []Service                  `json:"services,omitempty"`
 	EndpointSlices            []EndpointSlice            `json:"endpointSlices,omitempty"`
 	IngressClasses            []IngressClass             `json:"ingressClasses,omitempty"`
@@ -324,16 +326,17 @@ type Workload struct {
 // Pod records a running or historical Pod summary.
 type Pod struct {
 	ObjectRef
-	Phase              string      `json:"phase,omitempty"`
-	NodeName           string      `json:"nodeName,omitempty"`
-	ServiceAccountName string      `json:"serviceAccountName,omitempty"`
-	RuntimeClassName   string      `json:"runtimeClassName,omitempty"`
-	PodIP              string      `json:"podIp,omitempty"`
-	HostIP             string      `json:"hostIp,omitempty"`
-	Containers         []Container `json:"containers,omitempty"`
-	InitContainers     []Container `json:"initContainers,omitempty"`
-	Volumes            []Volume    `json:"volumes,omitempty"`
-	OwnerReferences    []ObjectRef `json:"ownerReferences,omitempty"`
+	Phase               string      `json:"phase,omitempty"`
+	NodeName            string      `json:"nodeName,omitempty"`
+	ServiceAccountName  string      `json:"serviceAccountName,omitempty"`
+	RuntimeClassName    string      `json:"runtimeClassName,omitempty"`
+	PodIP               string      `json:"podIp,omitempty"`
+	HostIP              string      `json:"hostIp,omitempty"`
+	Containers          []Container `json:"containers,omitempty"`
+	InitContainers      []Container `json:"initContainers,omitempty"`
+	EphemeralContainers []Container `json:"ephemeralContainers,omitempty"`
+	Volumes             []Volume    `json:"volumes,omitempty"`
+	OwnerReferences     []ObjectRef `json:"ownerReferences,omitempty"`
 }
 
 // Container records image and runtime facts visible in a pod template or status.
@@ -342,12 +345,45 @@ type Container struct {
 	Image         string            `json:"image,omitempty"`
 	ImageID       string            `json:"imageId,omitempty"`
 	ContainerID   string            `json:"containerId,omitempty"`
+	State         string            `json:"state,omitempty"`
+	StartedAt     *time.Time        `json:"startedAt,omitempty"`
 	Ready         *bool             `json:"ready,omitempty"`
 	RestartCount  *int32            `json:"restartCount,omitempty"`
 	Resources     map[string]string `json:"resources,omitempty"`
 	EnvConfigRefs []ObjectRef       `json:"envConfigRefs,omitempty"`
 	EnvSecretRefs []ObjectRef       `json:"envSecretRefs,omitempty"`
 	VolumeMounts  []string          `json:"volumeMounts,omitempty"`
+}
+
+// RunningContainer records an actual container image observed in Running state.
+type RunningContainer struct {
+	Namespace        string     `json:"namespace,omitempty"`
+	Pod              string     `json:"pod"`
+	NodeName         string     `json:"nodeName,omitempty"`
+	Container        string     `json:"container"`
+	ContainerType    string     `json:"containerType,omitempty"`
+	Image            string     `json:"image"`
+	ImageID          string     `json:"imageId,omitempty"`
+	ContainerID      string     `json:"containerId,omitempty"`
+	Runtime          string     `json:"runtime,omitempty"`
+	StartedAt        *time.Time `json:"startedAt,omitempty"`
+	Ready            *bool      `json:"ready,omitempty"`
+	RestartCount     *int32     `json:"restartCount,omitempty"`
+	PodOwner         ObjectRef  `json:"podOwner,omitempty"`
+	Workload         ObjectRef  `json:"workload,omitempty"`
+	RuntimeClassName string     `json:"runtimeClassName,omitempty"`
+	ServiceAccount   string     `json:"serviceAccount,omitempty"`
+}
+
+// RunningImage records a deduplicated image observed in Running containers.
+type RunningImage struct {
+	Image          string      `json:"image"`
+	PodCount       int         `json:"podCount"`
+	ContainerCount int         `json:"containerCount"`
+	ImageIDs       []string    `json:"imageIds,omitempty"`
+	Runtimes       []string    `json:"runtimes,omitempty"`
+	Namespaces     []string    `json:"namespaces,omitempty"`
+	Workloads      []ObjectRef `json:"workloads,omitempty"`
 }
 
 // Volume records pod volume references without reading Secret values.

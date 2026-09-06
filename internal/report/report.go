@@ -200,6 +200,8 @@ func writeKubernetes(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	fmt.Fprintf(b, "| Nodes | %d |\n", len(kubernetes.Nodes))
 	fmt.Fprintf(b, "| Workloads | %d |\n", len(kubernetes.Workloads))
 	fmt.Fprintf(b, "| Pods | %d |\n", len(kubernetes.Pods))
+	fmt.Fprintf(b, "| Running images | %d |\n", len(kubernetes.RunningImages))
+	fmt.Fprintf(b, "| Running containers | %d |\n", len(kubernetes.RunningContainers))
 	fmt.Fprintf(b, "| Services | %d |\n", len(kubernetes.Services))
 	fmt.Fprintf(b, "| Ingresses | %d |\n", len(kubernetes.Ingresses))
 	fmt.Fprintf(b, "| StorageClasses | %d |\n", len(kubernetes.StorageClasses))
@@ -211,7 +213,50 @@ func writeKubernetes(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	writeRouting(b, kubernetes)
 	writeStorage(b, kubernetes)
 	writeRuntime(b, kubernetes)
+	writeRunningImages(b, kubernetes)
+	writeRunningContainers(b, kubernetes)
 	writeWorkloads(b, kubernetes)
+}
+
+func writeRunningImages(b *strings.Builder, kubernetes inventory.Kubernetes) {
+	if len(kubernetes.RunningImages) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "### Running images\n\n")
+	fmt.Fprintf(b, "| Image | Containers | Runtimes | Namespaces | Workloads | Image IDs |\n| --- | ---: | --- | --- | --- | --- |\n")
+	for _, image := range sortedRunningImages(kubernetes.RunningImages) {
+		fmt.Fprintf(b, "| %s (pods=%d) | %d | %s | %s | %s | %s |\n",
+			mdCell(image.Image),
+			image.PodCount,
+			image.ContainerCount,
+			mdCell(strings.Join(image.Runtimes, ",")),
+			mdCell(strings.Join(image.Namespaces, ",")),
+			mdCell(refsValue(image.Workloads)),
+			mdCell(shortImageIDs(image.ImageIDs)),
+		)
+	}
+	fmt.Fprintln(b)
+}
+
+func writeRunningContainers(b *strings.Builder, kubernetes inventory.Kubernetes) {
+	if len(kubernetes.RunningContainers) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "### Running containers\n\n")
+	fmt.Fprintf(b, "| Namespace | Pod | Container | Type | Image | Image ID | Node | Workload |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n")
+	for _, container := range sortedRunningContainers(kubernetes.RunningContainers) {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s |\n",
+			mdCell(container.Namespace),
+			mdCell(container.Pod),
+			mdCell(container.Container),
+			mdCell(container.ContainerType),
+			mdCell(container.Image),
+			mdCell(shortImageID(container.ImageID)),
+			mdCell(container.NodeName),
+			mdCell(ref(container.Workload)),
+		)
+	}
+	fmt.Fprintln(b)
 }
 
 func writeRouting(b *strings.Builder, kubernetes inventory.Kubernetes) {
@@ -418,6 +463,27 @@ func sortedWorkloads(items []inventory.Workload) []inventory.Workload {
 	return out
 }
 
+func sortedRunningContainers(items []inventory.RunningContainer) []inventory.RunningContainer {
+	out := append([]inventory.RunningContainer(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].Namespace, out[i].Pod, out[i].ContainerType, out[i].Container}, "\x00")
+		right := strings.Join([]string{out[j].Namespace, out[j].Pod, out[j].ContainerType, out[j].Container}, "\x00")
+		return left < right
+	})
+	return out
+}
+
+func sortedRunningImages(items []inventory.RunningImage) []inventory.RunningImage {
+	out := append([]inventory.RunningImage(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].PodCount != out[j].PodCount {
+			return out[i].PodCount > out[j].PodCount
+		}
+		return out[i].Image < out[j].Image
+	})
+	return out
+}
+
 type counted struct {
 	name  string
 	count int
@@ -557,6 +623,18 @@ func refValue(value inventory.ObjectRef) string {
 	return out
 }
 
+func refsValue(refs []inventory.ObjectRef) string {
+	if len(refs) == 0 {
+		return "-"
+	}
+	values := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		values = append(values, refValue(ref))
+	}
+	sort.Strings(values)
+	return strings.Join(values, ",")
+}
+
 func mapValue(value map[string]string) string {
 	if len(value) == 0 {
 		return "-"
@@ -581,6 +659,36 @@ func boolPtr(value *bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+func shortImageID(value string) string {
+	value = strings.TrimPrefix(value, "docker-pullable://")
+	value = strings.TrimPrefix(value, "docker://")
+	value = strings.TrimPrefix(value, "containerd://")
+	const digestPrefix = "sha256:"
+	if idx := strings.LastIndex(value, digestPrefix); idx >= 0 {
+		digest := value[idx+len(digestPrefix):]
+		if len(digest) > 12 {
+			return digestPrefix + digest[:12]
+		}
+		return digestPrefix + digest
+	}
+	if len(value) > 32 {
+		return value[:32]
+	}
+	return value
+}
+
+func shortImageIDs(values []string) string {
+	if len(values) == 0 {
+		return "-"
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		out = append(out, shortImageID(value))
+	}
+	sort.Strings(out)
+	return strings.Join(out, ",")
 }
 
 func mdCell(value string) string {

@@ -40,6 +40,41 @@ func TestHumanIncludesActionableKubernetesFacts(t *testing.T) {
 					},
 				},
 			},
+			Pods: []inventory.Pod{
+				{
+					ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "app", Name: "web-abc"},
+					Phase:     "Running",
+					NodeName:  "ip-10-0-0-1",
+					Containers: []inventory.Container{
+						{Name: "web", Image: "example/web:v1", ImageID: "docker-pullable://example/web@sha256:aaaaaaaaaaaaaaaa", ContainerID: "containerd://abc", State: "running"},
+					},
+				},
+			},
+			RunningContainers: []inventory.RunningContainer{
+				{
+					Namespace:     "app",
+					Pod:           "web-abc",
+					NodeName:      "ip-10-0-0-1",
+					Container:     "web",
+					ContainerType: "app",
+					Image:         "example/web:v1",
+					ImageID:       "docker-pullable://example/web@sha256:aaaaaaaaaaaaaaaa",
+					ContainerID:   "containerd://abc",
+					Runtime:       "containerd",
+					Workload:      inventory.ObjectRef{APIVersion: "apps/v1", Kind: "Deployment", Namespace: "app", Name: "web"},
+				},
+			},
+			RunningImages: []inventory.RunningImage{
+				{
+					Image:          "example/web:v1",
+					PodCount:       1,
+					ContainerCount: 1,
+					ImageIDs:       []string{"docker-pullable://example/web@sha256:aaaaaaaaaaaaaaaa"},
+					Runtimes:       []string{"containerd"},
+					Namespaces:     []string{"app"},
+					Workloads:      []inventory.ObjectRef{{APIVersion: "apps/v1", Kind: "Deployment", Namespace: "app", Name: "web"}},
+				},
+			},
 			Services: []inventory.Service{
 				{
 					ObjectRef: inventory.ObjectRef{Kind: "Service", Namespace: "app", Name: "web"},
@@ -111,6 +146,11 @@ func TestHumanIncludesActionableKubernetesFacts(t *testing.T) {
 		"pvc         app/web-data     ReadWriteOnce  Filesystem  10Gi",
 		"csi-driver  ebs.csi.aws.com",
 		"cri   containerd://2.0.0",
+		"running-images",
+		"example/web:v1 (pods=1)  1           containerd  app         deployment/app/web  sha256:aaaaaaaaaaaa",
+		"running-containers",
+		"app        web-abc  web        app   example/web:v1",
+		"sha256:aaaaaaaaaaaa",
 		"cni   daemonset/kube-system/aws-node",
 		"deployment/app/web              volume    data    pvc/app/web-data",
 		"access=ReadWriteOnce mode=Filesystem sc=gp3 pv=pv-web-data csi=ebs.csi.aws.com",
