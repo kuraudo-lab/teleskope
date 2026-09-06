@@ -13,6 +13,7 @@ import (
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/k8s"
 	"github.com/kuraudo-lab/teleskope/internal/render"
+	"github.com/kuraudo-lab/teleskope/internal/report"
 	"github.com/spf13/cobra"
 )
 
@@ -51,24 +52,25 @@ func NewRootCommand(stdout, stderr io.Writer) *cobra.Command {
 		return cmd.Help()
 	}
 
-	cmd.AddCommand(newScanCommand(stdout))
+	cmd.AddCommand(newScanCommand(stdout, stderr))
 	return cmd
 }
 
-func newScanCommand(stdout io.Writer) *cobra.Command {
+func newScanCommand(stdout, stderr io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "scan",
 		Short: "Collect inventory from a target environment",
 	}
-	cmd.AddCommand(newScanEKSCommand(stdout))
-	cmd.AddCommand(newScanK8sCommand(stdout))
+	cmd.AddCommand(newScanEKSCommand(stdout, stderr))
+	cmd.AddCommand(newScanK8sCommand(stdout, stderr))
 	return cmd
 }
 
-func newScanEKSCommand(stdout io.Writer) *cobra.Command {
+func newScanEKSCommand(stdout, stderr io.Writer) *cobra.Command {
 	var opts awseks.Options
 	var kubeOpts k8s.Options
 	var output string
+	var outputDir string
 	var timeout time.Duration
 	var skipKubernetes bool
 
@@ -80,10 +82,10 @@ func newScanEKSCommand(stdout io.Writer) *cobra.Command {
 				return fmt.Errorf("--cluster is required")
 			}
 			if output == "" {
-				output = "human"
+				output = "report"
 			}
 			if !validOutput(output) {
-				return fmt.Errorf("unsupported output %q; expected human or json", output)
+				return fmt.Errorf("unsupported output %q; expected report, human, or json", output)
 			}
 
 			profile, _ := cmd.Root().PersistentFlags().GetString("profile")
@@ -101,19 +103,36 @@ func newScanEKSCommand(stdout io.Writer) *cobra.Command {
 				defer cancel()
 			}
 
+			progress := newProgress(stderr)
+			progress.Step("collecting EKS inventory for %s", opts.ClusterName)
 			snapshot, err := awseks.Collect(ctx, opts)
 			if err != nil {
 				return err
 			}
 			if !skipKubernetes {
+				progress.Step("collecting Kubernetes API inventory")
 				kubernetes, coverage := k8s.Collect(ctx, kubeOpts)
 				snapshot.Kubernetes = kubernetes
 				snapshot.Coverage = append(snapshot.Coverage, coverage...)
 			}
 			switch strings.ToLower(output) {
+			case "report":
+				progress.Step("writing report artifacts")
+				artifact, err := report.WriteDirectory(snapshot, report.Options{
+					BaseDir: outputDir,
+					Target:  opts.ClusterName,
+				})
+				if err != nil {
+					return err
+				}
+				progress.Done("report ready: %s", artifact.Dir)
+				fmt.Fprintf(stdout, "report %s\n", artifact.Dir)
+				return nil
 			case "json":
+				progress.Step("rendering JSON")
 				return render.JSON(stdout, snapshot)
 			default:
+				progress.Step("rendering human summary")
 				return render.Human(stdout, snapshot)
 			}
 		},
@@ -123,14 +142,16 @@ func newScanEKSCommand(stdout io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&kubeOpts.Kubeconfig, "kubeconfig", "", "path to kubeconfig for Kubernetes API collection")
 	cmd.Flags().StringVar(&kubeOpts.Context, "kube-context", "", "kubeconfig context for Kubernetes API collection")
 	cmd.Flags().BoolVar(&skipKubernetes, "skip-kubernetes", false, "skip Kubernetes API collection")
-	cmd.Flags().StringVarP(&output, "output", "o", "human", "output format: human, json")
+	cmd.Flags().StringVarP(&output, "output", "o", "report", "output format: report, human, json")
+	cmd.Flags().StringVar(&outputDir, "output-dir", ".", "parent directory for timestamped report output")
 	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "collection timeout")
 	return cmd
 }
 
-func newScanK8sCommand(stdout io.Writer) *cobra.Command {
+func newScanK8sCommand(stdout, stderr io.Writer) *cobra.Command {
 	var opts k8s.Options
 	var output string
+	var outputDir string
 	var timeout time.Duration
 
 	cmd := &cobra.Command{
@@ -138,10 +159,10 @@ func newScanK8sCommand(stdout io.Writer) *cobra.Command {
 		Short: "Collect read-only Kubernetes API inventory",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if output == "" {
-				output = "human"
+				output = "report"
 			}
 			if !validOutput(output) {
-				return fmt.Errorf("unsupported output %q; expected human or json", output)
+				return fmt.Errorf("unsupported output %q; expected report, human, or json", output)
 			}
 
 			ctx := cmd.Context()
@@ -154,6 +175,8 @@ func newScanK8sCommand(stdout io.Writer) *cobra.Command {
 				defer cancel()
 			}
 
+			progress := newProgress(stderr)
+			progress.Step("collecting Kubernetes API inventory")
 			kubernetes, coverage := k8s.Collect(ctx, opts)
 			snapshot := &inventory.Snapshot{
 				SchemaVersion: "teleskope.io/snapshot/v1alpha1",
@@ -167,9 +190,23 @@ func newScanK8sCommand(stdout io.Writer) *cobra.Command {
 				Coverage:   coverage,
 			}
 			switch strings.ToLower(output) {
+			case "report":
+				progress.Step("writing report artifacts")
+				artifact, err := report.WriteDirectory(snapshot, report.Options{
+					BaseDir: outputDir,
+					Target:  firstNonEmpty(opts.Context, kubernetes.Context, "kubernetes"),
+				})
+				if err != nil {
+					return err
+				}
+				progress.Done("report ready: %s", artifact.Dir)
+				fmt.Fprintf(stdout, "report %s\n", artifact.Dir)
+				return nil
 			case "json":
+				progress.Step("rendering JSON")
 				return render.JSON(stdout, snapshot)
 			default:
+				progress.Step("rendering human summary")
 				return render.Human(stdout, snapshot)
 			}
 		},
@@ -177,16 +214,52 @@ func newScanK8sCommand(stdout io.Writer) *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.Kubeconfig, "kubeconfig", "", "path to kubeconfig for Kubernetes API collection")
 	cmd.Flags().StringVar(&opts.Context, "kube-context", "", "kubeconfig context for Kubernetes API collection")
-	cmd.Flags().StringVarP(&output, "output", "o", "human", "output format: human, json")
+	cmd.Flags().StringVarP(&output, "output", "o", "report", "output format: report, human, json")
+	cmd.Flags().StringVar(&outputDir, "output-dir", ".", "parent directory for timestamped report output")
 	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "collection timeout")
 	return cmd
 }
 
 func validOutput(output string) bool {
 	switch strings.ToLower(output) {
-	case "human", "json":
+	case "report", "human", "json":
 		return true
 	default:
 		return false
 	}
+}
+
+type progress struct {
+	w       io.Writer
+	current int
+}
+
+func newProgress(w io.Writer) *progress {
+	return &progress{w: w}
+}
+
+func (p *progress) Step(format string, args ...any) {
+	p.current++
+	p.write("..", format, args...)
+}
+
+func (p *progress) Done(format string, args ...any) {
+	p.current++
+	p.write("ok", format, args...)
+}
+
+func (p *progress) write(mark, format string, args ...any) {
+	if p == nil || p.w == nil {
+		return
+	}
+	fmt.Fprintf(p.w, "%s %s\n", mark, fmt.Sprintf(format, args...))
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

@@ -18,14 +18,20 @@ collection from kubeconfig unless `--skip-kubernetes` is set.
 ```sh
 teleskope scan eks --cluster my-cluster
 teleskope scan eks --cluster my-cluster --profile prod --region ap-northeast-1
+teleskope scan eks --cluster my-cluster --output-dir ./runs
 teleskope scan eks --cluster my-cluster --output json
 teleskope scan k8s --kube-context prod
 ```
 
-The default terminal output is a compact human-readable summary. JSON preserves
-the full snapshot structure for later renderers and offline browsing. Kubernetes
-Secret values are not collected; Secrets are currently recorded as metadata-only
-objects.
+The default output is a timestamped report directory under the current working
+directory, or under `--output-dir` when provided. Each report contains raw JSON
+files such as `snapshot.json`, `eks.json`, `kubernetes.json`, and
+`coverage.json`, plus a `summary.md` file for review. Scan progress is written to
+stderr while the final report path is written to stdout.
+
+Use `--output human` for a terminal table summary or `--output json` for the
+single full snapshot on stdout. Kubernetes Secret values are not collected;
+Secrets are currently recorded as metadata-only objects.
 
 ## Development
 
@@ -57,6 +63,7 @@ internal/buildinfo/  Build metadata
 internal/cli/        Internal command-line implementation
 internal/inventory/  Snapshot data model
 internal/k8s/        Kubernetes API collector
+internal/report/     Timestamped report artifacts
 internal/render/     Output renderers
 docs/                Architecture and design notes
 go.mod               Module definition
