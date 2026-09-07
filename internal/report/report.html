@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teleskope cluster report</title>
+  <style>
+    :root { color-scheme: dark; --bg:#08111f; --panel:rgba(17,29,50,.82); --panel-2:rgba(11,20,35,.88); --line:rgba(148,163,184,.18); --text:#e5eefb; --muted:#91a4bd; --blue:#60a5fa; --cyan:#22d3ee; --green:#34d399; --amber:#f59e0b; --red:#fb7185; --purple:#a78bfa; --chip:rgba(96,165,250,.12); --shadow:0 24px 80px rgba(0,0,0,.42); --radius:18px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:radial-gradient(circle at 20% -10%,rgba(34,211,238,.16),transparent 34%),radial-gradient(circle at 92% 10%,rgba(167,139,250,.20),transparent 34%),var(--bg); color:var(--text); }
+    .app { min-height:100vh; display:grid; grid-template-columns:280px 1fr; }
+    aside { border-right:1px solid var(--line); background:rgba(4,10,20,.58); backdrop-filter:blur(16px); padding:24px 18px; position:sticky; top:0; height:100vh; }
+    .brand { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+    .logo { width:42px; height:42px; border-radius:14px; background:linear-gradient(135deg,var(--cyan),var(--blue) 45%,var(--purple)); box-shadow:0 0 30px rgba(34,211,238,.35); }
+    .brand h1 { font-size:18px; line-height:1.1; margin:0; }
+    .brand p { color:var(--muted); margin:2px 0 0; font-size:12px; }
+    nav button { width:100%; display:flex; align-items:center; gap:10px; background:transparent; color:var(--muted); border:0; text-align:left; padding:11px 12px; border-radius:12px; cursor:pointer; font-size:14px; }
+    nav button:hover, nav button.active { background:rgba(96,165,250,.12); color:var(--text); }
+    .dot { width:8px; height:8px; border-radius:999px; background:var(--blue); box-shadow:0 0 16px currentColor; }
+    main { padding:28px; width:100%; }
+    header { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; margin-bottom:22px; }
+    .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.12em; font-size:12px; font-weight:700; }
+    h2 { margin:4px 0 8px; font-size:34px; letter-spacing:-.04em; }
+    .sub { color:var(--muted); margin:0; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    input, select { background:rgba(15,23,42,.9); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; outline:none; }
+    input:focus, select:focus { border-color:rgba(96,165,250,.75); box-shadow:0 0 0 3px rgba(96,165,250,.14); }
+    .grid { display:grid; gap:16px; }
+    .cards { grid-template-columns:repeat(6,minmax(0,1fr)); margin-bottom:18px; }
+    .card { background:linear-gradient(180deg,rgba(30,41,59,.84),rgba(15,23,42,.76)); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+    .card .label { color:var(--muted); font-size:12px; }
+    .card .value { font-size:28px; font-weight:800; margin-top:6px; letter-spacing:-.04em; }
+    .section, .section.stack { display:none; }
+    .section.active { display:block; }
+    .section.stack.active { display:grid; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+    .panel h3 { margin:0; padding:16px 18px; border-bottom:1px solid var(--line); font-size:16px; }
+    .panel .body { padding:16px 18px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { padding:10px 12px; border-bottom:1px solid rgba(148,163,184,.12); vertical-align:top; }
+    th { color:var(--muted); text-align:left; font-weight:600; position:sticky; top:0; background:rgba(15,23,42,.96); z-index:1; }
+    tr:hover td { background:rgba(96,165,250,.06); }
+    .scroll { max-height:520px; overflow:auto; }
+    .chip { display:inline-flex; align-items:center; gap:6px; background:var(--chip); color:#cfe5ff; border:1px solid rgba(96,165,250,.18); border-radius:999px; padding:3px 8px; margin:2px; font-size:12px; white-space:nowrap; }
+    .badge { border-radius:999px; padding:3px 8px; font-size:12px; font-weight:700; }
+    .ok { color:#052e22; background:var(--green); }
+    .warn { color:#422006; background:var(--amber); }
+    .bad { color:#450a0a; background:var(--red); }
+    .muted { color:var(--muted); }
+    .stack { gap:16px; }
+    .topology-shell { height:calc(100vh - 190px); min-height:560px; }
+    .topology-shell .panel, .topology { height:100%; }
+    .topology { position:relative; overflow:hidden; background:radial-gradient(circle at center,rgba(96,165,250,.08),transparent 45%),var(--panel-2); }
+    svg { width:100%; height:100%; }
+    .node { cursor:pointer; }
+    .node circle { stroke:rgba(255,255,255,.32); stroke-width:1.2; filter:drop-shadow(0 8px 18px rgba(0,0,0,.35)); }
+    .node text { fill:var(--text); font-size:11px; pointer-events:none; }
+    .link { stroke:rgba(148,163,184,.34); stroke-width:1.2; }
+    .legend { position:absolute; left:16px; bottom:14px; display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+    .legend span { display:inline-flex; align-items:center; gap:6px; background:rgba(8,17,31,.72); border:1px solid var(--line); padding:5px 8px; border-radius:999px; }
+    .legend i { width:9px; height:9px; border-radius:999px; display:inline-block; }
+    .drawer { position:fixed; right:22px; top:22px; width:420px; max-width:calc(100vw - 44px); background:rgba(8,17,31,.96); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:16px; transform:translateX(470px); transition:transform .2s ease; z-index:10; }
+    .drawer.open { transform:translateX(0); }
+    .drawer header { margin:0 0 10px; align-items:center; }
+    .drawer button { background:rgba(96,165,250,.12); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:6px 9px; cursor:pointer; }
+    pre { max-height:70vh; overflow:auto; white-space:pre-wrap; color:#cbd5e1; font-size:12px; }
+    .empty { color:var(--muted); padding:18px; }
+    @media (max-width:1000px) { .app { grid-template-columns:1fr; } aside { position:relative; height:auto; } .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } header { flex-direction:column; } .topology-shell { height:640px; } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo"></div><div><h1>Teleskope</h1><p>static cluster report</p></div></div>
+    <nav id="nav"></nav>
+  </aside>
+  <main>
+    <header>
+      <div><div class="eyebrow">Cluster inventory</div><h2 id="title">Loading</h2><p class="sub" id="subtitle"></p></div>
+      <div class="toolbar"><select id="focus"><option value="all">All namespaces</option></select><input id="search" placeholder="Search resources, images, routes" /></div>
+    </header>
+    <section class="section active" data-section="overview"><div id="cards" class="grid cards"></div><div class="topology-shell"><div class="panel"><h3>Topology</h3><div id="topology" class="topology"></div></div></div></section>
+    <section class="section stack" data-section="images"><div class="panel"><h3>Running images</h3><div class="scroll"><table id="imagesTable"></table></div></div><div class="panel"><h3>Running containers</h3><div class="scroll"><table id="containersTable"></table></div></div></section>
+    <section class="section stack" data-section="crds"><div class="panel"><h3>CRD types</h3><div class="scroll"><table id="crdTypesTable"></table></div></div><div class="panel"><h3>CRD instances</h3><div class="scroll"><table id="crdInstancesTable"></table></div></div></section>
+    <section class="section stack" data-section="workloads"><div class="panel"><h3>Workloads</h3><div class="scroll"><table id="workloadsTable"></table></div></div><div class="panel"><h3>Pods</h3><div class="scroll"><table id="podsTable"></table></div></div></section>
+    <section class="section stack" data-section="network"><div class="panel"><h3>Services</h3><div class="scroll"><table id="servicesTable"></table></div></div><div class="panel"><h3>Ingress routes</h3><div class="scroll"><table id="ingressesTable"></table></div></div><div class="panel"><h3>EndpointSlices</h3><div class="scroll"><table id="endpointsTable"></table></div></div></section>
+    <section class="section stack" data-section="storage"><div class="panel"><h3>PersistentVolumeClaims</h3><div class="scroll"><table id="pvcTable"></table></div></div><div class="panel"><h3>StorageClasses</h3><div class="scroll"><table id="storageTable"></table></div></div><div class="panel"><h3>CSI drivers</h3><div class="scroll"><table id="csiTable"></table></div></div><div class="panel"><h3>Runtime classes</h3><div class="scroll"><table id="runtimeTable"></table></div></div></section>
+  </main>
+</div>
+<div class="drawer" id="drawer"><header><h3 id="drawerTitle">Details</h3><button type="button" onclick="closeDrawer()">Close</button></header><pre id="drawerBody"></pre></div>
+<script id="snapshot-data" type="application/json">__TELESKOPE_SNAPSHOT_JSON__</script>
+<script>
+const snapshot = JSON.parse(document.getElementById('snapshot-data').textContent);
+const k = snapshot.kubernetes || {};
+const eks = snapshot.eks || {};
+const cluster = eks.cluster || {};
+const navItems = [['overview','Overview'], ['images','Running images'], ['crds','Custom resources'], ['workloads','Workloads'], ['network','Network'], ['storage','Storage']];
+const byId = id => document.getElementById(id);
+const esc = v => String(v ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ref = r => !r || !r.name ? '-' : `${(r.kind || '').toLowerCase()}${r.namespace ? '/' + r.namespace : ''}/${r.name}`;
+const arr = v => Array.isArray(v) ? v : [];
+const list = v => Array.isArray(v) && v.length ? v.map(x => typeof x === 'object' ? ref(x) : x).join(', ') : '-';
+const chips = v => Array.isArray(v) && v.length ? v.map(x => `<span class="chip">${esc(typeof x === 'object' ? ref(x) : x)}</span>`).join('') : '<span class="muted">-</span>';
+const kv = v => v && Object.keys(v).length ? Object.entries(v).map(([a,b]) => `${a}=${b}`).join(', ') : '-';
+const shortDigest = v => { if (!v) return '-'; v = String(v).replace(/^docker-pullable:\/\//,'').replace(/^docker:\/\//,'').replace(/^containerd:\/\//,''); const i = v.lastIndexOf('sha256:'); if (i >= 0) return 'sha256:' + v.slice(i + 7, i + 19); return v.length > 36 ? v.slice(0, 36) : v; };
+function namespacesOf(row) { const found = new Set(); const visit = value => { if (!value) return; if (Array.isArray(value)) { value.forEach(visit); return; } if (typeof value !== 'object') return; if (typeof value.namespace === 'string' && value.namespace) found.add(value.namespace); if (Array.isArray(value.namespaces)) value.namespaces.filter(Boolean).forEach(ns => found.add(ns)); for (const child of Object.values(value)) visit(child); }; visit(row); return [...found]; }
+let query = '', nsFilter = 'all';
+function filtered(rows) { return arr(rows).filter(r => { const namespaces = namespacesOf(r); const namespaceMatch = nsFilter === 'all' || namespaces.includes(nsFilter) || namespaces.length === 0; return namespaceMatch && JSON.stringify(r).toLowerCase().includes(query); }); }
+function renderNav() { byId('nav').innerHTML = navItems.map(([id,label],i) => `<button class="${i===0?'active':''}" data-target="${id}"><span class="dot"></span>${label}</button>`).join(''); byId('nav').onclick = e => { const btn = e.target.closest('button'); if (!btn) return; document.querySelectorAll('nav button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === btn.dataset.target)); }; }
+function renderHeader() { byId('title').textContent = cluster.name || k.context || 'Kubernetes cluster'; byId('subtitle').textContent = `${k.version?.gitVersion || cluster.version || 'unknown k8s'} · collected ${snapshot.collectedAt || '-'} · ${snapshot.source?.mode || '-'}`; const namespaces = [...new Set([...arr(k.namespaces).map(n => n.name), ...arr(k.runningContainers).map(c => c.namespace), ...arr(k.customResourceInstances).map(c => c.namespace), ...arr(k.workloads).map(w => w.namespace), ...arr(k.pods).map(p => p.namespace)].filter(Boolean))].sort(); byId('focus').innerHTML = '<option value="all">All namespaces</option>' + namespaces.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join(''); }
+function renderCards() { const cards = [['Nodes', arr(k.nodes).length], ['Workloads', arr(k.workloads).length], ['Pods', arr(k.pods).length], ['Images', arr(k.runningImages).length], ['CRDs', arr(k.customResourceDefinitions).length], ['Routes', arr(k.ingresses).reduce((n,i) => n + arr(i.rules).length, 0)]]; byId('cards').innerHTML = cards.map(([l,v]) => `<div class="card"><div class="label">${l}</div><div class="value">${v || 0}</div></div>`).join(''); }
+function table(id, headers, rows, mapper) { const data = filtered(rows); byId(id).innerHTML = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${data.map(r => `<tr data-detail="${esc(JSON.stringify(r))}">${mapper(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>` || '<tbody><tr><td class="empty">No matching data</td></tr></tbody>'; }
+function renderTables() {
+  table('imagesTable', ['Image','Pods','Containers','Runtime','Namespaces','Workloads','Image IDs'], k.runningImages, r => [`<b>${esc(r.image)} <span class="muted">(pods=${r.podCount || 0})</span></b>`, esc(r.podCount || 0), esc(r.containerCount || 0), chips(r.runtimes), chips(r.namespaces), chips(r.workloads), esc(arr(r.imageIds).map(shortDigest).join(', ') || '-')]);
+  table('containersTable', ['Namespace','Pod','Container','Type','Image','Runtime','Node','Workload'], k.runningContainers, r => [esc(r.namespace), esc(r.pod), esc(r.container), esc(r.containerType), esc(r.image), esc(r.runtime), esc(r.nodeName), esc(ref(r.workload))]);
+  table('crdTypesTable', ['CRD type','Instances','Namespaces','Scope','Version','Plural'], k.customResourceCounts, r => [`<b>${esc((r.group ? r.group + '/' : '') + (r.kind || '-'))}</b>`, esc(r.instanceCount || 0), esc(r.namespaceCount || 0), esc(r.scope), esc(r.version), esc(r.plural)]);
+  table('crdInstancesTable', ['Instance','CRD type','Version','CRD','Owners'], k.customResourceInstances, r => [esc(ref(r)), esc((r.crdGroup ? r.crdGroup + '/' : '') + (r.crdKind || '-')), esc(r.crdVersion), esc(r.crdName), chips(r.ownerReferences)]);
+  table('workloadsTable', ['Workload','Ready','Images','ServiceAccount','Runtime','Volumes'], k.workloads, r => [esc(ref(r)), `${r.readyReplicas || 0}/${r.replicas ?? '-'}`, chips([...arr(r.containers), ...arr(r.initContainers)].map(c => c.image).filter(Boolean)), esc(r.serviceAccountName), esc(r.runtimeClassName), chips(arr(r.volumes).map(v => `${v.name}:${v.type}${v.persistentVolumeClaim ? ':' + v.persistentVolumeClaim : ''}${v.csi ? ':' + v.csi : ''}`))]);
+  table('podsTable', ['Pod','Phase','Node','ServiceAccount','Runtime','Images','Volumes'], k.pods, r => [esc(ref(r)), esc(r.phase), esc(r.nodeName), esc(r.serviceAccountName), esc(r.runtimeClassName), chips([...arr(r.containers), ...arr(r.initContainers), ...arr(r.ephemeralContainers)].map(c => c.image).filter(Boolean)), chips(arr(r.volumes).map(v => `${v.name}:${v.type}`))]);
+  table('servicesTable', ['Service','Type','Selector','Ports'], k.services, r => [esc(ref(r)), esc(r.type), esc(kv(r.selector)), esc(arr(r.ports).map(p => `${p.protocol || 'TCP'}/${p.port}→${p.targetPort || p.port}`).join(', ') || '-')]);
+  table('ingressesTable', ['Ingress','Class','Routes'], k.ingresses, r => [esc(ref(r)), esc(r.className), arr(r.rules).map(x => `${esc(x.host || '*')}${esc(x.path || '/')} → ${esc(x.serviceName)}:${esc(x.servicePort)}`).join('<br>') || '<span class="muted">-</span>']);
+  table('endpointsTable', ['EndpointSlice','Service','Address type','Ports','Endpoints'], k.endpointSlices, r => [esc(ref(r)), esc(r.serviceName), esc(r.addressType), esc(arr(r.ports).map(p => `${p.name || '-'}:${p.port || '-'}/${p.protocol || '-'}`).join(', ') || '-'), esc(arr(r.endpoints).map(e => `${arr(e.addresses).join(',')} ${e.nodeName || ''}`).join(' | ') || '-')]);
+  table('pvcTable', ['PVC','StorageClass','Access modes','Requested','Volume','Phase'], k.persistentVolumeClaims, r => [esc(ref(r)), esc(r.storageClassName), chips(r.accessModes), esc(r.requestedStorage), esc(r.volumeName), esc(r.phase)]);
+  table('storageTable', ['StorageClass','Provisioner','Binding','Reclaim','Expansion','Parameters'], k.storageClasses, r => [esc(r.name), esc(r.provisioner), esc(r.volumeBindingMode), esc(r.reclaimPolicy), esc(r.allowVolumeExpansion), esc(kv(r.parameters))]);
+  table('csiTable', ['CSI Driver','Attach required','Pod info','Lifecycle'], k.csiDrivers, r => [esc(r.name), esc(r.attachRequired), esc(r.podInfoOnMount), chips(r.volumeLifecycleModes)]);
+  table('runtimeTable', ['RuntimeClass','Handler'], k.runtimeClasses, r => [esc(ref(r)), esc(r.handler)]);
+}
+function renderTopology() {
+  const nodes = [], links = [];
+  const add = (id,label,type,data) => { if (!nodes.find(n => n.id === id)) nodes.push({id,label,type,data}); };
+  const link = (a,b) => { if (nodes.find(n => n.id === a) && nodes.find(n => n.id === b)) links.push([a,b]); };
+  const visibleWorkloads = filtered(k.workloads || []).slice(0, 80);
+  const visibleServices = filtered(k.services || []).slice(0, 60);
+  const visibleImages = filtered(k.runningImages || []);
+  const imageNames = new Set(visibleImages.map(i => i.image));
+  visibleWorkloads.forEach(w => { const wid = 'w:' + ref(w); add(wid, ref(w), 'workload', w); [...arr(w.containers), ...arr(w.initContainers)].map(c => c.image).filter(Boolean).forEach(image => { if (imageNames.size && !imageNames.has(image)) return; const id = 'i:' + image; add(id, image, 'image', visibleImages.find(i => i.image === image) || {image}); link(wid, id); }); arr(w.volumes).filter(v => v.persistentVolumeClaim).forEach(v => { const pvc = arr(k.persistentVolumeClaims).find(p => p.namespace === w.namespace && p.name === v.persistentVolumeClaim) || {kind:'PersistentVolumeClaim', namespace:w.namespace, name:v.persistentVolumeClaim}; const id = 'pvc:' + ref(pvc); add(id, ref(pvc), 'storage', pvc); link(wid, id); if (pvc.storageClassName) { const sc = arr(k.storageClasses).find(s => s.name === pvc.storageClassName) || {kind:'StorageClass', name:pvc.storageClassName}; const sid = 'sc:' + pvc.storageClassName; add(sid, pvc.storageClassName, 'storage', sc); link(id, sid); } }); });
+  visibleServices.forEach(s => { const sid = 's:' + ref(s); add(sid, ref(s), 'service', s); visibleWorkloads.filter(w => (!s.namespace || !w.namespace || s.namespace === w.namespace) && Object.entries(s.selector || {}).every(([a,b]) => (w.selector || {})[a] === b)).forEach(w => link(sid, 'w:' + ref(w))); });
+  if (nodes.length === 0) { byId('topology').innerHTML = '<div class="body muted">No topology nodes match the current filter.</div>'; return; }
+  const W = byId('topology').clientWidth || 900, H = byId('topology').clientHeight || 560, cx = W / 2, cy = H / 2;
+  nodes.forEach((n,i) => { const ring = n.type === 'service' ? Math.min(W,H)*.27 : n.type === 'image' ? Math.min(W,H)*.39 : n.type === 'storage' ? Math.min(W,H)*.48 : Math.min(W,H)*.15; const a = i / nodes.length * Math.PI * 2; n.x = cx + Math.cos(a) * ring; n.y = cy + Math.sin(a) * ring; });
+  const color = t => t === 'service' ? '#22d3ee' : t === 'image' ? '#a78bfa' : t === 'storage' ? '#34d399' : '#60a5fa';
+  byId('topology').innerHTML = `<svg viewBox="0 0 ${W} ${H}">${links.map(([a,b]) => { const A = nodes.find(n => n.id === a), B = nodes.find(n => n.id === b); return A && B ? `<line class="link" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>` : ''; }).join('')}${nodes.map(n => `<g class="node" data-detail="${esc(JSON.stringify(n.data))}"><circle cx="${n.x}" cy="${n.y}" r="${n.type === 'image' ? 18 : 22}" fill="${color(n.type)}"/><text x="${n.x + 26}" y="${n.y + 4}">${esc(n.label).slice(0,42)}</text></g>`).join('')}</svg><div class="legend"><span><i style="background:#22d3ee"></i>Service</span><span><i style="background:#60a5fa"></i>Workload</span><span><i style="background:#a78bfa"></i>Image</span><span><i style="background:#34d399"></i>Storage</span></div>`;
+}
+function showText(json) { const obj = JSON.parse(json); byId('drawerTitle').textContent = obj.name || obj.image || obj.kind || 'Details'; byId('drawerBody').textContent = JSON.stringify(obj, null, 2); byId('drawer').classList.add('open'); }
+function closeDrawer() { byId('drawer').classList.remove('open'); }
+function renderAll() { renderCards(); renderTables(); renderTopology(); }
+document.addEventListener('click', e => { const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
+byId('search').addEventListener('input', e => { query = e.target.value.toLowerCase(); renderAll(); });
+byId('focus').addEventListener('change', e => { nsFilter = e.target.value; renderAll(); });
+renderNav(); renderHeader(); renderAll();
+</script>
+</body>
+</html>

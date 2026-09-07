@@ -28,8 +28,8 @@ type Artifact struct {
 	Files []string
 }
 
-// WriteDirectory creates a timestamped report directory with raw JSON files and
-// a Markdown summary.
+// WriteDirectory creates a timestamped report directory with raw JSON files,
+// a Markdown summary, and an interactive static HTML report.
 func WriteDirectory(snapshot *inventory.Snapshot, opts Options) (*Artifact, error) {
 	if snapshot == nil {
 		return nil, fmt.Errorf("snapshot is nil")
@@ -78,6 +78,13 @@ func WriteDirectory(snapshot *inventory.Snapshot, opts Options) (*Artifact, erro
 		return nil, err
 	}
 	if err := artifact.writeText("summary.md", markdown(snapshot, target)); err != nil {
+		return nil, err
+	}
+	html, err := HTML(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	if err := artifact.writeText("index.html", html); err != nil {
 		return nil, err
 	}
 

@@ -26,8 +26,9 @@ teleskope scan k8s --kube-context prod
 The default output is a timestamped report directory under the current working
 directory, or under `--output-dir` when provided. Each report contains raw JSON
 files such as `snapshot.json`, `eks.json`, `kubernetes.json`, and
-`coverage.json`, plus a `summary.md` file for review. Scan progress is written to
-stderr while the final report path is written to stdout.
+`coverage.json`, plus `summary.md` and an interactive static `index.html` file
+for review. Scan progress is written to stderr while the final report path is
+written to stdout.
 
 Use `--output human` for a terminal table summary or `--output json` for the
 single full snapshot on stdout. Kubernetes Secret values are not collected;

@@ -114,7 +114,7 @@ func TestScanK8sDefaultWritesReportDirectory(t *testing.T) {
 	if filepath.Dir(reportDir) != outputDir {
 		t.Fatalf("report dir = %q, want under %q", reportDir, outputDir)
 	}
-	for _, name := range []string{"snapshot.json", "source.json", "kubernetes.json", "coverage.json", "summary.md"} {
+	for _, name := range []string{"snapshot.json", "source.json", "kubernetes.json", "coverage.json", "summary.md", "index.html"} {
 		if _, err := os.Stat(filepath.Join(reportDir, name)); err != nil {
 			t.Fatalf("expected %s in report dir: %v", name, err)
 		}

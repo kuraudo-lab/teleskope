@@ -87,7 +87,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	if !strings.HasSuffix(artifact.Dir, "prod-cluster-20260907-080910") {
 		t.Fatalf("artifact dir = %q, want sanitized timestamped name", artifact.Dir)
 	}
-	for _, name := range []string{"snapshot.json", "source.json", "kubernetes.json", "coverage.json", "summary.md"} {
+	for _, name := range []string{"snapshot.json", "source.json", "kubernetes.json", "coverage.json", "summary.md", "index.html"} {
 		if _, err := os.Stat(filepath.Join(artifact.Dir, name)); err != nil {
 			t.Fatalf("expected %s: %v", name, err)
 		}
@@ -113,5 +113,28 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		if !strings.Contains(string(summary), want) {
 			t.Fatalf("summary missing %q:\n%s", want, string(summary))
 		}
+	}
+
+	html, err := os.ReadFile(filepath.Join(artifact.Dir, "index.html"))
+	if err != nil {
+		t.Fatalf("read index.html: %v", err)
+	}
+	for _, want := range []string{
+		"<title>Teleskope cluster report</title>",
+		`<script id="snapshot-data" type="application/json">`,
+		`"schemaVersion": "teleskope.io/snapshot/v1alpha1"`,
+		"Running images",
+		"Custom resources",
+		"function namespacesOf",
+		"function renderTopology",
+		"pods=${r.podCount || 0}",
+		"join('<br>')",
+	} {
+		if !strings.Contains(string(html), want) {
+			t.Fatalf("index.html missing %q", want)
+		}
+	}
+	if strings.Contains(string(html), "<h3>Coverage</h3>") {
+		t.Fatalf("index.html should not render coverage panel")
 	}
 }
