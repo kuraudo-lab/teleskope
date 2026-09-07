@@ -1,0 +1,83 @@
+name: Build and verify
+on:
+  workflow_call:
+    inputs:
+      snapshot:
+        type: boolean
+        required: true
+    outputs:
+      version:
+        value: ${{ jobs.build.outputs.version }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - run: go vet ./...
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          version: v2.18.1
+          args: release --clean --skip=publish --parallelism=2 ${{ inputs.snapshot && '--snapshot' || '' }}
+      - name: Check complete archive set
+        id: metadata
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("dist/metadata.json"))["version"])')
+          python3 scripts/release.py verify dist "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-packages
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 3
+
+  smoke:
+    needs: build
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-24.04, os: linux, arch: amd64}
+          - {runner: ubuntu-24.04-arm, os: linux, arch: arm64}
+          - {runner: macos-15-intel, os: darwin, arch: amd64}
+          - {runner: macos-15, os: darwin, arch: arm64}
+          - {runner: windows-2025, os: windows, arch: amd64}
+          - {runner: windows-11-arm, os: windows, arch: arm64}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-packages
+          path: packages
+      - name: Test packaged binary
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        shell: bash
+        run: python scripts/release.py smoke packages "$VERSION" "$TARGET_OS" "$TARGET_ARCH"
