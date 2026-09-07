@@ -195,6 +195,7 @@ func writeKubernetes(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	fmt.Fprintf(b, "| Area | Count |\n| --- | ---: |\n")
 	fmt.Fprintf(b, "| API resources | %d |\n", len(kubernetes.APIResources))
 	fmt.Fprintf(b, "| CRDs | %d |\n", len(kubernetes.CustomResourceDefinitions))
+	fmt.Fprintf(b, "| CRD instances | %d |\n", len(kubernetes.CustomResourceInstances))
 	fmt.Fprintf(b, "| API services | %d |\n", len(kubernetes.APIServices))
 	fmt.Fprintf(b, "| Namespaces | %d |\n", len(kubernetes.Namespaces))
 	fmt.Fprintf(b, "| Nodes | %d |\n", len(kubernetes.Nodes))
@@ -213,9 +214,46 @@ func writeKubernetes(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	writeRouting(b, kubernetes)
 	writeStorage(b, kubernetes)
 	writeRuntime(b, kubernetes)
+	writeCustomResources(b, kubernetes)
 	writeRunningImages(b, kubernetes)
 	writeRunningContainers(b, kubernetes)
 	writeWorkloads(b, kubernetes)
+}
+
+func writeCustomResources(b *strings.Builder, kubernetes inventory.Kubernetes) {
+	if len(kubernetes.CustomResourceCounts) == 0 && len(kubernetes.CustomResourceInstances) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "### Custom resources\n\n")
+	if len(kubernetes.CustomResourceCounts) > 0 {
+		fmt.Fprintf(b, "#### CRD types\n\n")
+		fmt.Fprintf(b, "| CRD type | Instances | Namespaces | Scope | Version | Plural |\n| --- | ---: | ---: | --- | --- | --- |\n")
+		for _, count := range sortedCustomResourceCounts(kubernetes.CustomResourceCounts) {
+			fmt.Fprintf(b, "| %s | %d | %d | %s | %s | %s |\n",
+				mdCell(crdType(count.Group, count.Kind)),
+				count.InstanceCount,
+				count.NamespaceCount,
+				mdCell(count.Scope),
+				mdCell(count.Version),
+				mdCell(count.Plural),
+			)
+		}
+		fmt.Fprintln(b)
+	}
+	if len(kubernetes.CustomResourceInstances) > 0 {
+		fmt.Fprintf(b, "#### CRD instances\n\n")
+		fmt.Fprintf(b, "| Instance | CRD type | Version | CRD | Owners |\n| --- | --- | --- | --- | --- |\n")
+		for _, instance := range sortedCustomResourceInstances(kubernetes.CustomResourceInstances) {
+			fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n",
+				mdCell(ref(instance.ObjectRef)),
+				mdCell(crdType(instance.CRDGroup, instance.CRDKind)),
+				mdCell(instance.CRDVersion),
+				mdCell(instance.CRDName),
+				mdCell(refsValue(instance.OwnerReferences)),
+			)
+		}
+		fmt.Fprintln(b)
+	}
 }
 
 func writeRunningImages(b *strings.Builder, kubernetes inventory.Kubernetes) {
@@ -390,6 +428,8 @@ func hasKubernetes(snapshot *inventory.Snapshot) bool {
 	if kubernetes.Context != "" ||
 		kubernetes.Version.GitVersion != "" ||
 		len(kubernetes.APIResources) > 0 ||
+		len(kubernetes.CustomResourceDefinitions) > 0 ||
+		len(kubernetes.CustomResourceInstances) > 0 ||
 		len(kubernetes.Nodes) > 0 ||
 		len(kubernetes.Workloads) > 0 ||
 		len(kubernetes.Pods) > 0 {
@@ -468,6 +508,29 @@ func sortedRunningContainers(items []inventory.RunningContainer) []inventory.Run
 	sort.Slice(out, func(i, j int) bool {
 		left := strings.Join([]string{out[i].Namespace, out[i].Pod, out[i].ContainerType, out[i].Container}, "\x00")
 		right := strings.Join([]string{out[j].Namespace, out[j].Pod, out[j].ContainerType, out[j].Container}, "\x00")
+		return left < right
+	})
+	return out
+}
+
+func sortedCustomResourceCounts(items []inventory.CustomResourceCount) []inventory.CustomResourceCount {
+	out := append([]inventory.CustomResourceCount(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].InstanceCount != out[j].InstanceCount {
+			return out[i].InstanceCount > out[j].InstanceCount
+		}
+		left := strings.Join([]string{out[i].Group, out[i].Kind, out[i].Version}, "\x00")
+		right := strings.Join([]string{out[j].Group, out[j].Kind, out[j].Version}, "\x00")
+		return left < right
+	})
+	return out
+}
+
+func sortedCustomResourceInstances(items []inventory.CustomResourceInstance) []inventory.CustomResourceInstance {
+	out := append([]inventory.CustomResourceInstance(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].CRDGroup, out[i].CRDKind, out[i].Namespace, out[i].Name}, "\x00")
+		right := strings.Join([]string{out[j].CRDGroup, out[j].CRDKind, out[j].Namespace, out[j].Name}, "\x00")
 		return left < right
 	})
 	return out
@@ -659,6 +722,16 @@ func boolPtr(value *bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+func crdType(group, kind string) string {
+	if group == "" {
+		return mdCell(kind)
+	}
+	if kind == "" {
+		return group
+	}
+	return group + "/" + kind
 }
 
 func shortImageID(value string) string {

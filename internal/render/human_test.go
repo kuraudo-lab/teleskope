@@ -15,6 +15,29 @@ func TestHumanIncludesActionableKubernetesFacts(t *testing.T) {
 		Kubernetes: inventory.Kubernetes{
 			Context: "prod",
 			Version: inventory.KubernetesVersion{GitVersion: "v1.32.0"},
+			CustomResourceDefinitions: []inventory.CustomResourceDefinition{
+				{
+					ObjectRef: inventory.ObjectRef{Kind: "CustomResourceDefinition", Name: "widgets.example.com"},
+					Group:     "example.com",
+					Scope:     "Namespaced",
+					Kind:      "Widget",
+					Plural:    "widgets",
+					Versions:  []inventory.CRDVersion{{Name: "v1", Served: true, Storage: true}},
+				},
+			},
+			CustomResourceCounts: []inventory.CustomResourceCount{
+				{CRDName: "widgets.example.com", Group: "example.com", Version: "v1", Kind: "Widget", Plural: "widgets", Scope: "Namespaced", InstanceCount: 2, NamespaceCount: 2},
+			},
+			CustomResourceInstances: []inventory.CustomResourceInstance{
+				{
+					ObjectRef:  inventory.ObjectRef{APIVersion: "example.com/v1", Kind: "Widget", Namespace: "app", Name: "blue"},
+					CRDName:    "widgets.example.com",
+					CRDGroup:   "example.com",
+					CRDVersion: "v1",
+					CRDKind:    "Widget",
+					CRDPlural:  "widgets",
+				},
+			},
 			Nodes: []inventory.Node{
 				{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "ip-10-0-0-1"}, ContainerRuntime: "containerd://2.0.0", Ready: "True"},
 			},
@@ -146,6 +169,9 @@ func TestHumanIncludesActionableKubernetesFacts(t *testing.T) {
 		"pvc         app/web-data     ReadWriteOnce  Filesystem  10Gi",
 		"csi-driver  ebs.csi.aws.com",
 		"cri   containerd://2.0.0",
+		"custom-resources",
+		"example.com/Widget  2          2           Namespaced  v1       widgets",
+		"widget/app/blue  example.com/Widget  v1       widgets.example.com",
 		"running-images",
 		"example/web:v1 (pods=1)  1           containerd  app         deployment/app/web  sha256:aaaaaaaaaaaa",
 		"running-containers",

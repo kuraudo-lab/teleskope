@@ -75,7 +75,7 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 		if snapshot.Kubernetes.Context != "" {
 			fmt.Fprintf(w, "  context  %s\n", snapshot.Kubernetes.Context)
 		}
-		fmt.Fprintf(w, "  api      resources=%d crds=%d apiServices=%d\n", len(snapshot.Kubernetes.APIResources), len(snapshot.Kubernetes.CustomResourceDefinitions), len(snapshot.Kubernetes.APIServices))
+		fmt.Fprintf(w, "  api      resources=%d crds=%d crInstances=%d apiServices=%d\n", len(snapshot.Kubernetes.APIResources), len(snapshot.Kubernetes.CustomResourceDefinitions), len(snapshot.Kubernetes.CustomResourceInstances), len(snapshot.Kubernetes.APIServices))
 		fmt.Fprintf(w, "  compute  nodes=%d runtimeClasses=%d\n", len(snapshot.Kubernetes.Nodes), len(snapshot.Kubernetes.RuntimeClasses))
 		fmt.Fprintf(w, "  workload workloads=%d pods=%d images=%d runningImages=%d runningContainers=%d\n", len(snapshot.Kubernetes.Workloads), len(snapshot.Kubernetes.Pods), imageCount(snapshot), len(snapshot.Kubernetes.RunningImages), len(snapshot.Kubernetes.RunningContainers))
 		fmt.Fprintf(w, "  network  services=%d endpointSlices=%d ingresses=%d classes=%d\n", len(snapshot.Kubernetes.Services), len(snapshot.Kubernetes.EndpointSlices), len(snapshot.Kubernetes.Ingresses), len(snapshot.Kubernetes.IngressClasses))
@@ -100,10 +100,48 @@ func writeKubernetesDetails(w io.Writer, snapshot *inventory.Snapshot) {
 	writeRouting(w, kubernetes)
 	writeStorage(w, kubernetes)
 	writeRuntime(w, kubernetes)
+	writeCustomResources(w, kubernetes)
 	writeRunningImages(w, kubernetes)
 	writeRunningContainers(w, kubernetes)
 	writePlatformComponents(w, kubernetes)
 	writeWorkloadRelations(w, kubernetes)
+}
+
+func writeCustomResources(w io.Writer, kubernetes inventory.Kubernetes) {
+	if len(kubernetes.CustomResourceCounts) == 0 && len(kubernetes.CustomResourceInstances) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "custom-resources")
+	if len(kubernetes.CustomResourceCounts) > 0 {
+		counts := newTable(w)
+		fmt.Fprintln(counts, "CRD TYPE\tINSTANCES\tNAMESPACES\tSCOPE\tVERSION\tPLURAL")
+		for _, count := range sortedCustomResourceCounts(kubernetes.CustomResourceCounts) {
+			fmt.Fprintf(counts, "%s\t%d\t%d\t%s\t%s\t%s\n",
+				crdType(count.Group, count.Kind),
+				count.InstanceCount,
+				count.NamespaceCount,
+				value(count.Scope),
+				value(count.Version),
+				value(count.Plural),
+			)
+		}
+		counts.Flush()
+	}
+	if len(kubernetes.CustomResourceInstances) > 0 {
+		instances := newTable(w)
+		fmt.Fprintln(instances, "INSTANCE\tCRD TYPE\tVERSION\tCRD\tOWNERS")
+		for _, instance := range sortedCustomResourceInstances(kubernetes.CustomResourceInstances) {
+			fmt.Fprintf(instances, "%s\t%s\t%s\t%s\t%s\n",
+				refValue(instance.ObjectRef),
+				crdType(instance.CRDGroup, instance.CRDKind),
+				value(instance.CRDVersion),
+				value(instance.CRDName),
+				refsValue(instance.OwnerReferences),
+			)
+		}
+		instances.Flush()
+	}
+	fmt.Fprintln(w)
 }
 
 func writeRunningImages(w io.Writer, kubernetes inventory.Kubernetes) {
@@ -512,6 +550,29 @@ func sortedRunningContainers(items []inventory.RunningContainer) []inventory.Run
 	return out
 }
 
+func sortedCustomResourceCounts(items []inventory.CustomResourceCount) []inventory.CustomResourceCount {
+	out := append([]inventory.CustomResourceCount(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].InstanceCount != out[j].InstanceCount {
+			return out[i].InstanceCount > out[j].InstanceCount
+		}
+		left := strings.Join([]string{out[i].Group, out[i].Kind, out[i].Version}, "\x00")
+		right := strings.Join([]string{out[j].Group, out[j].Kind, out[j].Version}, "\x00")
+		return left < right
+	})
+	return out
+}
+
+func sortedCustomResourceInstances(items []inventory.CustomResourceInstance) []inventory.CustomResourceInstance {
+	out := append([]inventory.CustomResourceInstance(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].CRDGroup, out[i].CRDKind, out[i].Namespace, out[i].Name}, "\x00")
+		right := strings.Join([]string{out[j].CRDGroup, out[j].CRDKind, out[j].Namespace, out[j].Name}, "\x00")
+		return left < right
+	})
+	return out
+}
+
 func sortedRunningImages(items []inventory.RunningImage) []inventory.RunningImage {
 	out := append([]inventory.RunningImage(nil), items...)
 	sort.Slice(out, func(i, j int) bool {
@@ -700,6 +761,16 @@ func mapValue(values map[string]string) string {
 		parts = append(parts, key+"="+values[key])
 	}
 	return strings.Join(parts, ",")
+}
+
+func crdType(group, kind string) string {
+	if group == "" {
+		return value(kind)
+	}
+	if kind == "" {
+		return group
+	}
+	return group + "/" + kind
 }
 
 func stringList(values []string) string {

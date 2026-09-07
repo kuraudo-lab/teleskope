@@ -1,12 +1,17 @@
 package k8s
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
@@ -165,6 +170,71 @@ func TestRunningImagesDeduplicateByImageAndCountPods(t *testing.T) {
 	}
 	if got[1].Image != "repo/agent:v2" || got[1].PodCount != 1 || got[1].ContainerCount != 1 {
 		t.Fatalf("second running image = %#v, want repo/agent:v2", got[1])
+	}
+}
+
+func TestCollectCustomResourceInstancesBuildsInstanceAndTypeLists(t *testing.T) {
+	gvr := schema.GroupVersionResource{Group: "example.com", Version: "v1", Resource: "widgets"}
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		runtime.NewScheme(),
+		map[schema.GroupVersionResource]string{gvr: "WidgetList"},
+		&unstructured.Unstructured{
+			Object: map[string]any{
+				"apiVersion": "example.com/v1",
+				"kind":       "Widget",
+				"metadata": map[string]any{
+					"namespace": "app",
+					"name":      "blue",
+					"uid":       "uid-blue",
+					"labels":    map[string]any{"app": "blue"},
+				},
+			},
+		},
+		&unstructured.Unstructured{
+			Object: map[string]any{
+				"apiVersion": "example.com/v1",
+				"kind":       "Widget",
+				"metadata": map[string]any{
+					"namespace": "ops",
+					"name":      "green",
+					"uid":       "uid-green",
+				},
+			},
+		},
+	)
+	kubernetes := inventory.Kubernetes{
+		CustomResourceDefinitions: []inventory.CustomResourceDefinition{
+			{
+				ObjectRef: inventory.ObjectRef{Name: "widgets.example.com"},
+				Group:     "example.com",
+				Scope:     "Namespaced",
+				Kind:      "Widget",
+				Plural:    "widgets",
+				Versions:  []inventory.CRDVersion{{Name: "v1", Served: true, Storage: true}},
+			},
+		},
+	}
+	var coverage []inventory.CoverageItem
+
+	collectCustomResourceInstances(context.Background(), client, &kubernetes, &coverage, time.Now().UTC())
+
+	if len(kubernetes.CustomResourceInstances) != 2 {
+		t.Fatalf("instances = %#v, want two custom resources", kubernetes.CustomResourceInstances)
+	}
+	if kubernetes.CustomResourceInstances[0].CRDName != "widgets.example.com" ||
+		kubernetes.CustomResourceInstances[0].CRDGroup != "example.com" ||
+		kubernetes.CustomResourceInstances[0].CRDKind != "Widget" {
+		t.Fatalf("first instance type metadata = %#v", kubernetes.CustomResourceInstances[0])
+	}
+	if len(kubernetes.CustomResourceCounts) != 1 {
+		t.Fatalf("counts = %#v, want one type count", kubernetes.CustomResourceCounts)
+	}
+	count := kubernetes.CustomResourceCounts[0]
+	if count.CRDName != "widgets.example.com" || count.InstanceCount != 2 || count.NamespaceCount != 2 {
+		t.Fatalf("count = %#v, want widgets.example.com with two instances in two namespaces", count)
+	}
+	if len(coverage) != 1 || coverage[0].Status != "complete" || coverage[0].ObjectCount != 2 {
+		t.Fatalf("coverage = %#v, want complete count 2", coverage)
 	}
 }
 

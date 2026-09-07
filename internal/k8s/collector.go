@@ -255,6 +255,7 @@ func collectExtensions(ctx context.Context, client dynamic.Interface, out *inven
 			out.CustomResourceDefinitions = append(out.CustomResourceDefinitions, mapCRD(item))
 		}
 		*coverage = append(*coverage, complete("kubernetes", "CustomResourceDefinitions", len(out.CustomResourceDefinitions), now))
+		collectCustomResourceInstances(ctx, client, out, coverage, now)
 	}
 
 	apiServiceGVR := schema.GroupVersionResource{Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices"}
@@ -265,6 +266,44 @@ func collectExtensions(ctx context.Context, client dynamic.Interface, out *inven
 			out.APIServices = append(out.APIServices, mapAPIService(item))
 		}
 		*coverage = append(*coverage, complete("kubernetes", "APIServices", len(out.APIServices), now))
+	}
+}
+
+func collectCustomResourceInstances(ctx context.Context, client dynamic.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
+	start := len(out.CustomResourceInstances)
+	var failed []string
+	for _, crd := range out.CustomResourceDefinitions {
+		version := selectedCRDVersion(crd)
+		if version == "" || crd.Group == "" || crd.Plural == "" {
+			failed = append(failed, crd.Name+": missing group, plural, or served version")
+			continue
+		}
+		gvr := schema.GroupVersionResource{Group: crd.Group, Version: version, Resource: crd.Plural}
+		resource := client.Resource(gvr)
+		var list *unstructured.UnstructuredList
+		var err error
+		if crd.Scope == "Namespaced" {
+			list, err = resource.Namespace("").List(ctx, metav1.ListOptions{})
+		} else {
+			list, err = resource.List(ctx, metav1.ListOptions{})
+		}
+		if err != nil {
+			failed = append(failed, crd.Name+": "+err.Error())
+			continue
+		}
+		for _, item := range list.Items {
+			out.CustomResourceInstances = append(out.CustomResourceInstances, mapCustomResourceInstance(item, crd, version))
+		}
+	}
+	out.CustomResourceCounts = customResourceCounts(out.CustomResourceDefinitions, out.CustomResourceInstances)
+	collected := len(out.CustomResourceInstances) - start
+	switch {
+	case len(out.CustomResourceDefinitions) == 0:
+		*coverage = append(*coverage, complete("kubernetes", "CustomResourceInstances", 0, now))
+	case len(failed) > 0:
+		*coverage = append(*coverage, partial("kubernetes", "CustomResourceInstances", collected, fmt.Errorf("%s", strings.Join(failed, "; ")), now))
+	default:
+		*coverage = append(*coverage, complete("kubernetes", "CustomResourceInstances", collected, now))
 	}
 }
 
@@ -542,6 +581,19 @@ func mapCRD(item unstructured.Unstructured) inventory.CustomResourceDefinition {
 	return out
 }
 
+func mapCustomResourceInstance(item unstructured.Unstructured, crd inventory.CustomResourceDefinition, version string) inventory.CustomResourceInstance {
+	return inventory.CustomResourceInstance{
+		ObjectRef:       objectRef(crd.Group+"/"+version, crd.Kind, item.GetNamespace(), item.GetName(), item.GetUID()),
+		CRDName:         crd.Name,
+		CRDGroup:        crd.Group,
+		CRDVersion:      version,
+		CRDKind:         crd.Kind,
+		CRDPlural:       crd.Plural,
+		Labels:          item.GetLabels(),
+		OwnerReferences: ownerRefs(item.GetOwnerReferences()),
+	}
+}
+
 func mapAPIService(item unstructured.Unstructured) inventory.APIService {
 	out := inventory.APIService{
 		ObjectRef: objectRef("apiregistration.k8s.io/v1", "APIService", item.GetNamespace(), item.GetName(), item.GetUID()),
@@ -564,6 +616,82 @@ func mapAPIService(item unstructured.Unstructured) inventory.APIService {
 		break
 	}
 	return out
+}
+
+func selectedCRDVersion(crd inventory.CustomResourceDefinition) string {
+	for _, version := range crd.Versions {
+		if version.Storage && version.Served {
+			return version.Name
+		}
+	}
+	for _, version := range crd.Versions {
+		if version.Storage {
+			return version.Name
+		}
+	}
+	for _, version := range crd.Versions {
+		if version.Served {
+			return version.Name
+		}
+	}
+	return ""
+}
+
+func customResourceCounts(crds []inventory.CustomResourceDefinition, instances []inventory.CustomResourceInstance) []inventory.CustomResourceCount {
+	type aggregate struct {
+		count      inventory.CustomResourceCount
+		namespaces map[string]struct{}
+	}
+	byCRD := make(map[string]*aggregate, len(crds))
+	for _, crd := range crds {
+		version := selectedCRDVersion(crd)
+		byCRD[crd.Name] = &aggregate{
+			count: inventory.CustomResourceCount{
+				CRDName: crd.Name,
+				Group:   crd.Group,
+				Version: version,
+				Kind:    crd.Kind,
+				Plural:  crd.Plural,
+				Scope:   crd.Scope,
+			},
+			namespaces: map[string]struct{}{},
+		}
+	}
+	for _, instance := range instances {
+		agg, ok := byCRD[instance.CRDName]
+		if !ok {
+			agg = &aggregate{
+				count: inventory.CustomResourceCount{
+					CRDName: instance.CRDName,
+					Group:   instance.CRDGroup,
+					Version: instance.CRDVersion,
+					Kind:    instance.CRDKind,
+					Plural:  instance.CRDPlural,
+				},
+				namespaces: map[string]struct{}{},
+			}
+			byCRD[instance.CRDName] = agg
+		}
+		agg.count.InstanceCount++
+		if instance.Namespace != "" {
+			agg.namespaces[instance.Namespace] = struct{}{}
+		}
+	}
+	counts := make([]inventory.CustomResourceCount, 0, len(byCRD))
+	for _, agg := range byCRD {
+		agg.count.NamespaceCount = len(agg.namespaces)
+		counts = append(counts, agg.count)
+	}
+	sort.Slice(counts, func(i, j int) bool {
+		if counts[i].InstanceCount != counts[j].InstanceCount {
+			return counts[i].InstanceCount > counts[j].InstanceCount
+		}
+		if counts[i].Group != counts[j].Group {
+			return counts[i].Group < counts[j].Group
+		}
+		return counts[i].Kind < counts[j].Kind
+	})
+	return counts
 }
 
 func mapPod(pod corev1.Pod) inventory.Pod {

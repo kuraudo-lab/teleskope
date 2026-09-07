@@ -188,6 +188,8 @@ type Kubernetes struct {
 	Version                   KubernetesVersion          `json:"version,omitempty"`
 	APIResources              []APIResource              `json:"apiResources,omitempty"`
 	CustomResourceDefinitions []CustomResourceDefinition `json:"customResourceDefinitions,omitempty"`
+	CustomResourceInstances   []CustomResourceInstance   `json:"customResourceInstances,omitempty"`
+	CustomResourceCounts      []CustomResourceCount      `json:"customResourceCounts,omitempty"`
 	APIServices               []APIService               `json:"apiServices,omitempty"`
 	Namespaces                []Namespace                `json:"namespaces,omitempty"`
 	Nodes                     []Node                     `json:"nodes,omitempty"`
@@ -248,6 +250,30 @@ type CRDVersion struct {
 	Name    string `json:"name"`
 	Served  bool   `json:"served"`
 	Storage bool   `json:"storage"`
+}
+
+// CustomResourceInstance records one CRD-backed object and its CRD type.
+type CustomResourceInstance struct {
+	ObjectRef
+	CRDName         string            `json:"crdName,omitempty"`
+	CRDGroup        string            `json:"crdGroup,omitempty"`
+	CRDVersion      string            `json:"crdVersion,omitempty"`
+	CRDKind         string            `json:"crdKind,omitempty"`
+	CRDPlural       string            `json:"crdPlural,omitempty"`
+	Labels          map[string]string `json:"labels,omitempty"`
+	OwnerReferences []ObjectRef       `json:"ownerReferences,omitempty"`
+}
+
+// CustomResourceCount records the number of instances observed for one CRD type.
+type CustomResourceCount struct {
+	CRDName        string `json:"crdName,omitempty"`
+	Group          string `json:"group,omitempty"`
+	Version        string `json:"version,omitempty"`
+	Kind           string `json:"kind,omitempty"`
+	Plural         string `json:"plural,omitempty"`
+	Scope          string `json:"scope,omitempty"`
+	InstanceCount  int    `json:"instanceCount"`
+	NamespaceCount int    `json:"namespaceCount,omitempty"`
 }
 
 // APIService records aggregated APIService registration metadata.
