@@ -59,6 +59,7 @@ Set a build version with `make build VERSION=0.1.0`.
 
 ```text
 cmd/teleskope/  Executable entry point
+assets/         Project visual assets such as the Teleskope PNG icon
 internal/awseks/     AWS-side EKS collector
 internal/buildinfo/  Build metadata
 internal/cli/        Internal command-line implementation
