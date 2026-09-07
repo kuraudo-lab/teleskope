@@ -34,6 +34,58 @@ Use `--output human` for a terminal table summary or `--output json` for the
 single full snapshot on stdout. Kubernetes Secret values are not collected;
 Secrets are currently recorded as metadata-only objects.
 
+## Download binaries
+
+Download an archive and `checksums.txt` from
+[GitHub Releases](https://github.com/kuraudo-lab/teleskope/releases).
+Packages cover Linux, macOS (`darwin`), and Windows on `amd64` and `arm64`.
+Choose `arm64` for Apple Silicon and `amd64` for Intel/AMD x64 machines.
+Linux/macOS archives use `.tar.gz`; Windows archives use `.zip` and contain
+`teleskope.exe`. Extract the binary into a directory on your `PATH`.
+
+Verify the archive's SHA-256 against `checksums.txt` before installing. Use
+`sha256sum` on Linux, `shasum -a 256` on macOS, or `Get-FileHash -Algorithm SHA256`
+in PowerShell. Confirm the installation with `teleskope --version`.
+The initial packages do not include Developer ID notarization or Windows
+Authenticode signatures.
+
+## Releasing
+
+After merging the desired changes into `main`, create and push a stable tag:
+
+```sh
+git switch main
+git pull --ff-only
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
+Only `vMAJOR.MINOR.PATCH` is supported; prerelease tags are rejected. The tag's
+commit must be reachable from `main`. GitHub Actions runs tests and vet, builds
+six archives with GoReleaser 2.18.1 and CGO disabled, and tests each archive on a
+native runner. It then uploads a draft release, downloads and verifies every
+attachment, and automatically publishes it as the latest release. Report
+smoke tests use a missing kubeconfig and need no cloud credentials.
+
+If publication fails, fix the cause and rerun the workflow within the three-day
+artifact retention period, or rerun all jobs to rebuild. An existing draft can
+be repaired; an already-published release cannot be overwritten by this workflow.
+Use a new version for corrections. Publish stable tags in increasing version order.
+
+The workflows use standard GitHub-hosted runners and GitHub Releases storage.
+No self-hosted runner, external storage, PAT, or AWS credentials are required.
+The publish job requests `contents: write` using the built-in `GITHUB_TOKEN`;
+all build and test jobs have read-only repository permissions. Repository or
+organization policies must allow these Actions and hosted runners.
+
+PRs and pushes to `main` run the same build and smoke tests in local snapshot
+mode, without creating a release. To check packaging locally with GoReleaser:
+
+```sh
+goreleaser check
+goreleaser release --snapshot --clean --skip=publish
+```
+
 ## Development
 
 Requires Go 1.26.0 or later. Make is optional.
