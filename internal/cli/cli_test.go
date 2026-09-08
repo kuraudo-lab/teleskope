@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -73,23 +72,23 @@ func TestScanK8sRejectsUnknownOutputBeforeKubeLoad(t *testing.T) {
 	}
 }
 
-func TestScanK8sMissingKubeconfigReturnsCoverage(t *testing.T) {
+func TestScanK8sMissingKubeconfigReturnsError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 
 	code := Run([]string{"scan", "k8s", "--kubeconfig", "/private/tmp/teleskope-missing-kubeconfig-for-test", "--timeout", "1s", "--output", "human"}, &stdout, &stderr)
 
-	if code != 0 {
-		t.Fatalf("Run returned %d, want 0; stderr=%s", code, stderr.String())
+	if code != 1 {
+		t.Fatalf("Run returned %d, want 1", code)
 	}
-	if !strings.Contains(stdout.String(), "kubernetes  kubeconfig") {
-		t.Fatalf("stdout = %q, want kubeconfig coverage", stdout.String())
+	if stdout.String() != "" {
+		t.Fatalf("stdout = %q, want empty output", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "unavailable") && !strings.Contains(stdout.String(), "xx") {
-		t.Fatalf("stdout = %q, want unavailable coverage marker", stdout.String())
+	if !strings.Contains(stderr.String(), "connect Kubernetes cluster") || !strings.Contains(stderr.String(), "kubeconfig") {
+		t.Fatalf("stderr = %q, want Kubernetes connection error", stderr.String())
 	}
 }
 
-func TestScanK8sDefaultWritesReportDirectory(t *testing.T) {
+func TestScanK8sDefaultMissingKubeconfigDoesNotWriteReportDirectory(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	outputDir := t.TempDir()
 
@@ -100,31 +99,23 @@ func TestScanK8sDefaultWritesReportDirectory(t *testing.T) {
 		"--output-dir", outputDir,
 	}, &stdout, &stderr)
 
-	if code != 0 {
-		t.Fatalf("Run returned %d, want 0; stderr=%s", code, stderr.String())
+	if code != 1 {
+		t.Fatalf("Run returned %d, want 1", code)
 	}
 	if !strings.Contains(stderr.String(), "collecting Kubernetes API inventory") {
 		t.Fatalf("stderr = %q, want progress", stderr.String())
 	}
-	if !strings.HasPrefix(stdout.String(), "report ") {
-		t.Fatalf("stdout = %q, want report path", stdout.String())
+	if !strings.Contains(stderr.String(), "connect Kubernetes cluster") {
+		t.Fatalf("stderr = %q, want Kubernetes connection error", stderr.String())
 	}
-
-	reportDir := strings.TrimSpace(strings.TrimPrefix(stdout.String(), "report "))
-	if filepath.Dir(reportDir) != outputDir {
-		t.Fatalf("report dir = %q, want under %q", reportDir, outputDir)
+	if stdout.String() != "" {
+		t.Fatalf("stdout = %q, want no report path", stdout.String())
 	}
-	for _, name := range []string{"snapshot.json", "source.json", "kubernetes.json", "coverage.json", "summary.md", "index.html"} {
-		if _, err := os.Stat(filepath.Join(reportDir, name)); err != nil {
-			t.Fatalf("expected %s in report dir: %v", name, err)
-		}
-	}
-
-	summary, err := os.ReadFile(filepath.Join(reportDir, "summary.md"))
+	entries, err := os.ReadDir(outputDir)
 	if err != nil {
-		t.Fatalf("read summary.md: %v", err)
+		t.Fatalf("read output dir: %v", err)
 	}
-	if !strings.Contains(string(summary), "# Teleskope scan summary") || !strings.Contains(string(summary), "kubeconfig") {
-		t.Fatalf("summary.md missing expected content:\n%s", string(summary))
+	if len(entries) != 0 {
+		t.Fatalf("output dir contains %d entries, want none", len(entries))
 	}
 }

@@ -76,6 +76,11 @@ func Collect(ctx context.Context, opts Options) (*inventory.Snapshot, error) {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "Nodegroups", len(snapshot.EKS.Nodegroups), err, now))
 	}
 
+	snapshot.EKS.Insights, err = collectInsights(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
+	if err != nil {
+		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "Insights", len(snapshot.EKS.Insights), err, now))
+	}
+
 	snapshot.EKS.AccessEntries, err = collectAccessEntries(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
 	if err != nil {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "AccessEntries", len(snapshot.EKS.AccessEntries), err, now))
@@ -169,6 +174,40 @@ func collectNodegroups(ctx context.Context, client *eks.Client, clusterName stri
 	}
 	*coverage = append(*coverage, complete("eks", "Nodegroups", len(nodegroups), now))
 	return nodegroups, nil
+}
+
+func collectInsights(ctx context.Context, client *eks.Client, clusterName string, now time.Time, coverage *[]inventory.CoverageItem) ([]inventory.EKSInsight, error) {
+	var insights []inventory.EKSInsight
+	paginator := eks.NewListInsightsPaginator(client, &eks.ListInsightsInput{
+		ClusterName: awssdk.String(clusterName),
+		Filter: &ekstypes.InsightsFilter{Categories: []ekstypes.Category{
+			ekstypes.CategoryUpgradeReadiness,
+			ekstypes.CategoryRollbackReadiness,
+		}},
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return insights, err
+		}
+		for _, summary := range page.Insights {
+			if summary.Id == nil {
+				insights = append(insights, mapInsightSummary(summary))
+				continue
+			}
+			out, err := client.DescribeInsight(ctx, &eks.DescribeInsightInput{
+				ClusterName: awssdk.String(clusterName),
+				Id:          summary.Id,
+			})
+			if err != nil {
+				insights = append(insights, mapInsightSummary(summary))
+				return insights, err
+			}
+			insights = append(insights, mapInsight(out.Insight, summary))
+		}
+	}
+	*coverage = append(*coverage, complete("eks", "Insights", len(insights), now))
+	return insights, nil
 }
 
 func collectAccessEntries(ctx context.Context, client *eks.Client, clusterName string, now time.Time, coverage *[]inventory.CoverageItem) ([]inventory.AccessEntry, error) {
@@ -408,6 +447,94 @@ func mapNodegroup(nodegroup *ekstypes.Nodegroup) inventory.Nodegroup {
 				Message:     awssdk.ToString(issue.Message),
 				ResourceIDs: issue.ResourceIds,
 			})
+		}
+	}
+	return out
+}
+
+func mapInsightSummary(summary ekstypes.InsightSummary) inventory.EKSInsight {
+	out := inventory.EKSInsight{
+		ID:                 awssdk.ToString(summary.Id),
+		Name:               awssdk.ToString(summary.Name),
+		Category:           string(summary.Category),
+		KubernetesVersion:  awssdk.ToString(summary.KubernetesVersion),
+		Description:        awssdk.ToString(summary.Description),
+		LastRefreshTime:    summary.LastRefreshTime,
+		LastTransitionTime: summary.LastTransitionTime,
+	}
+	if summary.InsightStatus != nil {
+		out.Status = string(summary.InsightStatus.Status)
+		out.Reason = awssdk.ToString(summary.InsightStatus.Reason)
+	}
+	return out
+}
+
+func mapInsight(insight *ekstypes.Insight, fallback ekstypes.InsightSummary) inventory.EKSInsight {
+	if insight == nil {
+		return mapInsightSummary(fallback)
+	}
+	out := inventory.EKSInsight{
+		ID:                 awssdk.ToString(insight.Id),
+		Name:               awssdk.ToString(insight.Name),
+		Category:           string(insight.Category),
+		KubernetesVersion:  awssdk.ToString(insight.KubernetesVersion),
+		Description:        awssdk.ToString(insight.Description),
+		Recommendation:     awssdk.ToString(insight.Recommendation),
+		LastRefreshTime:    insight.LastRefreshTime,
+		LastTransitionTime: insight.LastTransitionTime,
+		AdditionalInfo:     insight.AdditionalInfo,
+	}
+	if out.ID == "" {
+		out.ID = awssdk.ToString(fallback.Id)
+	}
+	if out.Name == "" {
+		out.Name = awssdk.ToString(fallback.Name)
+	}
+	if out.Category == "" {
+		out.Category = string(fallback.Category)
+	}
+	if out.KubernetesVersion == "" {
+		out.KubernetesVersion = awssdk.ToString(fallback.KubernetesVersion)
+	}
+	if out.Description == "" {
+		out.Description = awssdk.ToString(fallback.Description)
+	}
+	if insight.InsightStatus != nil {
+		out.Status = string(insight.InsightStatus.Status)
+		out.Reason = awssdk.ToString(insight.InsightStatus.Reason)
+	} else if fallback.InsightStatus != nil {
+		out.Status = string(fallback.InsightStatus.Status)
+		out.Reason = awssdk.ToString(fallback.InsightStatus.Reason)
+	}
+	for _, resource := range insight.Resources {
+		item := inventory.EKSInsightResource{
+			ARN:                   awssdk.ToString(resource.Arn),
+			KubernetesResourceURI: awssdk.ToString(resource.KubernetesResourceUri),
+		}
+		if resource.InsightStatus != nil {
+			item.Status = string(resource.InsightStatus.Status)
+			item.Reason = awssdk.ToString(resource.InsightStatus.Reason)
+		}
+		out.Resources = append(out.Resources, item)
+	}
+	if insight.CategorySpecificSummary != nil {
+		for _, detail := range insight.CategorySpecificSummary.AddonCompatibilityDetails {
+			out.AddonCompatibility = append(out.AddonCompatibility, inventory.AddonCompatibility{
+				Name:               awssdk.ToString(detail.Name),
+				CompatibleVersions: detail.CompatibleVersions,
+			})
+		}
+		for _, detail := range insight.CategorySpecificSummary.DeprecationDetails {
+			item := inventory.DeprecationDetail{
+				Usage:                          awssdk.ToString(detail.Usage),
+				ReplacedWith:                   awssdk.ToString(detail.ReplacedWith),
+				StartServingReplacementVersion: awssdk.ToString(detail.StartServingReplacementVersion),
+				StopServingVersion:             awssdk.ToString(detail.StopServingVersion),
+			}
+			for _, stat := range detail.ClientStats {
+				item.UserAgents = append(item.UserAgents, awssdk.ToString(stat.UserAgent))
+			}
+			out.DeprecationDetails = append(out.DeprecationDetails, item)
 		}
 	}
 	return out

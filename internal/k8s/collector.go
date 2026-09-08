@@ -38,49 +38,41 @@ type Options struct {
 	Context    string
 }
 
-// Collect gathers Kubernetes inventory. Errors are represented as coverage.
-func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []inventory.CoverageItem) {
+// Collect gathers Kubernetes inventory. Baseline connection errors are returned; resource-level collection errors are represented as coverage.
+func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []inventory.CoverageItem, error) {
 	now := time.Now().UTC()
 	var coverage []inventory.CoverageItem
 
 	config, contextName, server, err := loadRESTConfig(opts)
 	if err != nil {
-		return inventory.Kubernetes{}, []inventory.CoverageItem{
-			unavailable("kubernetes", "kubeconfig", err, now),
-		}
+		return inventory.Kubernetes{}, nil, fmt.Errorf("connect Kubernetes cluster: %w", err)
 	}
 
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return inventory.Kubernetes{Context: contextName, Server: server}, []inventory.CoverageItem{
-			unavailable("kubernetes", "client", err, now),
-		}
+		return inventory.Kubernetes{Context: contextName, Server: server}, nil, fmt.Errorf("connect Kubernetes cluster: create client: %w", err)
 	}
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
-		return inventory.Kubernetes{Context: contextName, Server: server}, []inventory.CoverageItem{
-			unavailable("kubernetes", "dynamicClient", err, now),
-		}
+		return inventory.Kubernetes{Context: contextName, Server: server}, nil, fmt.Errorf("connect Kubernetes cluster: create dynamic client: %w", err)
 	}
 	metadataClient, err := metadata.NewForConfig(config)
 	if err != nil {
-		return inventory.Kubernetes{Context: contextName, Server: server}, []inventory.CoverageItem{
-			unavailable("kubernetes", "metadataClient", err, now),
-		}
+		return inventory.Kubernetes{Context: contextName, Server: server}, nil, fmt.Errorf("connect Kubernetes cluster: create metadata client: %w", err)
 	}
 
 	kubernetes := inventory.Kubernetes{Context: contextName, Server: server}
-	if version, err := client.Discovery().ServerVersion(); err != nil {
-		coverage = append(coverage, unavailable("kubernetes", "ServerVersion", err, now))
-	} else {
-		kubernetes.Version = inventory.KubernetesVersion{
-			GitVersion: version.GitVersion,
-			Major:      version.Major,
-			Minor:      version.Minor,
-			Platform:   version.Platform,
-		}
-		coverage = append(coverage, complete("kubernetes", "ServerVersion", 1, now))
+	version, err := client.Discovery().ServerVersion()
+	if err != nil {
+		return kubernetes, nil, fmt.Errorf("connect Kubernetes cluster: server version: %w", err)
 	}
+	kubernetes.Version = inventory.KubernetesVersion{
+		GitVersion: version.GitVersion,
+		Major:      version.Major,
+		Minor:      version.Minor,
+		Platform:   version.Platform,
+	}
+	coverage = append(coverage, complete("kubernetes", "ServerVersion", 1, now))
 
 	apiResources, err := collectAPIResources(client.Discovery())
 	kubernetes.APIResources = apiResources
@@ -101,7 +93,7 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 	kubernetes.RunningContainers = runningContainers(kubernetes)
 	kubernetes.RunningImages = runningImages(kubernetes.RunningContainers)
 
-	return kubernetes, coverage
+	return kubernetes, coverage, nil
 }
 
 func loadRESTConfig(opts Options) (*rest.Config, string, string, error) {

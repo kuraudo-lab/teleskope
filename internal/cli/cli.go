@@ -111,7 +111,10 @@ func newScanEKSCommand(stdout, stderr io.Writer) *cobra.Command {
 			}
 			if !skipKubernetes {
 				progress.Step("collecting Kubernetes API inventory")
-				kubernetes, coverage := k8s.Collect(ctx, kubeOpts)
+				kubernetes, coverage, err := k8s.Collect(ctx, kubeOpts)
+				if err != nil {
+					return err
+				}
 				snapshot.Kubernetes = kubernetes
 				snapshot.Coverage = append(snapshot.Coverage, coverage...)
 			}
@@ -177,7 +180,10 @@ func newScanK8sCommand(stdout, stderr io.Writer) *cobra.Command {
 
 			progress := newProgress(stderr)
 			progress.Step("collecting Kubernetes API inventory")
-			kubernetes, coverage := k8s.Collect(ctx, opts)
+			kubernetes, coverage, err := k8s.Collect(ctx, opts)
+			if err != nil {
+				return err
+			}
 			snapshot := &inventory.Snapshot{
 				SchemaVersion: "teleskope.io/snapshot/v1alpha1",
 				CollectedAt:   time.Now().UTC(),

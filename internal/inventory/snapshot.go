@@ -35,6 +35,7 @@ type EKSInventory struct {
 	Cluster                 Cluster                  `json:"cluster"`
 	Addons                  []Addon                  `json:"addons"`
 	Nodegroups              []Nodegroup              `json:"nodegroups"`
+	Insights                []EKSInsight             `json:"insights,omitempty"`
 	AccessEntries           []AccessEntry            `json:"accessEntries"`
 	PodIdentityAssociations []PodIdentityAssociation `json:"podIdentityAssociations"`
 }
@@ -148,6 +149,47 @@ type Taint struct {
 	Key    string `json:"key,omitempty"`
 	Value  string `json:"value,omitempty"`
 	Effect string `json:"effect,omitempty"`
+}
+
+// EKSInsight records an EKS insight, including upgrade and rollback readiness findings.
+type EKSInsight struct {
+	ID                 string               `json:"id,omitempty"`
+	Name               string               `json:"name,omitempty"`
+	Category           string               `json:"category,omitempty"`
+	KubernetesVersion  string               `json:"kubernetesVersion,omitempty"`
+	Status             string               `json:"status,omitempty"`
+	Reason             string               `json:"reason,omitempty"`
+	Description        string               `json:"description,omitempty"`
+	Recommendation     string               `json:"recommendation,omitempty"`
+	LastRefreshTime    *time.Time           `json:"lastRefreshTime,omitempty"`
+	LastTransitionTime *time.Time           `json:"lastTransitionTime,omitempty"`
+	AdditionalInfo     map[string]string    `json:"additionalInfo,omitempty"`
+	Resources          []EKSInsightResource `json:"resources,omitempty"`
+	AddonCompatibility []AddonCompatibility `json:"addonCompatibility,omitempty"`
+	DeprecationDetails []DeprecationDetail  `json:"deprecationDetails,omitempty"`
+}
+
+// EKSInsightResource records a resource evaluated by an EKS insight.
+type EKSInsightResource struct {
+	ARN                   string `json:"arn,omitempty"`
+	KubernetesResourceURI string `json:"kubernetesResourceUri,omitempty"`
+	Status                string `json:"status,omitempty"`
+	Reason                string `json:"reason,omitempty"`
+}
+
+// AddonCompatibility records add-on compatibility details returned by EKS insights.
+type AddonCompatibility struct {
+	Name               string   `json:"name,omitempty"`
+	CompatibleVersions []string `json:"compatibleVersions,omitempty"`
+}
+
+// DeprecationDetail records deprecated Kubernetes API usage details returned by EKS insights.
+type DeprecationDetail struct {
+	Usage                          string   `json:"usage,omitempty"`
+	ReplacedWith                   string   `json:"replacedWith,omitempty"`
+	StartServingReplacementVersion string   `json:"startServingReplacementVersion,omitempty"`
+	StopServingVersion             string   `json:"stopServingVersion,omitempty"`
+	UserAgents                     []string `json:"userAgents,omitempty"`
 }
 
 // AccessEntry records EKS API authentication entries and associated policies.

@@ -12,12 +12,73 @@ import (
 
 func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	now := time.Date(2026, 9, 7, 8, 9, 10, 0, time.UTC)
+	admin := true
+	autoCompute := true
+	autoBlock := false
+	autoLB := true
+	disk := int32(20)
+	desired := int32(2)
+	minSize := int32(1)
+	maxSize := int32(4)
 	snapshot := &inventory.Snapshot{
 		SchemaVersion: "teleskope.io/snapshot/v1alpha1",
 		CollectedAt:   now,
 		Source:        inventory.Source{Tool: "teleskope", Version: "test", Mode: "out-of-cluster/run-once"},
+		AWS:           inventory.AWSIdentity{Region: "ap-northeast-1", AccountID: "123456789012", ARN: "arn:aws:iam::123456789012:user/scanner"},
+		EKS: inventory.EKSInventory{
+			Cluster: inventory.Cluster{
+				Name:            "prod",
+				ARN:             "arn:aws:eks:ap-northeast-1:123456789012:cluster/prod",
+				Version:         "1.31",
+				PlatformVersion: "eks.7",
+				Status:          "ACTIVE",
+				RoleARN:         "arn:aws:iam::123456789012:role/eks-cluster",
+				VPC: inventory.VPCConfig{
+					VPCID:                  "vpc-123",
+					SubnetIDs:              []string{"subnet-a", "subnet-b"},
+					SecurityGroupIDs:       []string{"sg-extra"},
+					ClusterSecurityGroupID: "sg-cluster",
+					EndpointPublicAccess:   true,
+					EndpointPrivateAccess:  true,
+					PublicAccessCIDRs:      []string{"203.0.113.0/24"},
+				},
+				Network:      inventory.NetworkConfig{IPFamily: "ipv4", ServiceIPv4CIDR: "172.20.0.0/16", AutoModeLoadBalancingEnabled: &autoLB},
+				AccessConfig: inventory.AccessConfig{AuthenticationMode: "API_AND_CONFIG_MAP", BootstrapClusterCreatorAdminPermissions: &admin},
+				AutoMode:     inventory.AutoModeConfig{ComputeEnabled: &autoCompute, ComputeNodePools: []string{"system"}, BlockStorageEnabled: &autoBlock},
+				Encryption:   []inventory.EncryptionConfig{{Resources: []string{"secrets"}, KeyARN: "arn:aws:kms:ap-northeast-1:123456789012:key/key-id"}},
+				OIDCIssuer:   "https://oidc.eks.ap-northeast-1.amazonaws.com/id/ABC",
+			},
+			Insights:                []inventory.EKSInsight{{Name: "Deprecated APIs", Category: "UPGRADE_READINESS", KubernetesVersion: "1.32", Status: "WARNING", Reason: "deprecated API observed", Recommendation: "Migrate API versions.", Resources: []inventory.EKSInsightResource{{KubernetesResourceURI: "/apis/extensions/v1beta1/ingresses", Status: "WARNING"}}}},
+			Addons:                  []inventory.Addon{{Name: "vpc-cni", Version: "v1.19.0-eksbuild.1", Status: "ACTIVE", Namespace: "kube-system", ServiceAccountRoleARN: "arn:aws:iam::123456789012:role/cni"}},
+			Nodegroups:              []inventory.Nodegroup{{Name: "system", Version: "1.31", ReleaseVersion: "1.31.1-20260901", Status: "ACTIVE", AMIType: "AL2023_x86_64_STANDARD", CapacityType: "ON_DEMAND", NodeRoleARN: "arn:aws:iam::123456789012:role/node", Subnets: []string{"subnet-a", "subnet-b"}, InstanceTypes: []string{"m7i.large"}, DiskSizeGiB: &disk, DesiredSize: &desired, MinSize: &minSize, MaxSize: &maxSize}},
+			AccessEntries:           []inventory.AccessEntry{{PrincipalARN: "arn:aws:iam::123456789012:role/admin", Type: "STANDARD", KubernetesGroups: []string{"system:masters"}, Policies: []inventory.AssociatedPolicy{{PolicyARN: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy", ScopeType: "cluster"}}}},
+			PodIdentityAssociations: []inventory.PodIdentityAssociation{{Namespace: "app", ServiceAccount: "web", RoleARN: "arn:aws:iam::123456789012:role/web"}},
+		},
 		Kubernetes: inventory.Kubernetes{
 			Context: "prod",
+			Nodes: []inventory.Node{{
+				ObjectRef:        inventory.ObjectRef{Kind: "Node", Name: "node-a"},
+				ProviderID:       "aws:///ap-northeast-1a/i-123",
+				Ready:            "True",
+				KubeletVersion:   "v1.31.1-eks",
+				ContainerRuntime: "containerd://1.7.27",
+				OSImage:          "Amazon Linux 2023",
+				KernelVersion:    "6.1.0",
+				Architecture:     "amd64",
+				Capacity:         map[string]string{"cpu": "2", "memory": "8Gi", "pods": "29"},
+				Allocatable:      map[string]string{"cpu": "1930m", "memory": "7600Mi", "pods": "29"},
+				Labels:           map[string]string{"eks.amazonaws.com/nodegroup": "system", "node.kubernetes.io/instance-type": "m7i.large", "topology.kubernetes.io/zone": "ap-northeast-1a"},
+			}},
+			Pods: []inventory.Pod{{
+				ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "app", Name: "web-abc"},
+				Phase:     "Running",
+				NodeName:  "node-a",
+				Containers: []inventory.Container{{
+					Name:      "web",
+					Image:     "repo/web:v1",
+					Resources: map[string]string{"requests.cpu": "500m", "requests.memory": "256Mi", "limits.cpu": "1", "limits.memory": "512Mi"},
+				}},
+			}},
 			CustomResourceDefinitions: []inventory.CustomResourceDefinition{
 				{
 					ObjectRef: inventory.ObjectRef{Kind: "CustomResourceDefinition", Name: "widgets.example.com"},
@@ -87,7 +148,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	if !strings.HasSuffix(artifact.Dir, "prod-cluster-20260907-080910") {
 		t.Fatalf("artifact dir = %q, want sanitized timestamped name", artifact.Dir)
 	}
-	for _, name := range []string{"snapshot.json", "source.json", "kubernetes.json", "coverage.json", "summary.md", "index.html"} {
+	for _, name := range []string{"snapshot.json", "source.json", "aws.json", "eks.json", "kubernetes.json", "coverage.json", "summary.md", "index.html"} {
 		if _, err := os.Stat(filepath.Join(artifact.Dir, name)); err != nil {
 			t.Fatalf("expected %s: %v", name, err)
 		}
@@ -101,6 +162,19 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"# Teleskope scan summary",
 		"Target: `Prod Cluster`",
 		"| CRD instances | 1 |",
+		"### EKS upgrade and rollback insights",
+		"| Deprecated APIs | UPGRADE_READINESS | 1.32 | WARNING | deprecated API observed | Migrate API versions. | 1 |",
+		"### EKS compute capacity and declared usage",
+		"| CPU | 2 cores | 1930m | 500m | 1 cores |",
+		"| Memory | 8.0 GiB | 7.4 GiB | 256.0 MiB | 512.0 MiB |",
+		"### EKS network",
+		"| Cluster subnets | subnet-a,subnet-b |",
+		"### EKS security and identity",
+		"| Cluster role | arn:aws:iam::123456789012:role/eks-cluster |",
+		"### Managed nodegroups",
+		"| system | 1.31 | 1.31.1-20260901 | ACTIVE | AL2023_x86_64_STANDARD | m7i.large | desired=2 min=1 max=4 | subnet-a,subnet-b | arn:aws:iam::123456789012:role/node | - |",
+		"### Nodes",
+		"| node-a | aws:///ap-northeast-1a/i-123 | True | true | v1.31.1-eks | containerd://1.7.27 | Amazon Linux 2023 | 6.1.0 | amd64 | cpu=2,memory=8Gi,pods=29 | cpu=1930m,memory=7600Mi,pods=29 | - | eks.amazonaws.com/nodegroup=system,node.kubernetes.io/instance-type=m7i.large,topology.kubernetes.io/zone=ap-northeast-1a | - |",
 		"### Custom resources",
 		"| example.com/Widget | 2 | 2 | Namespaced | v1 | widgets |",
 		"| widget/app/blue | example.com/Widget | v1 | widgets.example.com | - |",
@@ -126,6 +200,18 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		`<script id="snapshot-data" type="application/json">`,
 		`"schemaVersion": "teleskope.io/snapshot/v1alpha1"`,
 		"Running images",
+		"EKS overview",
+		"Upgrade / rollback insights",
+		"Compute capacity and declared usage",
+		"Security and identity",
+		"nodesTable",
+		"eksInsightsTable",
+		"accessEntriesTable",
+		"podIdentityTable",
+		"IRSA:",
+		"nodeTotals",
+		"declaredTotals",
+		"quantityValue",
 		"Custom resources",
 		"function namespacesOf",
 		"resourceTypes = [",
