@@ -21,6 +21,7 @@ type Options struct {
 	ClusterName string
 	Profile     string
 	Region      string
+	Progress    func(format string, args ...any)
 }
 
 // Collect gathers AWS-side EKS inventory using the default AWS CLI config chain.
@@ -33,6 +34,7 @@ func Collect(ctx context.Context, opts Options) (*inventory.Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
+	progress(opts.Progress, "loaded AWS config profile=%s region=%s", valueOrDefault(effectiveProfile(opts.Profile), "default"), valueOrDefault(cfg.Region, "-"))
 	if cfg.Region == "" {
 		return nil, fmt.Errorf("AWS region is not configured; set AWS_REGION, AWS_DEFAULT_REGION, shared config region, or --region")
 	}
@@ -53,45 +55,73 @@ func Collect(ctx context.Context, opts Options) (*inventory.Snapshot, error) {
 		},
 	}
 
+	progress(opts.Progress, "checking AWS caller identity")
 	if err := collectCallerIdentity(ctx, cfg, snapshot, now); err != nil {
 		snapshot.Coverage = append(snapshot.Coverage, denied("aws", "sts:GetCallerIdentity", err, now))
+		progress(opts.Progress, "AWS caller identity unavailable: %s", err)
 	} else {
 		snapshot.Coverage = append(snapshot.Coverage, complete("aws", "sts:GetCallerIdentity", 1, now))
+		progress(opts.Progress, "AWS caller identity account=%s", valueOrDefault(snapshot.AWS.AccountID, "-"))
 	}
 
+	progress(opts.Progress, "describing EKS cluster %s", opts.ClusterName)
 	cluster, err := client.DescribeCluster(ctx, &eks.DescribeClusterInput{Name: awssdk.String(opts.ClusterName)})
 	if err != nil {
 		return snapshot, fmt.Errorf("describe EKS cluster %q: %w", opts.ClusterName, err)
 	}
 	snapshot.EKS.Cluster = mapCluster(cluster.Cluster)
 	snapshot.Coverage = append(snapshot.Coverage, complete("eks", "DescribeCluster", 1, now))
+	progress(opts.Progress, "cluster status=%s version=%s platform=%s", valueOrDefault(snapshot.EKS.Cluster.Status, "-"), valueOrDefault(snapshot.EKS.Cluster.Version, "-"), valueOrDefault(snapshot.EKS.Cluster.PlatformVersion, "-"))
 
+	progress(opts.Progress, "collecting managed add-ons")
 	snapshot.EKS.Addons, err = collectAddons(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
 	if err != nil {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "Addons", len(snapshot.EKS.Addons), err, now))
 	}
+	progress(opts.Progress, "managed add-ons=%d", len(snapshot.EKS.Addons))
 
+	progress(opts.Progress, "collecting managed nodegroups")
 	snapshot.EKS.Nodegroups, err = collectNodegroups(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
 	if err != nil {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "Nodegroups", len(snapshot.EKS.Nodegroups), err, now))
 	}
+	progress(opts.Progress, "managed nodegroups=%d", len(snapshot.EKS.Nodegroups))
 
+	progress(opts.Progress, "collecting upgrade and rollback insights")
 	snapshot.EKS.Insights, err = collectInsights(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
 	if err != nil {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "Insights", len(snapshot.EKS.Insights), err, now))
 	}
+	progress(opts.Progress, "insights=%d", len(snapshot.EKS.Insights))
 
+	progress(opts.Progress, "collecting access entries")
 	snapshot.EKS.AccessEntries, err = collectAccessEntries(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
 	if err != nil {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "AccessEntries", len(snapshot.EKS.AccessEntries), err, now))
 	}
+	progress(opts.Progress, "access entries=%d", len(snapshot.EKS.AccessEntries))
 
+	progress(opts.Progress, "collecting pod identity associations")
 	snapshot.EKS.PodIdentityAssociations, err = collectPodIdentities(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
 	if err != nil {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "PodIdentityAssociations", len(snapshot.EKS.PodIdentityAssociations), err, now))
 	}
+	progress(opts.Progress, "pod identity associations=%d", len(snapshot.EKS.PodIdentityAssociations))
 
 	return snapshot, nil
+}
+
+func progress(fn func(format string, args ...any), format string, args ...any) {
+	if fn != nil {
+		fn(format, args...)
+	}
+}
+
+func valueOrDefault(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }
 
 func effectiveProfile(profile string) string {

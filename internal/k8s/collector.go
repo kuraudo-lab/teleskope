@@ -36,6 +36,7 @@ import (
 type Options struct {
 	Kubeconfig string
 	Context    string
+	Progress   func(format string, args ...any)
 }
 
 // Collect gathers Kubernetes inventory. Baseline connection errors are returned; resource-level collection errors are represented as coverage.
@@ -47,7 +48,9 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 	if err != nil {
 		return inventory.Kubernetes{}, nil, fmt.Errorf("connect Kubernetes cluster: %w", err)
 	}
+	progress(opts.Progress, "loaded kubeconfig context=%s server=%s", valueOrDefault(contextName, "-"), valueOrDefault(server, "-"))
 
+	progress(opts.Progress, "creating Kubernetes clients")
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return inventory.Kubernetes{Context: contextName, Server: server}, nil, fmt.Errorf("connect Kubernetes cluster: create client: %w", err)
@@ -62,6 +65,7 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 	}
 
 	kubernetes := inventory.Kubernetes{Context: contextName, Server: server}
+	progress(opts.Progress, "checking Kubernetes API server version")
 	version, err := client.Discovery().ServerVersion()
 	if err != nil {
 		return kubernetes, nil, fmt.Errorf("connect Kubernetes cluster: server version: %w", err)
@@ -73,7 +77,9 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 		Platform:   version.Platform,
 	}
 	coverage = append(coverage, complete("kubernetes", "ServerVersion", 1, now))
+	progress(opts.Progress, "server version=%s platform=%s", valueOrDefault(kubernetes.Version.GitVersion, "-"), valueOrDefault(kubernetes.Version.Platform, "-"))
 
+	progress(opts.Progress, "discovering API resources")
 	apiResources, err := collectAPIResources(client.Discovery())
 	kubernetes.APIResources = apiResources
 	if err != nil {
@@ -81,19 +87,59 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 	} else {
 		coverage = append(coverage, complete("kubernetes", "APIResources", len(apiResources), now))
 	}
+	progress(opts.Progress, "API resources=%d", len(kubernetes.APIResources))
 
+	progress(opts.Progress, "collecting core inventory")
 	collectCore(ctx, client, metadataClient, &kubernetes, &coverage, now)
+	progress(opts.Progress, "core namespaces=%d nodes=%d serviceAccounts=%d pods=%d configMaps=%d secrets=%d", len(kubernetes.Namespaces), len(kubernetes.Nodes), len(kubernetes.ServiceAccounts), len(kubernetes.Pods), len(kubernetes.ConfigMaps), len(kubernetes.Secrets))
+
+	progress(opts.Progress, "collecting extension APIs and CRDs")
 	collectExtensions(ctx, dynamicClient, &kubernetes, &coverage, now)
+	progress(opts.Progress, "extensions crds=%d crInstances=%d apiServices=%d", len(kubernetes.CustomResourceDefinitions), len(kubernetes.CustomResourceInstances), len(kubernetes.APIServices))
+
+	progress(opts.Progress, "collecting workloads")
 	collectWorkloads(ctx, client, &kubernetes, &coverage, now)
+	progress(opts.Progress, "workloads=%d", len(kubernetes.Workloads))
+
+	progress(opts.Progress, "collecting networking")
 	collectNetworking(ctx, client, &kubernetes, &coverage, now)
+	progress(opts.Progress, "network services=%d endpointSlices=%d ingresses=%d ingressClasses=%d", len(kubernetes.Services), len(kubernetes.EndpointSlices), len(kubernetes.Ingresses), len(kubernetes.IngressClasses))
+
+	progress(opts.Progress, "collecting storage")
 	collectStorage(ctx, client, &kubernetes, &coverage, now)
+	progress(opts.Progress, "storage classes=%d pv=%d pvc=%d csiDrivers=%d csiNodes=%d attachments=%d", len(kubernetes.StorageClasses), len(kubernetes.PersistentVolumes), len(kubernetes.PersistentVolumeClaims), len(kubernetes.CSIDrivers), len(kubernetes.CSINodes), len(kubernetes.VolumeAttachments))
+
+	progress(opts.Progress, "collecting runtime classes")
 	collectRuntime(ctx, client, &kubernetes, &coverage, now)
+	progress(opts.Progress, "runtime classes=%d", len(kubernetes.RuntimeClasses))
+
+	progress(opts.Progress, "collecting RBAC")
 	collectRBAC(ctx, client, &kubernetes, &coverage, now)
+	progress(opts.Progress, "rbac roles=%d roleBindings=%d clusterRoles=%d clusterRoleBindings=%d", len(kubernetes.RBAC.Roles), len(kubernetes.RBAC.RoleBindings), len(kubernetes.RBAC.ClusterRoles), len(kubernetes.RBAC.ClusterRoleBindings))
+
+	progress(opts.Progress, "collecting policy objects")
 	collectPolicies(ctx, client, &kubernetes, &coverage, now)
+	progress(opts.Progress, "policies hpa=%d pdb=%d networkPolicies=%d resourceQuotas=%d limitRanges=%d", len(kubernetes.Policies.HorizontalPodAutoscalers), len(kubernetes.Policies.PodDisruptionBudgets), len(kubernetes.Policies.NetworkPolicies), len(kubernetes.Policies.ResourceQuotas), len(kubernetes.Policies.LimitRanges))
+
+	progress(opts.Progress, "indexing running containers and images")
 	kubernetes.RunningContainers = runningContainers(kubernetes)
 	kubernetes.RunningImages = runningImages(kubernetes.RunningContainers)
+	progress(opts.Progress, "running containers=%d images=%d", len(kubernetes.RunningContainers), len(kubernetes.RunningImages))
 
 	return kubernetes, coverage, nil
+}
+
+func progress(fn func(format string, args ...any), format string, args ...any) {
+	if fn != nil {
+		fn(format, args...)
+	}
+}
+
+func valueOrDefault(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }
 
 func loadRESTConfig(opts Options) (*rest.Config, string, string, error) {

@@ -104,6 +104,8 @@ func newScanEKSCommand(stdout, stderr io.Writer) *cobra.Command {
 			}
 
 			progress := newProgress(stderr)
+			opts.Progress = progress.Detail
+			kubeOpts.Progress = progress.Detail
 			progress.Step("collecting EKS inventory for %s", opts.ClusterName)
 			snapshot, err := awseks.Collect(ctx, opts)
 			if err != nil {
@@ -179,6 +181,7 @@ func newScanK8sCommand(stdout, stderr io.Writer) *cobra.Command {
 			}
 
 			progress := newProgress(stderr)
+			opts.Progress = progress.Detail
 			progress.Step("collecting Kubernetes API inventory")
 			kubernetes, coverage, err := k8s.Collect(ctx, opts)
 			if err != nil {
@@ -245,20 +248,25 @@ func newProgress(w io.Writer) *progress {
 }
 
 func (p *progress) Step(format string, args ...any) {
-	p.current++
-	p.write("..", format, args...)
-}
-
-func (p *progress) Done(format string, args ...any) {
-	p.current++
-	p.write("ok", format, args...)
-}
-
-func (p *progress) write(mark, format string, args ...any) {
 	if p == nil || p.w == nil {
 		return
 	}
-	fmt.Fprintf(p.w, "%s %s\n", mark, fmt.Sprintf(format, args...))
+	p.current++
+	fmt.Fprintf(p.w, "◆ %02d %s\n", p.current, fmt.Sprintf(format, args...))
+}
+
+func (p *progress) Detail(format string, args ...any) {
+	if p == nil || p.w == nil {
+		return
+	}
+	fmt.Fprintf(p.w, "  ├─ %s\n", fmt.Sprintf(format, args...))
+}
+
+func (p *progress) Done(format string, args ...any) {
+	if p == nil || p.w == nil {
+		return
+	}
+	fmt.Fprintf(p.w, "✓ %s\n", fmt.Sprintf(format, args...))
 }
 
 func firstNonEmpty(values ...string) string {

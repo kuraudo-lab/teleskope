@@ -119,3 +119,25 @@ func TestScanK8sDefaultMissingKubeconfigDoesNotWriteReportDirectory(t *testing.T
 		t.Fatalf("output dir contains %d entries, want none", len(entries))
 	}
 }
+
+func TestProgressRendersNumberedStepsAndDetails(t *testing.T) {
+	var stderr bytes.Buffer
+	progress := newProgress(&stderr)
+
+	progress.Step("collecting EKS inventory for %s", "demo")
+	progress.Detail("managed add-ons=%d", 3)
+	progress.Step("writing report artifacts")
+	progress.Done("report ready: %s", "demo-20260908-120000")
+
+	got := stderr.String()
+	for _, want := range []string{
+		"◆ 01 collecting EKS inventory for demo\n",
+		"  ├─ managed add-ons=3\n",
+		"◆ 02 writing report artifacts\n",
+		"✓ report ready: demo-20260908-120000\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("progress output missing %q:\n%s", want, got)
+		}
+	}
+}
