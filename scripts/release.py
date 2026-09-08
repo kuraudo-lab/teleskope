@@ -1,7 +1,6 @@
 """Validate release archives and smoke-test the native binary without cloud access."""
 
 import hashlib
-import json
 import platform
 import subprocess
 import sys
@@ -59,27 +58,23 @@ def smoke(directory, version, os_name, arch):
         binary.write_bytes(data)
         binary.chmod(0o755)
 
-        def run(*args):
-            return subprocess.run([str(binary), *args], check=True, capture_output=True, text=True, timeout=30).stdout
+        def run(*args, check=True):
+            return subprocess.run([str(binary), *args], check=check, capture_output=True, text=True, timeout=30)
 
-        if run("--version").strip() != f"teleskope {version}":
+        if run("--version").stdout.strip() != f"teleskope {version}":
             raise ValueError("Incorrect embedded version")
-        if "Usage:" not in run("--help"):
+        if "Usage:" not in run("--help").stdout:
             raise ValueError("Missing CLI help")
-        output = run("scan", "k8s", "--kubeconfig", str(root / "missing-config"),
-                     "--timeout", "1s", "--output-dir", str(root / "reports"))
-        if not output.startswith("report "):
-            raise ValueError(f"Unexpected report output: {output}")
-        report = Path(output.removeprefix("report ").strip())
-        for name in ("snapshot.json", "source.json", "kubernetes.json", "coverage.json", "summary.md", "index.html"):
-            if not (report / name).is_file():
-                raise ValueError(f"Missing report artifact: {name}")
-        snapshot = json.loads((report / "snapshot.json").read_text(encoding="utf-8"))
-        if snapshot["source"]["version"] != version:
-            raise ValueError("Report version does not match the release")
-        html = (report / "index.html").read_text(encoding="utf-8")
-        if "__TELESKOPE_SNAPSHOT_JSON__" in html or "<html" not in html.lower():
-            raise ValueError("Embedded HTML report was not rendered")
+        missing_config = run("scan", "k8s", "--kubeconfig", str(root / "missing-config"),
+                             "--timeout", "1s", "--output-dir", str(root / "reports"), check=False)
+        if missing_config.returncode != 1:
+            raise ValueError(f"Missing kubeconfig returned {missing_config.returncode}, want 1")
+        if missing_config.stdout:
+            raise ValueError(f"Missing kubeconfig wrote stdout, want empty output: {missing_config.stdout}")
+        if "connect Kubernetes cluster" not in missing_config.stderr or "kubeconfig" not in missing_config.stderr:
+            raise ValueError(f"Missing kubeconfig stderr did not include connection context: {missing_config.stderr}")
+        if (root / "reports").exists():
+            raise ValueError("Missing kubeconfig wrote a report directory")
     print(f"Verified {os_name}/{arch} {version}")
 
 
