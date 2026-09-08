@@ -133,6 +133,25 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 					Ports:     []inventory.ServicePort{{Protocol: "TCP", Port: 80, TargetPort: "http"}},
 				},
 			},
+			GatewayClasses: []inventory.GatewayClass{{
+				ObjectRef:      inventory.ObjectRef{APIVersion: "gateway.networking.k8s.io/v1", Kind: "GatewayClass", Name: "alb"},
+				ControllerName: "gateway.k8s.aws/alb",
+			}},
+			Gateways: []inventory.Gateway{{
+				ObjectRef: inventory.ObjectRef{APIVersion: "gateway.networking.k8s.io/v1", Kind: "Gateway", Namespace: "app", Name: "public"},
+				ClassName: "alb",
+				Addresses: []string{"internal-alb.example.com"},
+				Listeners: []inventory.GatewayListener{{Name: "https", Protocol: "HTTPS", Port: 443, Hostname: "example.com", AllowedRoutes: []string{"namespaces=Same", "gateway.networking.k8s.io/HTTPRoute"}}},
+			}},
+			GatewayRoutes: []inventory.GatewayRoute{{
+				ObjectRef:  inventory.ObjectRef{APIVersion: "gateway.networking.k8s.io/v1", Kind: "HTTPRoute", Namespace: "app", Name: "web"},
+				ParentRefs: []inventory.GatewayParentRef{{Kind: "Gateway", Namespace: "app", Name: "public", SectionName: "https"}},
+				Hostnames:  []string{"example.com"},
+				Rules: []inventory.GatewayRouteRule{{
+					Matches:     []string{"PathPrefix:/"},
+					BackendRefs: []inventory.ObjectRef{{APIVersion: "v1", Kind: "Service", Namespace: "app", Name: "web"}},
+				}},
+			}},
 		},
 		Coverage: []inventory.CoverageItem{{Area: "kubernetes", Resource: "services", Status: "complete", ObjectCount: 1, CollectedAt: now}},
 	}
@@ -182,6 +201,9 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"| Running containers | 1 |",
 		"| repo/web:v1 (pods=1) | 1 | containerd | app | deployment/app/web | sha256:aaaaaaaaaaaa |",
 		"| app | web-abc | web | app | repo/web:v1 | sha256:aaaaaaaaaaaa | node-a | deployment/app/web |",
+		"| GatewayClass | alb | - | - | controller=gateway.k8s.aws/alb |",
+		"| Gateway | gateway/app/public | alb | listeners=https:HTTPS/443 host=example.com allowed=namespaces=Same,gateway.networking.k8s.io/HTTPRoute | addresses=internal-alb.example.com |",
+		"| HTTPRoute | httproute/app/web | PathPrefix:/ | hosts=example.com parents=Gateway/app/public#https | backends=service/app/web |",
 		"| Service | service/app/web | ClusterIP | app=web | TCP/80->http |",
 	} {
 		if !strings.Contains(string(summary), want) {
@@ -212,6 +234,11 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"nodeTotals",
 		"declaredTotals",
 		"quantityValue",
+		"Gateway routes",
+		"gatewayClassesTable",
+		"gatewaysTable",
+		"gatewayRoutesTable",
+		"gatewayBackends",
 		"Custom resources",
 		"function namespacesOf",
 		"resourceTypes = [",

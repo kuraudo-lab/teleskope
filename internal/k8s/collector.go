@@ -17,6 +17,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -102,8 +103,8 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 	progress(opts.Progress, "workloads=%d", len(kubernetes.Workloads))
 
 	progress(opts.Progress, "collecting networking")
-	collectNetworking(ctx, client, &kubernetes, &coverage, now)
-	progress(opts.Progress, "network services=%d endpointSlices=%d ingresses=%d ingressClasses=%d", len(kubernetes.Services), len(kubernetes.EndpointSlices), len(kubernetes.Ingresses), len(kubernetes.IngressClasses))
+	collectNetworking(ctx, client, dynamicClient, &kubernetes, &coverage, now)
+	progress(opts.Progress, "network services=%d endpointSlices=%d ingresses=%d ingressClasses=%d gatewayClasses=%d gateways=%d gatewayRoutes=%d", len(kubernetes.Services), len(kubernetes.EndpointSlices), len(kubernetes.Ingresses), len(kubernetes.IngressClasses), len(kubernetes.GatewayClasses), len(kubernetes.Gateways), len(kubernetes.GatewayRoutes))
 
 	progress(opts.Progress, "collecting storage")
 	collectStorage(ctx, client, &kubernetes, &coverage, now)
@@ -398,7 +399,7 @@ func collectWorkloads(ctx context.Context, client *kubernetes.Clientset, out *in
 	*coverage = append(*coverage, complete("kubernetes", "Workloads", len(out.Workloads)-start, now))
 }
 
-func collectNetworking(ctx context.Context, client *kubernetes.Clientset, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
+func collectNetworking(ctx context.Context, client *kubernetes.Clientset, dynamicClient dynamic.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
 	if endpointSlices, err := client.DiscoveryV1().EndpointSlices("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "EndpointSlices", err, now))
 	} else {
@@ -423,6 +424,86 @@ func collectNetworking(ctx context.Context, client *kubernetes.Clientset, out *i
 		}
 		*coverage = append(*coverage, complete("kubernetes", "Ingresses", len(out.Ingresses), now))
 	}
+	collectGateways(ctx, dynamicClient, out, coverage, now)
+}
+
+func collectGateways(ctx context.Context, client dynamic.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
+	classes, classVersion, err := listFirstGatewayResource(ctx, client, gatewayResourceVersions("gatewayclasses", "v1", "v1beta1")...)
+	if err != nil {
+		*coverage = append(*coverage, denied("kubernetes", "GatewayClasses", err, now))
+	} else {
+		for _, item := range classes {
+			out.GatewayClasses = append(out.GatewayClasses, mapGatewayClass(item, classVersion))
+		}
+		*coverage = append(*coverage, complete("kubernetes", "GatewayClasses", len(classes), now))
+	}
+
+	gateways, gatewayVersion, err := listFirstGatewayResource(ctx, client, gatewayResourceVersions("gateways", "v1", "v1beta1")...)
+	if err != nil {
+		*coverage = append(*coverage, denied("kubernetes", "Gateways", err, now))
+	} else {
+		for _, item := range gateways {
+			out.Gateways = append(out.Gateways, mapGateway(item, gatewayVersion))
+		}
+		*coverage = append(*coverage, complete("kubernetes", "Gateways", len(gateways), now))
+	}
+
+	routeTypes := []struct {
+		name string
+		kind string
+		gvrs []schema.GroupVersionResource
+	}{
+		{name: "HTTPRoutes", kind: "HTTPRoute", gvrs: gatewayResourceVersions("httproutes", "v1", "v1beta1")},
+		{name: "GRPCRoutes", kind: "GRPCRoute", gvrs: gatewayResourceVersions("grpcroutes", "v1", "v1beta1")},
+		{name: "TLSRoutes", kind: "TLSRoute", gvrs: gatewayResourceVersions("tlsroutes", "v1alpha2")},
+		{name: "TCPRoutes", kind: "TCPRoute", gvrs: gatewayResourceVersions("tcproutes", "v1alpha2")},
+		{name: "UDPRoutes", kind: "UDPRoute", gvrs: gatewayResourceVersions("udproutes", "v1alpha2")},
+	}
+	start := len(out.GatewayRoutes)
+	for _, routeType := range routeTypes {
+		items, version, err := listFirstGatewayResource(ctx, client, routeType.gvrs...)
+		if err != nil {
+			*coverage = append(*coverage, denied("kubernetes", routeType.name, err, now))
+			continue
+		}
+		for _, item := range items {
+			out.GatewayRoutes = append(out.GatewayRoutes, mapGatewayRoute(item, version, routeType.kind))
+		}
+		*coverage = append(*coverage, complete("kubernetes", routeType.name, len(items), now))
+	}
+	*coverage = append(*coverage, complete("kubernetes", "GatewayRoutes", len(out.GatewayRoutes)-start, now))
+}
+
+func gatewayResourceVersions(resource string, versions ...string) []schema.GroupVersionResource {
+	out := make([]schema.GroupVersionResource, 0, len(versions))
+	for _, version := range versions {
+		out = append(out, schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: version, Resource: resource})
+	}
+	return out
+}
+
+func listFirstGatewayResource(ctx context.Context, client dynamic.Interface, gvrs ...schema.GroupVersionResource) ([]unstructured.Unstructured, string, error) {
+	for _, gvr := range gvrs {
+		items, found, err := listGatewayResource(ctx, client, gvr)
+		if err != nil {
+			return nil, gvr.Version, err
+		}
+		if found {
+			return items, gvr.Version, nil
+		}
+	}
+	return nil, "", nil
+}
+
+func listGatewayResource(ctx context.Context, client dynamic.Interface, gvr schema.GroupVersionResource) ([]unstructured.Unstructured, bool, error) {
+	list, err := client.Resource(gvr).Namespace("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return list.Items, true, nil
 }
 
 func collectStorage(ctx context.Context, client *kubernetes.Clientset, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
@@ -925,6 +1006,184 @@ func mapIngress(ingress networkingv1.Ingress) inventory.Ingress {
 		}
 	}
 	return out
+}
+
+func mapGatewayClass(item unstructured.Unstructured, version string) inventory.GatewayClass {
+	out := inventory.GatewayClass{ObjectRef: objectRef(gatewayAPIVersion(item, version), "GatewayClass", item.GetNamespace(), item.GetName(), item.GetUID())}
+	out.ControllerName, _, _ = unstructured.NestedString(item.Object, "spec", "controllerName")
+	if parameters, ok, _ := unstructured.NestedMap(item.Object, "spec", "parametersRef"); ok {
+		out.Parameters = objectRefFromGatewayRef(parameters, item.GetNamespace(), "")
+	}
+	return out
+}
+
+func mapGateway(item unstructured.Unstructured, version string) inventory.Gateway {
+	out := inventory.Gateway{ObjectRef: objectRef(gatewayAPIVersion(item, version), "Gateway", item.GetNamespace(), item.GetName(), item.GetUID())}
+	out.ClassName, _, _ = unstructured.NestedString(item.Object, "spec", "gatewayClassName")
+	out.Addresses = appendGatewayAddresses(out.Addresses, item.Object, "spec", "addresses")
+	out.Addresses = appendGatewayAddresses(out.Addresses, item.Object, "status", "addresses")
+	listeners, _, _ := unstructured.NestedSlice(item.Object, "spec", "listeners")
+	for _, raw := range listeners {
+		listener, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		mapped := inventory.GatewayListener{}
+		mapped.Name, _, _ = unstructured.NestedString(listener, "name")
+		mapped.Protocol, _, _ = unstructured.NestedString(listener, "protocol")
+		mapped.Port, _, _ = unstructured.NestedInt64(listener, "port")
+		mapped.Hostname, _, _ = unstructured.NestedString(listener, "hostname")
+		if namespaces, ok, _ := unstructured.NestedMap(listener, "allowedRoutes", "namespaces"); ok {
+			from, _, _ := unstructured.NestedString(namespaces, "from")
+			if from != "" {
+				mapped.AllowedRoutes = append(mapped.AllowedRoutes, "namespaces="+from)
+			}
+		}
+		if kinds, ok, _ := unstructured.NestedSlice(listener, "allowedRoutes", "kinds"); ok {
+			for _, rawKind := range kinds {
+				kind, ok := rawKind.(map[string]any)
+				if !ok {
+					continue
+				}
+				group, _, _ := unstructured.NestedString(kind, "group")
+				name, _, _ := unstructured.NestedString(kind, "kind")
+				mapped.AllowedRoutes = append(mapped.AllowedRoutes, gatewayKind(group, name))
+			}
+		}
+		out.Listeners = append(out.Listeners, mapped)
+	}
+	return out
+}
+
+func appendGatewayAddresses(out []string, object map[string]any, fields ...string) []string {
+	addresses, _, _ := unstructured.NestedSlice(object, fields...)
+	seen := map[string]struct{}{}
+	for _, address := range out {
+		seen[address] = struct{}{}
+	}
+	for _, raw := range addresses {
+		address, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		value, _, _ := unstructured.NestedString(address, "value")
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func mapGatewayRoute(item unstructured.Unstructured, version, defaultKind string) inventory.GatewayRoute {
+	kind := item.GetKind()
+	if kind == "" {
+		kind = defaultKind
+	}
+	out := inventory.GatewayRoute{ObjectRef: objectRef(gatewayAPIVersion(item, version), kind, item.GetNamespace(), item.GetName(), item.GetUID())}
+	hostnames, _, _ := unstructured.NestedStringSlice(item.Object, "spec", "hostnames")
+	out.Hostnames = hostnames
+	parents, _, _ := unstructured.NestedSlice(item.Object, "spec", "parentRefs")
+	for _, raw := range parents {
+		parent, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		out.ParentRefs = append(out.ParentRefs, gatewayParentRef(parent, item.GetNamespace()))
+	}
+	rules, _, _ := unstructured.NestedSlice(item.Object, "spec", "rules")
+	for _, raw := range rules {
+		rule, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		out.Rules = append(out.Rules, gatewayRouteRule(rule, item.GetNamespace()))
+	}
+	return out
+}
+
+func gatewayAPIVersion(item unstructured.Unstructured, version string) string {
+	if apiVersion := item.GetAPIVersion(); apiVersion != "" {
+		return apiVersion
+	}
+	if version == "" {
+		version = "v1"
+	}
+	return "gateway.networking.k8s.io/" + version
+}
+
+func gatewayParentRef(value map[string]any, defaultNamespace string) inventory.GatewayParentRef {
+	out := inventory.GatewayParentRef{Namespace: defaultNamespace}
+	out.Group, _, _ = unstructured.NestedString(value, "group")
+	out.Kind, _, _ = unstructured.NestedString(value, "kind")
+	out.Namespace, _, _ = unstructured.NestedString(value, "namespace")
+	if out.Namespace == "" {
+		out.Namespace = defaultNamespace
+	}
+	out.Name, _, _ = unstructured.NestedString(value, "name")
+	out.SectionName, _, _ = unstructured.NestedString(value, "sectionName")
+	out.Port, _, _ = unstructured.NestedInt64(value, "port")
+	return out
+}
+
+func gatewayRouteRule(value map[string]any, namespace string) inventory.GatewayRouteRule {
+	out := inventory.GatewayRouteRule{}
+	matches, _, _ := unstructured.NestedSlice(value, "matches")
+	for _, raw := range matches {
+		match, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if path, ok, _ := unstructured.NestedMap(match, "path"); ok {
+			kind, _, _ := unstructured.NestedString(path, "type")
+			value, _, _ := unstructured.NestedString(path, "value")
+			out.Matches = append(out.Matches, strings.Trim(kind+":"+value, ":"))
+		}
+		if method, _, _ := unstructured.NestedString(match, "method"); method != "" {
+			out.Matches = append(out.Matches, "method="+method)
+		}
+	}
+	backendRefs, _, _ := unstructured.NestedSlice(value, "backendRefs")
+	for _, raw := range backendRefs {
+		backend, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		out.BackendRefs = append(out.BackendRefs, objectRefFromGatewayRef(backend, namespace, "Service"))
+	}
+	return out
+}
+
+func objectRefFromGatewayRef(value map[string]any, defaultNamespace, defaultKind string) inventory.ObjectRef {
+	group, _, _ := unstructured.NestedString(value, "group")
+	kind, _, _ := unstructured.NestedString(value, "kind")
+	namespace, _, _ := unstructured.NestedString(value, "namespace")
+	name, _, _ := unstructured.NestedString(value, "name")
+	if kind == "" {
+		kind = defaultKind
+	}
+	if namespace == "" {
+		namespace = defaultNamespace
+	}
+	apiVersion := group
+	if group == "" && kind == "Service" {
+		apiVersion = "v1"
+	}
+	return objectRef(apiVersion, kind, namespace, name, "")
+}
+
+func gatewayKind(group, kind string) string {
+	if group == "" {
+		return kind
+	}
+	if kind == "" {
+		return group
+	}
+	return group + "/" + kind
 }
 
 func mapStorageClass(class storagev1.StorageClass) inventory.StorageClass {

@@ -78,7 +78,7 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 		fmt.Fprintf(w, "  api      resources=%d crds=%d crInstances=%d apiServices=%d\n", len(snapshot.Kubernetes.APIResources), len(snapshot.Kubernetes.CustomResourceDefinitions), len(snapshot.Kubernetes.CustomResourceInstances), len(snapshot.Kubernetes.APIServices))
 		fmt.Fprintf(w, "  compute  nodes=%d runtimeClasses=%d\n", len(snapshot.Kubernetes.Nodes), len(snapshot.Kubernetes.RuntimeClasses))
 		fmt.Fprintf(w, "  workload workloads=%d pods=%d images=%d runningImages=%d runningContainers=%d\n", len(snapshot.Kubernetes.Workloads), len(snapshot.Kubernetes.Pods), imageCount(snapshot), len(snapshot.Kubernetes.RunningImages), len(snapshot.Kubernetes.RunningContainers))
-		fmt.Fprintf(w, "  network  services=%d endpointSlices=%d ingresses=%d classes=%d\n", len(snapshot.Kubernetes.Services), len(snapshot.Kubernetes.EndpointSlices), len(snapshot.Kubernetes.Ingresses), len(snapshot.Kubernetes.IngressClasses))
+		fmt.Fprintf(w, "  network  services=%d endpointSlices=%d ingresses=%d classes=%d gatewayClasses=%d gateways=%d gatewayRoutes=%d\n", len(snapshot.Kubernetes.Services), len(snapshot.Kubernetes.EndpointSlices), len(snapshot.Kubernetes.Ingresses), len(snapshot.Kubernetes.IngressClasses), len(snapshot.Kubernetes.GatewayClasses), len(snapshot.Kubernetes.Gateways), len(snapshot.Kubernetes.GatewayRoutes))
 		fmt.Fprintf(w, "  storage  classes=%d pv=%d pvc=%d csiDrivers=%d csiNodes=%d attachments=%d\n", len(snapshot.Kubernetes.StorageClasses), len(snapshot.Kubernetes.PersistentVolumes), len(snapshot.Kubernetes.PersistentVolumeClaims), len(snapshot.Kubernetes.CSIDrivers), len(snapshot.Kubernetes.CSINodes), len(snapshot.Kubernetes.VolumeAttachments))
 		fmt.Fprintf(w, "  config   configMaps=%d secrets=%d(metadata only)\n", len(snapshot.Kubernetes.ConfigMaps), len(snapshot.Kubernetes.Secrets))
 		fmt.Fprintln(w)
@@ -190,7 +190,7 @@ func writeRunningContainers(w io.Writer, kubernetes inventory.Kubernetes) {
 }
 
 func writeRouting(w io.Writer, kubernetes inventory.Kubernetes) {
-	if len(kubernetes.IngressClasses) == 0 && len(kubernetes.Ingresses) == 0 && len(kubernetes.Services) == 0 {
+	if len(kubernetes.IngressClasses) == 0 && len(kubernetes.Ingresses) == 0 && len(kubernetes.GatewayClasses) == 0 && len(kubernetes.Gateways) == 0 && len(kubernetes.GatewayRoutes) == 0 && len(kubernetes.Services) == 0 {
 		return
 	}
 	fmt.Fprintln(w, "routing")
@@ -217,6 +217,15 @@ func writeRouting(w io.Writer, kubernetes inventory.Kubernetes) {
 	}
 
 	endpointsByService := endpointTargetCounts(kubernetes.EndpointSlices)
+	for _, class := range sortedGatewayClasses(kubernetes.GatewayClasses) {
+		fmt.Fprintf(table, "gateway-class\t%s\t-\t-\tcontroller=%s\t-\n", class.Name, value(class.ControllerName))
+	}
+	for _, gateway := range sortedGateways(kubernetes.Gateways) {
+		fmt.Fprintf(table, "gateway\t%s\t%s\tlisteners=%s\taddresses=%s\t-\n", namespaced(gateway.ObjectRef), value(gateway.ClassName), gatewayListeners(gateway.Listeners), strings.Join(gateway.Addresses, ","))
+	}
+	for _, route := range sortedGatewayRoutes(kubernetes.GatewayRoutes) {
+		fmt.Fprintf(table, "%s\t%s\t%s\thosts=%s parents=%s\t%s\t-\n", strings.ToLower(route.Kind), namespaced(route.ObjectRef), routeRuleSummary(route.Rules), strings.Join(route.Hostnames, ","), parentRefsValue(route.ParentRefs), routeBackends(route.Rules))
+	}
 	for _, service := range sortedServices(kubernetes.Services) {
 		fmt.Fprintf(table, "service\t%s\t%s\t%s\t%s\t%d\n",
 			namespaced(service.ObjectRef),
@@ -486,6 +495,28 @@ func sortedIngresses(items []inventory.Ingress) []inventory.Ingress {
 	return out
 }
 
+func sortedGatewayClasses(items []inventory.GatewayClass) []inventory.GatewayClass {
+	out := append([]inventory.GatewayClass(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func sortedGateways(items []inventory.Gateway) []inventory.Gateway {
+	out := append([]inventory.Gateway(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedGatewayRoutes(items []inventory.GatewayRoute) []inventory.GatewayRoute {
+	out := append([]inventory.GatewayRoute(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].Kind, out[i].Namespace, out[i].Name}, "\x00")
+		right := strings.Join([]string{out[j].Kind, out[j].Namespace, out[j].Name}, "\x00")
+		return left < right
+	})
+	return out
+}
+
 func sortedServices(items []inventory.Service) []inventory.Service {
 	out := append([]inventory.Service(nil), items...)
 	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
@@ -733,6 +764,78 @@ func volumesValue(volumes []inventory.Volume) string {
 		}
 	}
 	return stringList(values)
+}
+
+func gatewayListeners(listeners []inventory.GatewayListener) string {
+	if len(listeners) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(listeners))
+	for _, listener := range listeners {
+		parts = append(parts, fmt.Sprintf("%s:%s/%d", value(listener.Name), value(listener.Protocol), listener.Port))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+func parentRefsValue(refs []inventory.GatewayParentRef) string {
+	if len(refs) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		value := ref.Kind
+		if value == "" {
+			value = "Gateway"
+		}
+		if ref.Namespace != "" {
+			value += "/" + ref.Namespace
+		}
+		value += "/" + ref.Name
+		if ref.SectionName != "" {
+			value += "#" + ref.SectionName
+		}
+		parts = append(parts, value)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+func routeRuleSummary(rules []inventory.GatewayRouteRule) string {
+	if len(rules) == 0 {
+		return "rules=0"
+	}
+	matches := make([]string, 0)
+	for _, rule := range rules {
+		matches = append(matches, rule.Matches...)
+	}
+	if len(matches) == 0 {
+		return fmt.Sprintf("rules=%d", len(rules))
+	}
+	sort.Strings(matches)
+	return strings.Join(matches, ",")
+}
+
+func routeBackends(rules []inventory.GatewayRouteRule) string {
+	refs := make([]inventory.ObjectRef, 0)
+	for _, rule := range rules {
+		refs = append(refs, rule.BackendRefs...)
+	}
+	return refsValue(dedupeObjectRefs(refs))
+}
+
+func dedupeObjectRefs(refs []inventory.ObjectRef) []inventory.ObjectRef {
+	seen := map[string]struct{}{}
+	out := make([]inventory.ObjectRef, 0, len(refs))
+	for _, ref := range refs {
+		key := strings.Join([]string{ref.APIVersion, ref.Kind, ref.Namespace, ref.Name}, "\x00")
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, ref)
+	}
+	return out
 }
 
 func servicePorts(ports []inventory.ServicePort) string {

@@ -244,6 +244,9 @@ type Kubernetes struct {
 	EndpointSlices            []EndpointSlice            `json:"endpointSlices,omitempty"`
 	IngressClasses            []IngressClass             `json:"ingressClasses,omitempty"`
 	Ingresses                 []Ingress                  `json:"ingresses,omitempty"`
+	GatewayClasses            []GatewayClass             `json:"gatewayClasses,omitempty"`
+	Gateways                  []Gateway                  `json:"gateways,omitempty"`
+	GatewayRoutes             []GatewayRoute             `json:"gatewayRoutes,omitempty"`
 	StorageClasses            []StorageClass             `json:"storageClasses,omitempty"`
 	PersistentVolumes         []PersistentVolume         `json:"persistentVolumes,omitempty"`
 	PersistentVolumeClaims    []PersistentVolumeClaim    `json:"persistentVolumeClaims,omitempty"`
@@ -532,6 +535,54 @@ type IngressRule struct {
 	PathType    string `json:"pathType,omitempty"`
 	ServiceName string `json:"serviceName,omitempty"`
 	ServicePort string `json:"servicePort,omitempty"`
+}
+
+// GatewayClass records a Gateway API GatewayClass.
+type GatewayClass struct {
+	ObjectRef
+	ControllerName string    `json:"controllerName,omitempty"`
+	Parameters     ObjectRef `json:"parameters,omitempty"`
+}
+
+// Gateway records a Gateway API Gateway.
+type Gateway struct {
+	ObjectRef
+	ClassName string            `json:"className,omitempty"`
+	Addresses []string          `json:"addresses,omitempty"`
+	Listeners []GatewayListener `json:"listeners,omitempty"`
+}
+
+// GatewayListener records a Gateway listener.
+type GatewayListener struct {
+	Name          string   `json:"name,omitempty"`
+	Protocol      string   `json:"protocol,omitempty"`
+	Port          int64    `json:"port,omitempty"`
+	Hostname      string   `json:"hostname,omitempty"`
+	AllowedRoutes []string `json:"allowedRoutes,omitempty"`
+}
+
+// GatewayRoute records a Gateway API route object.
+type GatewayRoute struct {
+	ObjectRef
+	ParentRefs []GatewayParentRef `json:"parentRefs,omitempty"`
+	Hostnames  []string           `json:"hostnames,omitempty"`
+	Rules      []GatewayRouteRule `json:"rules,omitempty"`
+}
+
+// GatewayParentRef records a Gateway API route parent reference.
+type GatewayParentRef struct {
+	Group       string `json:"group,omitempty"`
+	Kind        string `json:"kind,omitempty"`
+	Namespace   string `json:"namespace,omitempty"`
+	Name        string `json:"name,omitempty"`
+	SectionName string `json:"sectionName,omitempty"`
+	Port        int64  `json:"port,omitempty"`
+}
+
+// GatewayRouteRule records matches and backends for a Gateway API route rule.
+type GatewayRouteRule struct {
+	Matches     []string    `json:"matches,omitempty"`
+	BackendRefs []ObjectRef `json:"backendRefs,omitempty"`
 }
 
 // StorageClass records provisioner and parameters.

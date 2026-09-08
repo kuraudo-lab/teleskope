@@ -320,6 +320,9 @@ func writeKubernetes(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	fmt.Fprintf(b, "| Running containers | %d |\n", len(kubernetes.RunningContainers))
 	fmt.Fprintf(b, "| Services | %d |\n", len(kubernetes.Services))
 	fmt.Fprintf(b, "| Ingresses | %d |\n", len(kubernetes.Ingresses))
+	fmt.Fprintf(b, "| GatewayClasses | %d |\n", len(kubernetes.GatewayClasses))
+	fmt.Fprintf(b, "| Gateways | %d |\n", len(kubernetes.Gateways))
+	fmt.Fprintf(b, "| Gateway routes | %d |\n", len(kubernetes.GatewayRoutes))
 	fmt.Fprintf(b, "| StorageClasses | %d |\n", len(kubernetes.StorageClasses))
 	fmt.Fprintf(b, "| PVCs | %d |\n", len(kubernetes.PersistentVolumeClaims))
 	fmt.Fprintf(b, "| PVs | %d |\n", len(kubernetes.PersistentVolumes))
@@ -427,7 +430,7 @@ func writeRunningContainers(b *strings.Builder, kubernetes inventory.Kubernetes)
 }
 
 func writeRouting(b *strings.Builder, kubernetes inventory.Kubernetes) {
-	if len(kubernetes.IngressClasses) == 0 && len(kubernetes.Ingresses) == 0 && len(kubernetes.Services) == 0 {
+	if len(kubernetes.IngressClasses) == 0 && len(kubernetes.Ingresses) == 0 && len(kubernetes.GatewayClasses) == 0 && len(kubernetes.Gateways) == 0 && len(kubernetes.GatewayRoutes) == 0 && len(kubernetes.Services) == 0 {
 		return
 	}
 	fmt.Fprintf(b, "### Routing\n\n")
@@ -450,6 +453,15 @@ func writeRouting(b *strings.Builder, kubernetes inventory.Kubernetes) {
 				mdCell(rule.ServicePort),
 			)
 		}
+	}
+	for _, class := range sortedGatewayClasses(kubernetes.GatewayClasses) {
+		fmt.Fprintf(b, "| GatewayClass | %s | - | - | controller=%s |\n", mdCell(class.Name), mdCell(class.ControllerName))
+	}
+	for _, gateway := range sortedGateways(kubernetes.Gateways) {
+		fmt.Fprintf(b, "| Gateway | %s | %s | listeners=%s | addresses=%s |\n", mdCell(ref(gateway.ObjectRef)), mdCell(gateway.ClassName), mdCell(gatewayListeners(gateway.Listeners)), mdCell(strings.Join(gateway.Addresses, ",")))
+	}
+	for _, route := range sortedGatewayRoutes(kubernetes.GatewayRoutes) {
+		fmt.Fprintf(b, "| %s | %s | %s | hosts=%s parents=%s | backends=%s |\n", mdCell(route.Kind), mdCell(ref(route.ObjectRef)), mdCell(routeRuleSummary(route.Rules)), mdCell(strings.Join(route.Hostnames, ",")), mdCell(parentRefsValue(route.ParentRefs)), mdCell(routeBackends(route.Rules)))
 	}
 	for _, service := range sortedServices(kubernetes.Services) {
 		fmt.Fprintf(b, "| Service | %s | %s | %s | %s |\n", mdCell(ref(service.ObjectRef)), mdCell(service.Type), mdCell(mapValue(service.Selector)), mdCell(servicePorts(service.Ports)))
@@ -582,6 +594,28 @@ func sortedIngressClasses(items []inventory.IngressClass) []inventory.IngressCla
 func sortedIngresses(items []inventory.Ingress) []inventory.Ingress {
 	out := append([]inventory.Ingress(nil), items...)
 	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedGatewayClasses(items []inventory.GatewayClass) []inventory.GatewayClass {
+	out := append([]inventory.GatewayClass(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func sortedGateways(items []inventory.Gateway) []inventory.Gateway {
+	out := append([]inventory.Gateway(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedGatewayRoutes(items []inventory.GatewayRoute) []inventory.GatewayRoute {
+	out := append([]inventory.GatewayRoute(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].Kind, out[i].Namespace, out[i].Name}, "\x00")
+		right := strings.Join([]string{out[j].Kind, out[j].Namespace, out[j].Name}, "\x00")
+		return left < right
+	})
 	return out
 }
 
@@ -773,6 +807,78 @@ func images(workload inventory.Workload) string {
 		return "-"
 	}
 	return strings.Join(out, ",")
+}
+
+func gatewayListeners(listeners []inventory.GatewayListener) string {
+	if len(listeners) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(listeners))
+	for _, listener := range listeners {
+		parts = append(parts, fmt.Sprintf("%s:%s/%d host=%s allowed=%s", listener.Name, listener.Protocol, listener.Port, listener.Hostname, strings.Join(listener.AllowedRoutes, ",")))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, "; ")
+}
+
+func parentRefsValue(refs []inventory.GatewayParentRef) string {
+	if len(refs) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		value := ref.Kind
+		if value == "" {
+			value = "Gateway"
+		}
+		if ref.Namespace != "" {
+			value += "/" + ref.Namespace
+		}
+		value += "/" + ref.Name
+		if ref.SectionName != "" {
+			value += "#" + ref.SectionName
+		}
+		parts = append(parts, value)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+func routeRuleSummary(rules []inventory.GatewayRouteRule) string {
+	if len(rules) == 0 {
+		return "rules=0"
+	}
+	matches := make([]string, 0)
+	for _, rule := range rules {
+		matches = append(matches, rule.Matches...)
+	}
+	if len(matches) == 0 {
+		return fmt.Sprintf("rules=%d", len(rules))
+	}
+	sort.Strings(matches)
+	return strings.Join(matches, ",")
+}
+
+func routeBackends(rules []inventory.GatewayRouteRule) string {
+	refs := make([]inventory.ObjectRef, 0)
+	for _, rule := range rules {
+		refs = append(refs, rule.BackendRefs...)
+	}
+	return refsValue(dedupeObjectRefs(refs))
+}
+
+func dedupeObjectRefs(refs []inventory.ObjectRef) []inventory.ObjectRef {
+	seen := map[string]struct{}{}
+	out := make([]inventory.ObjectRef, 0, len(refs))
+	for _, ref := range refs {
+		key := strings.Join([]string{ref.APIVersion, ref.Kind, ref.Namespace, ref.Name}, "\x00")
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, ref)
+	}
+	return out
 }
 
 func servicePorts(ports []inventory.ServicePort) string {

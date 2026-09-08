@@ -7,11 +7,13 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
+	ktesting "k8s.io/client-go/testing"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
@@ -252,5 +254,116 @@ func TestWorkloadFromTemplateRecordsAppContainerImages(t *testing.T) {
 
 	if len(workload.Containers) != 1 || workload.Containers[0].Image != "repo/web:v1" {
 		t.Fatalf("workload containers = %#v, want repo/web:v1", workload.Containers)
+	}
+}
+
+func TestCollectGatewaysFallsBackToV1Beta1AndMapsRoutes(t *testing.T) {
+	gatewayClassV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses"}
+	gatewayV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}
+	httpRouteV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
+	grpcRouteV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "grpcroutes"}
+	gatewayClassGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "gatewayclasses"}
+	gatewayGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "gateways"}
+	httpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "httproutes"}
+	grpcRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "grpcroutes"}
+	tlsRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "tlsroutes"}
+	tcpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "tcproutes"}
+	udpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "udproutes"}
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		runtime.NewScheme(),
+		map[schema.GroupVersionResource]string{
+			gatewayClassV1GVR: "GatewayClassList",
+			gatewayV1GVR:      "GatewayList",
+			httpRouteV1GVR:    "HTTPRouteList",
+			grpcRouteV1GVR:    "GRPCRouteList",
+			gatewayClassGVR:   "GatewayClassList",
+			gatewayGVR:        "GatewayList",
+			httpRouteGVR:      "HTTPRouteList",
+			grpcRouteGVR:      "GRPCRouteList",
+			tlsRouteGVR:       "TLSRouteList",
+			tcpRouteGVR:       "TCPRouteList",
+			udpRouteGVR:       "UDPRouteList",
+		},
+	)
+	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
+		resource := action.GetResource()
+		if resource.Group == "gateway.networking.k8s.io" && resource.Version == "v1" {
+			return true, nil, apierrors.NewNotFound(resource.GroupResource(), resource.Resource)
+		}
+		switch resource {
+		case gatewayClassGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1beta1",
+				"kind":       "GatewayClass",
+				"metadata":   map[string]any{"name": "alb"},
+				"spec":       map[string]any{"controllerName": "gateway.k8s.aws/alb"},
+			}}}}, nil
+		case gatewayGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1beta1",
+				"kind":       "Gateway",
+				"metadata":   map[string]any{"namespace": "app", "name": "public"},
+				"spec": map[string]any{
+					"gatewayClassName": "alb",
+					"addresses":        []any{map[string]any{"value": "configured.example.com"}},
+					"listeners": []any{map[string]any{
+						"name":     "https",
+						"protocol": "HTTPS",
+						"port":     int64(443),
+						"hostname": "example.com",
+						"allowedRoutes": map[string]any{
+							"namespaces": map[string]any{"from": "Same"},
+							"kinds":      []any{map[string]any{"group": "gateway.networking.k8s.io", "kind": "HTTPRoute"}},
+						},
+					}},
+				},
+				"status": map[string]any{"addresses": []any{map[string]any{"value": "internal-alb.example.com"}}},
+			}}}}, nil
+		case httpRouteGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1beta1",
+				"kind":       "HTTPRoute",
+				"metadata":   map[string]any{"namespace": "app", "name": "web"},
+				"spec": map[string]any{
+					"hostnames":  []any{"example.com"},
+					"parentRefs": []any{map[string]any{"name": "public", "sectionName": "https"}},
+					"rules": []any{map[string]any{
+						"matches":     []any{map[string]any{"path": map[string]any{"type": "PathPrefix", "value": "/"}}},
+						"backendRefs": []any{map[string]any{"name": "web", "port": int64(80)}},
+					}},
+				},
+			}}}}, nil
+		case grpcRouteGVR, tlsRouteGVR, tcpRouteGVR, udpRouteGVR:
+			return true, &unstructured.UnstructuredList{}, nil
+		}
+		return false, nil, nil
+	})
+	kubernetes := inventory.Kubernetes{}
+	var coverage []inventory.CoverageItem
+
+	collectGateways(context.Background(), client, &kubernetes, &coverage, time.Now().UTC())
+
+	if len(kubernetes.GatewayClasses) != 1 || kubernetes.GatewayClasses[0].APIVersion != "gateway.networking.k8s.io/v1beta1" || kubernetes.GatewayClasses[0].ControllerName != "gateway.k8s.aws/alb" {
+		t.Fatalf("gateway classes = %#v, want v1beta1 alb", kubernetes.GatewayClasses)
+	}
+	if len(kubernetes.Gateways) != 1 || kubernetes.Gateways[0].ClassName != "alb" || len(kubernetes.Gateways[0].Listeners) != 1 || len(kubernetes.Gateways[0].Addresses) != 2 {
+		t.Fatalf("gateways = %#v, want one alb gateway with listener and spec/status addresses", kubernetes.Gateways)
+	}
+	listener := kubernetes.Gateways[0].Listeners[0]
+	if listener.Name != "https" || listener.Protocol != "HTTPS" || listener.Port != 443 || len(listener.AllowedRoutes) != 2 {
+		t.Fatalf("listener = %#v, want https listener with allowed routes", listener)
+	}
+	if len(kubernetes.GatewayRoutes) != 1 || kubernetes.GatewayRoutes[0].Kind != "HTTPRoute" || kubernetes.GatewayRoutes[0].APIVersion != "gateway.networking.k8s.io/v1beta1" {
+		t.Fatalf("gateway routes = %#v, want one v1beta1 HTTPRoute", kubernetes.GatewayRoutes)
+	}
+	route := kubernetes.GatewayRoutes[0]
+	if len(route.ParentRefs) != 1 || route.ParentRefs[0].Name != "public" || route.ParentRefs[0].Namespace != "app" || route.ParentRefs[0].SectionName != "https" {
+		t.Fatalf("parent refs = %#v, want app public gateway listener", route.ParentRefs)
+	}
+	if len(route.Rules) != 1 || len(route.Rules[0].Matches) != 1 || route.Rules[0].Matches[0] != "PathPrefix:/" {
+		t.Fatalf("rules = %#v, want path prefix match", route.Rules)
+	}
+	if len(route.Rules[0].BackendRefs) != 1 || route.Rules[0].BackendRefs[0].Kind != "Service" || route.Rules[0].BackendRefs[0].Name != "web" {
+		t.Fatalf("backend refs = %#v, want service app/web", route.Rules[0].BackendRefs)
 	}
 }
