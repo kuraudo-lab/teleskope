@@ -9,8 +9,9 @@ relationships so people can assess cluster capabilities themselves.
 Planned outputs are terminal summaries, TUI, JSON, YAML, Markdown, offline HTML,
 and an interactive local web server. Polling-based continuous collection and an embedded web server are now
 implemented through `serve k8s` and `serve eks`. Informer watches, packaged
-in-cluster execution, automated capability assessment, and migration analysis
-remain later stages.
+in-cluster execution, migration analysis and active capability verification remain later stages.
+Read-only capability summaries are implemented in `internal/advisor`; see
+[Advisor](advisor.md) for evidence semantics and limitations.
 
 ## Package boundaries
 
