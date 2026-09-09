@@ -82,18 +82,36 @@ in-cluster deployment are subsequent steps.
 
 ## Download binaries
 
-Download an archive and `checksums.txt` from
+Install the latest stable release with one command.
+
+Linux/macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kuraudo-lab/teleskope/main/scripts/install.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/kuraudo-lab/teleskope/main/scripts/install.ps1 | iex
+```
+
+By default, Unix installs to `$HOME/.local/bin` and Windows installs to
+`$env:LOCALAPPDATA\Microsoft\WindowsApps`. Set `INSTALL_DIR` to choose another
+directory.
+
+Manual downloads are available from
 [GitHub Releases](https://github.com/kuraudo-lab/teleskope/releases).
 Packages cover Linux, macOS (`darwin`), and Windows on `amd64` and `arm64`.
 Choose `arm64` for Apple Silicon and `amd64` for Intel/AMD x64 machines.
 Linux/macOS archives use `.tar.gz`; Windows archives use `.zip` and contain
-`teleskope.exe`. Extract the binary into a directory on your `PATH`.
+`teleskope.exe`.
 
-Verify the archive's SHA-256 against `checksums.txt` before installing. Use
-`sha256sum` on Linux, `shasum -a 256` on macOS, or `Get-FileHash -Algorithm SHA256`
-in PowerShell. Confirm the installation with `teleskope --version`.
-The initial packages do not include Developer ID notarization or Windows
-Authenticode signatures.
+Install scripts and release workflows verify the archive's SHA-256 against
+`checksums.txt` before installing. To verify manually, use `sha256sum` on Linux,
+`shasum -a 256` on macOS, or `Get-FileHash -Algorithm SHA256` in PowerShell.
+Confirm the installation with `teleskope --version`. The initial packages do
+not include Developer ID notarization or Windows Authenticode signatures.
 
 ## Releasing
 
