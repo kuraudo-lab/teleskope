@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -194,6 +195,51 @@ func TestPollingSharedNonOverlappingAndCancellation(t *testing.T) {
 		t.Fatalf("calls=%d", calls.Load())
 	}
 }
+
+func TestPollingLogsRefreshLifecycle(t *testing.T) {
+	logs := make(chan string, 4)
+	source := Source{
+		Name:     "kubernetes",
+		Interval: time.Hour,
+		Timeout:  time.Second,
+		Collect: func(context.Context) (*inventory.Snapshot, error) {
+			return podSnapshot(1, "complete"), nil
+		},
+		Log: func(format string, args ...any) {
+			logs <- fmt.Sprintf(format, args...)
+		},
+	}
+	s, err := New([]Source{source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { s.Run(ctx); close(done) }()
+	defer func() {
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("cancellation did not stop worker")
+		}
+	}()
+
+	var got []string
+	for len(got) < 2 {
+		select {
+		case line := <-logs:
+			got = append(got, line)
+		case <-time.After(time.Second):
+			t.Fatalf("missing lifecycle logs: %#v", got)
+		}
+	}
+	joined := strings.Join(got, "\n")
+	if !strings.Contains(joined, "[kubernetes] refresh starting") || !strings.Contains(joined, "[kubernetes] refresh published state=ready") {
+		t.Fatalf("logs = %#v, want refresh start and publish", got)
+	}
+}
+
 func TestAttemptTimeoutAndRetry(t *testing.T) {
 	var calls atomic.Int32
 	recovered := make(chan struct{})

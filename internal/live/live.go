@@ -22,6 +22,7 @@ type Source struct {
 	Name              string
 	Interval, Timeout time.Duration
 	Collect           func(context.Context) (*inventory.Snapshot, error)
+	Log               func(format string, args ...any)
 }
 
 // Status describes the latest attempt independently of the retained data.
@@ -89,6 +90,8 @@ func (s *Store) Run(ctx context.Context) {
 		go func() {
 			defer wg.Done()
 			for ctx.Err() == nil {
+				started := time.Now().UTC()
+				logf(source.Log, "[%s] refresh starting timeout=%s", source.Name, source.Timeout)
 				s.begin(source.Name)
 				attemptCtx, cancel := context.WithTimeout(ctx, source.Timeout)
 				snapshot, err := source.Collect(attemptCtx)
@@ -101,7 +104,8 @@ func (s *Store) Run(ctx context.Context) {
 				}
 				// Small jitter prevents synchronized full lists from multiple installations.
 				delay := source.Interval + time.Duration(float64(source.Interval)*rand.Float64()*0.1)
-				s.finish(source.Name, snapshot, err, time.Now().UTC().Add(delay))
+				status := s.finish(source.Name, snapshot, err, time.Now().UTC().Add(delay))
+				logRefreshResult(source.Log, source.Name, status, time.Since(started).Round(time.Millisecond))
 				timer := time.NewTimer(delay)
 				select {
 				case <-ctx.Done():
@@ -113,6 +117,42 @@ func (s *Store) Run(ctx context.Context) {
 		}()
 	}
 	wg.Wait()
+}
+
+func logf(fn func(format string, args ...any), format string, args ...any) {
+	if fn != nil {
+		fn(format, args...)
+	}
+}
+
+func logRefreshResult(fn func(format string, args ...any), name string, status Status, duration time.Duration) {
+	if fn == nil {
+		return
+	}
+	next := "-"
+	if status.NextAttempt != nil {
+		next = status.NextAttempt.Format(time.RFC3339)
+	}
+	switch status.State {
+	case "ready":
+		fn("[%s] refresh published state=ready duration=%s next=%s", name, duration, next)
+	case "partial":
+		fn("[%s] refresh published state=partial duration=%s non_complete=%d next=%s", name, duration, nonCompleteCoverage(status.Coverage), next)
+	case "stale":
+		fn("[%s] refresh retained previous data state=stale duration=%s error=%s next=%s", name, duration, status.Error, next)
+	default:
+		fn("[%s] refresh failed state=%s duration=%s error=%s next=%s", name, status.State, duration, status.Error, next)
+	}
+}
+
+func nonCompleteCoverage(items []inventory.CoverageItem) int {
+	count := 0
+	for _, item := range items {
+		if item.Status != "complete" {
+			count++
+		}
+	}
+	return count
 }
 
 func (s *Store) begin(name string) {
@@ -144,7 +184,7 @@ func coverageRegression(old, next []inventory.CoverageItem) error {
 	return nil
 }
 
-func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, next time.Time) {
+func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, next time.Time) Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e := s.entries[name]
@@ -187,6 +227,7 @@ func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, nex
 		s.revision++
 	}
 	s.encode()
+	return e.status
 }
 
 // encode runs under the writer lock, or during construction.

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -50,6 +51,12 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 				defer logMu.Unlock()
 				fmt.Fprintf(stderr, format+"\n", args...)
 			}
+			kubeOpts.Progress = func(format string, args ...any) {
+				log("[kubernetes] "+format, args...)
+			}
+			awsOpts.Progress = func(format string, args ...any) {
+				log("[eks] "+format, args...)
+			}
 			var sources []live.Source
 			if !skipKubernetes {
 				var collector *k8s.Collector
@@ -60,12 +67,10 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 							collector, err = k8s.NewCollector(kubeOpts)
 						}
 						if err != nil {
-							log("Kubernetes refresh: %v", err)
 							return nil, err
 						}
 						data, coverage, err := collector.Collect(ctx)
 						if err != nil {
-							log("Kubernetes refresh: %v", err)
 							return nil, err
 						}
 						return &inventory.Snapshot{
@@ -74,6 +79,7 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 							Kubernetes: data, Coverage: coverage,
 						}, nil
 					},
+					Log: log,
 				})
 			}
 			if target == "eks" {
@@ -85,15 +91,11 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 							collector, err = awseks.NewCollector(ctx, awsOpts)
 						}
 						if err != nil {
-							log("EKS refresh: %v", err)
 							return nil, err
 						}
-						snapshot, err := collector.Collect(ctx)
-						if err != nil {
-							log("EKS refresh: %v", err)
-						}
-						return snapshot, err
+						return collector.Collect(ctx)
 					},
+					Log: log,
 				})
 			}
 			store, err := live.New(sources)
@@ -105,6 +107,7 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 				return fmt.Errorf("listen: %w", err)
 			}
 			defer listener.Close()
+			log("live serve starting target=%s listen=%s interval=%s aws_interval=%s timeout=%s sources=%s", target, listener.Addr(), interval, awsInterval, timeout, sourceNames(sources))
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			ctx, cancel := context.WithCancel(ctx)
@@ -122,6 +125,7 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 			case err = <-serverDone:
 				cancel()
 			case <-ctx.Done():
+				log("live serve shutting down")
 				shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 				if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
 					_ = server.Close()
@@ -148,4 +152,12 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 		cmd.Flags().BoolVar(&skipKubernetes, "skip-kubernetes", false, "collect only AWS-side inventory")
 	}
 	return cmd
+}
+
+func sourceNames(sources []live.Source) string {
+	names := make([]string, 0, len(sources))
+	for _, source := range sources {
+		names = append(names, source.Name)
+	}
+	return strings.Join(names, ",")
 }
