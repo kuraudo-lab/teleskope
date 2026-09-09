@@ -36,10 +36,21 @@ type Status struct {
 	Coverage    []inventory.CoverageItem `json:"coverage,omitempty"`
 }
 
+// Event records a recent live-server operation for display in the web UI.
+type Event struct {
+	Sequence uint64    `json:"sequence"`
+	At       time.Time `json:"at"`
+	Source   string    `json:"source"`
+	Level    string    `json:"level"`
+	Message  string    `json:"message"`
+}
+
 type entry struct {
 	status   Status
 	snapshot *inventory.Snapshot
 }
+
+const maxEvents = 200
 
 // Store owns all mutable state; handlers receive pre-encoded immutable responses.
 type Store struct {
@@ -47,6 +58,8 @@ type Store struct {
 	order    []string
 	sources  []Source
 	entries  map[string]*entry
+	events   []Event
+	eventSeq uint64
 	revision uint64
 	body     []byte
 	etag     string
@@ -56,6 +69,7 @@ type response struct {
 	Revision uint64              `json:"revision"`
 	Snapshot *inventory.Snapshot `json:"snapshot"`
 	Sources  map[string]Status   `json:"sources"`
+	Events   []Event             `json:"events,omitempty"`
 }
 
 // New validates the source configuration before any collection starts.
@@ -91,6 +105,7 @@ func (s *Store) Run(ctx context.Context) {
 			defer wg.Done()
 			for ctx.Err() == nil {
 				started := time.Now().UTC()
+				s.AddEvent(source.Name, "info", "refresh starting timeout=%s", source.Timeout)
 				logf(source.Log, "[%s] refresh starting timeout=%s", source.Name, source.Timeout)
 				s.begin(source.Name)
 				attemptCtx, cancel := context.WithTimeout(ctx, source.Timeout)
@@ -105,6 +120,8 @@ func (s *Store) Run(ctx context.Context) {
 				// Small jitter prevents synchronized full lists from multiple installations.
 				delay := source.Interval + time.Duration(float64(source.Interval)*rand.Float64()*0.1)
 				status := s.finish(source.Name, snapshot, err, time.Now().UTC().Add(delay))
+				level, message := refreshResultEvent(status, time.Since(started).Round(time.Millisecond))
+				s.AddEvent(source.Name, level, "%s", message)
 				logRefreshResult(source.Log, source.Name, status, time.Since(started).Round(time.Millisecond))
 				timer := time.NewTimer(delay)
 				select {
@@ -122,6 +139,45 @@ func (s *Store) Run(ctx context.Context) {
 func logf(fn func(format string, args ...any), format string, args ...any) {
 	if fn != nil {
 		fn(format, args...)
+	}
+}
+
+// AddEvent appends a bounded operational event and republishes the response.
+func (s *Store) AddEvent(source, level, format string, args ...any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.eventSeq++
+	if level == "" {
+		level = "info"
+	}
+	s.events = append(s.events, Event{
+		Sequence: s.eventSeq,
+		At:       time.Now().UTC(),
+		Source:   source,
+		Level:    level,
+		Message:  fmt.Sprintf(format, args...),
+	})
+	if len(s.events) > maxEvents {
+		copy(s.events, s.events[len(s.events)-maxEvents:])
+		s.events = s.events[:maxEvents]
+	}
+	s.encode()
+}
+
+func refreshResultEvent(status Status, duration time.Duration) (string, string) {
+	next := "-"
+	if status.NextAttempt != nil {
+		next = status.NextAttempt.Format(time.RFC3339)
+	}
+	switch status.State {
+	case "ready":
+		return "info", fmt.Sprintf("refresh published state=ready duration=%s next=%s", duration, next)
+	case "partial":
+		return "warn", fmt.Sprintf("refresh published state=partial duration=%s non_complete=%d next=%s", duration, nonCompleteCoverage(status.Coverage), next)
+	case "stale":
+		return "warn", fmt.Sprintf("refresh retained previous data state=stale duration=%s error=%s next=%s", duration, status.Error, next)
+	default:
+		return "error", fmt.Sprintf("refresh failed state=%s duration=%s error=%s next=%s", status.State, duration, status.Error, next)
 	}
 }
 
@@ -255,6 +311,7 @@ func (s *Store) encode() {
 			out.Snapshot.CollectedAt = e.snapshot.CollectedAt
 		}
 	}
+	out.Events = append([]Event(nil), s.events...)
 	s.body, _ = json.Marshal(out)
 	s.etag = fmt.Sprintf("\"%x\"", sha256.Sum256(s.body))
 }

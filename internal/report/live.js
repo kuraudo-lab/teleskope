@@ -1,7 +1,7 @@
 // Same-origin browser updates read the shared snapshot; they never trigger scans.
 let liveRevision = -1, liveETag = '', updatesPaused = false;
 const liveStatus = byId('live-status');
-liveStatus.innerHTML = '<div id="live-message" role="status" aria-atomic="true">Waiting for first snapshot…</div><details id="live-coverage"><summary>Collection details</summary><div id="live-details"></div></details><button id="pause-updates" type="button">Pause page updates</button>';
+liveStatus.innerHTML = '<div id="live-message" role="status" aria-atomic="true">Waiting for first snapshot…</div><details id="live-coverage"><summary>Collection details</summary><div id="live-details"></div></details><details id="live-events" open><summary>Recent events</summary><div id="live-event-list" class="live-event-list"></div></details><button id="pause-updates" type="button">Pause page updates</button>';
 document.querySelector('.brand p').textContent = 'live cluster inventory';
 byId('title').textContent = 'Waiting for first snapshot';
 byId('subtitle').textContent = 'Collection runs in the background. This page retries automatically.';
@@ -46,7 +46,7 @@ function applyLiveSnapshot(next) {
     }
   }
 }
-function renderLiveStatus(sources) {
+function renderLiveStatus(sources, events) {
   const labels = {loading:'Loading', ready:'Up to date', partial:'Partial coverage', stale:'Stale — showing previous data', error:'No data — collection failed'};
   const lines = Object.entries(sources).map(([name, s]) => {
     const last = s.lastSuccess ? new Date(s.lastSuccess).toLocaleString() : 'none yet';
@@ -61,6 +61,16 @@ function renderLiveStatus(sources) {
       (s.nextAttempt ? ' · next attempt ' + esc(new Date(s.nextAttempt).toLocaleTimeString()) : '') + '</p>' +
       errors.map(c => '<p>' + esc(c.resource) + ': ' + esc(c.status) + ' — ' + esc(c.reason) + '</p>').join('');
   }).join('');
+  byId('live-event-list').innerHTML = arr(events).slice(-80).reverse().map(event => {
+    const at = event.at ? new Date(event.at).toLocaleTimeString() : '-';
+    const level = event.level || 'info';
+    return '<div class="live-event live-event-' + esc(level) + '">' +
+      '<span class="live-event-time">' + esc(at) + '</span>' +
+      '<span class="live-event-source">' + esc(event.source || '-') + '</span>' +
+      '<span class="live-event-level">' + esc(level) + '</span>' +
+      '<span class="live-event-message">' + esc(event.message || '-') + '</span>' +
+      '</div>';
+  }).join('') || '<p class="muted">No events yet</p>';
 }
 async function refreshLivePage() {
   try {
@@ -79,7 +89,7 @@ async function refreshLivePage() {
             applyLiveSnapshot(data.snapshot);
             liveRevision = data.revision;
           }
-          renderLiveStatus(data.sources);
+          renderLiveStatus(data.sources, data.events);
           liveETag = result.headers.get('ETag') || '';
         }
       }

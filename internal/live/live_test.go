@@ -134,7 +134,39 @@ func TestHTTPReadOnlyAndConditionalRequests(t *testing.T) {
 	if changed.Code != 200 {
 		t.Fatal("status change did not invalidate ETag")
 	}
+	eventReq := httptest.NewRequest("GET", "/api/snapshot", nil)
+	eventReq.Header.Set("If-None-Match", changed.Header().Get("ETag"))
+	s.AddEvent("kubernetes", "info", "refresh starting")
+	eventChanged := httptest.NewRecorder()
+	h.ServeHTTP(eventChanged, eventReq)
+	if eventChanged.Code != 200 {
+		t.Fatal("event change did not invalidate ETag")
+	}
+	var eventView response
+	if err := json.Unmarshal(eventChanged.Body.Bytes(), &eventView); err != nil {
+		t.Fatal(err)
+	}
+	if len(eventView.Events) != 1 || eventView.Events[0].Source != "kubernetes" || eventView.Events[0].Message != "refresh starting" {
+		t.Fatalf("events = %#v, want recent event in response", eventView.Events)
+	}
 }
+
+func TestEventBufferKeepsRecentEvents(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+
+	for i := range maxEvents + 5 {
+		s.AddEvent("kubernetes", "debug", "event %03d", i)
+	}
+
+	got := readView(t, s)
+	if len(got.Events) != maxEvents {
+		t.Fatalf("events=%d, want %d", len(got.Events), maxEvents)
+	}
+	if got.Events[0].Message != "event 005" || got.Events[len(got.Events)-1].Message != "event 204" {
+		t.Fatalf("events range = %q..%q, want recent bounded events", got.Events[0].Message, got.Events[len(got.Events)-1].Message)
+	}
+}
+
 func TestPollingSharedNonOverlappingAndCancellation(t *testing.T) {
 	var calls atomic.Int32
 	started := make(chan struct{}, 2)

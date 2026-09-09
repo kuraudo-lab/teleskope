@@ -51,11 +51,18 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 				defer logMu.Unlock()
 				fmt.Fprintf(stderr, format+"\n", args...)
 			}
+			var store *live.Store
 			kubeOpts.Progress = func(format string, args ...any) {
 				log("[kubernetes] "+format, args...)
+				if store != nil {
+					store.AddEvent("kubernetes", "debug", format, args...)
+				}
 			}
 			awsOpts.Progress = func(format string, args ...any) {
 				log("[eks] "+format, args...)
+				if store != nil {
+					store.AddEvent("eks", "debug", format, args...)
+				}
 			}
 			var sources []live.Source
 			if !skipKubernetes {
@@ -108,6 +115,7 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 			}
 			defer listener.Close()
 			log("live serve starting target=%s listen=%s interval=%s aws_interval=%s timeout=%s sources=%s", target, listener.Addr(), interval, awsInterval, timeout, sourceNames(sources))
+			store.AddEvent("serve", "info", "starting target=%s listen=%s interval=%s aws_interval=%s timeout=%s sources=%s", target, listener.Addr(), interval, awsInterval, timeout, sourceNames(sources))
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			ctx, cancel := context.WithCancel(ctx)
@@ -126,6 +134,7 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 				cancel()
 			case <-ctx.Done():
 				log("live serve shutting down")
+				store.AddEvent("serve", "info", "shutting down")
 				shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 				if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
 					_ = server.Close()

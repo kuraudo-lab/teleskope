@@ -269,3 +269,18 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		t.Fatalf("index.html should not render coverage panel")
 	}
 }
+
+func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
+	html := LiveHTML()
+	for _, want := range []string{
+		`<body data-live="true" class="live-loading">`,
+		`id="live-events"`,
+		"Recent events",
+		"live-event-list",
+		"renderLiveStatus(data.sources, data.events)",
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("live HTML missing %q", want)
+		}
+	}
+}
