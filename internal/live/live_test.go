@@ -302,3 +302,22 @@ func TestAttemptTimeoutAndRetry(t *testing.T) {
 	cancel()
 	<-done
 }
+
+func TestAdvisorFreshnessChangesWithoutDataRevision(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	s.finish("kubernetes", podSnapshot(1, "complete"), nil, time.Now())
+	before := readView(t, s)
+	if before.Advisor == nil {
+		t.Fatal("missing advisor")
+	}
+	s.finish("kubernetes", nil, errors.New("offline"), time.Now())
+	after := readView(t, s)
+	if after.Revision != before.Revision {
+		t.Fatal("failure changed data revision")
+	}
+	for _, c := range after.Advisor.Capabilities {
+		if c.Freshness != "stale" {
+			t.Fatalf("stale capability labeled %s", c.Freshness)
+		}
+	}
+}

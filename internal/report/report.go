@@ -14,6 +14,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/kuraudo-lab/teleskope/internal/advisor"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
 
@@ -75,6 +76,9 @@ func WriteDirectory(snapshot *inventory.Snapshot, opts Options) (*Artifact, erro
 		if err := artifact.writeJSON("kubernetes.json", snapshot.Kubernetes); err != nil {
 			return nil, err
 		}
+	}
+	if err := artifact.writeJSON("advisor.json", advisor.Analyze(snapshot)); err != nil {
+		return nil, err
 	}
 	if err := artifact.writeJSON("coverage.json", snapshot.Coverage); err != nil {
 		return nil, err
@@ -153,6 +157,12 @@ func Markdown(snapshot *inventory.Snapshot) string {
 func markdown(snapshot *inventory.Snapshot, title string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Teleskope scan summary\n\n")
+	analysis := advisor.Analyze(snapshot)
+	fmt.Fprintf(&b, "## Advisor\n\n%s\n\n", analysis.Summary)
+	for _, c := range analysis.Capabilities {
+		fmt.Fprintf(&b, "- **%s / %s**: %s (%s; %s; coverage: %s). %s\n", mdInline(c.Key), mdInline(c.Scope), mdInline(c.Assessment), mdInline(c.Basis), mdInline(c.Freshness), mdInline(c.Coverage), mdInline(c.Summary))
+	}
+	fmt.Fprintln(&b)
 	fmt.Fprintf(&b, "- Target: `%s`\n", mdInline(title))
 	fmt.Fprintf(&b, "- Collected at: `%s`\n", snapshot.CollectedAt.Format(time.RFC3339))
 	fmt.Fprintf(&b, "- Schema: `%s`\n", mdInline(snapshot.SchemaVersion))

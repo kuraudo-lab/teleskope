@@ -86,6 +86,7 @@ Each report keeps raw evidence and a human-readable view side by side:
 | `snapshot.json` | Complete inventory snapshot for automation and later analysis |
 | `eks.json` | AWS-side EKS metadata, add-ons, node groups, access entries, and Pod Identity associations |
 | `kubernetes.json` | Kubernetes API resources, workloads, networking, storage, RBAC, and platform objects |
+| `advisor.json` | Evidence-backed cluster capability assessment |
 | `coverage.json` | Collection coverage and errors, so partial inventory is explicit |
 | `summary.md` | Markdown review notes for quick scanning and sharing |
 | `index.html` | Interactive static report with filters, topology, and resource details |
@@ -93,6 +94,14 @@ Each report keeps raw evidence and a human-readable view side by side:
 Scan progress is written to stderr while the final report path is written to
 stdout. Kubernetes Secret values are not collected; Secrets are recorded as
 metadata-only objects.
+
+## Cluster advisor
+
+The **Advisor** tab summarizes Ingress and Gateway classes, storage RWX binding
+evidence, volume expansion configuration, and custom API declarations. Expand
+each result to see evidence and limitations. It distinguishes unknown capability
+from unsupported configuration and marks retained live data as stale. See
+[Advisor semantics](docs/advisor.md) for the first version's scope.
 
 ## Live inventory
 

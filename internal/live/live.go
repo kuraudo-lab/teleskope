@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kuraudo-lab/teleskope/internal/advisor"
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/report"
@@ -66,6 +67,7 @@ type Store struct {
 }
 
 type response struct {
+	Advisor  *advisor.Report     `json:"advisor,omitempty"`
 	Revision uint64              `json:"revision"`
 	Snapshot *inventory.Snapshot `json:"snapshot"`
 	Sources  map[string]Status   `json:"sources"`
@@ -310,6 +312,15 @@ func (s *Store) encode() {
 		if e.snapshot.CollectedAt.After(out.Snapshot.CollectedAt) {
 			out.Snapshot.CollectedAt = e.snapshot.CollectedAt
 		}
+	}
+	if out.Snapshot != nil {
+		analysis := advisor.Analyze(out.Snapshot)
+		state := "unavailable"
+		if source, ok := out.Sources["kubernetes"]; ok {
+			state = source.State
+		}
+		analysis.SetFreshness(state)
+		out.Advisor = &analysis
 	}
 	out.Events = append([]Event(nil), s.events...)
 	s.body, _ = json.Marshal(out)

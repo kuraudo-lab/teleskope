@@ -85,6 +85,8 @@ async function refreshLivePage() {
         if (!result.ok) throw new Error('HTTP ' + result.status);
         const data = await result.json();
         if (!updatesPaused && !topologyDrag.active) {
+          advisorReport = data.advisor || {};
+          renderAdvisor();
           if (data.snapshot && data.revision !== liveRevision) {
             applyLiveSnapshot(data.snapshot);
             liveRevision = data.revision;

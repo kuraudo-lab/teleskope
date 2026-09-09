@@ -38,6 +38,8 @@
     .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
     .panel h3 { margin:0; padding:16px 18px; border-bottom:1px solid var(--line); font-size:16px; }
     .panel .body { padding:16px 18px; }
+    .advisor-body { min-width:0; overflow-wrap:anywhere; }
+    .advisor-body > p:first-child { margin-top:0; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 12px; border-bottom:1px solid rgba(148,163,184,.12); vertical-align:top; }
     th { color:var(--muted); text-align:left; font-weight:600; position:sticky; top:0; background:rgba(15,23,42,.96); z-index:1; }
@@ -69,7 +71,8 @@
     pre { max-height:70vh; overflow:auto; white-space:pre-wrap; color:#cbd5e1; font-size:12px; }
     .empty { color:var(--muted); padding:18px; }
     @media (max-width:1000px) { .app { grid-template-columns:1fr; } aside { position:relative; height:auto; } .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } header { flex-direction:column; } .topology-shell { height:640px; } }
-  </style>
+  summary:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -83,7 +86,17 @@
       <div class="toolbar"><select id="focus" aria-label="Namespace"><option value="all">All namespaces</option></select><select id="resourceType" aria-label="Resource type"><option value="all">All resource types</option></select></div>
     </header>
     <section class="section active" data-section="overview"><div id="cards" class="grid cards"></div><div class="topology-shell"><div class="panel"><h3>Topology</h3><div id="topology" class="topology"></div></div></div></section>
-    <section class="section stack" data-section="eks"><div class="panel"><h3>EKS overview</h3><div class="scroll"><table id="eksOverviewTable"></table></div></div><div class="panel"><h3>Upgrade / rollback insights</h3><div class="scroll"><table id="eksInsightsTable"></table></div></div><div class="panel"><h3>Compute capacity and declared usage</h3><div class="scroll"><table id="eksCapacityTable"></table></div></div><div class="panel"><h3>Network</h3><div class="scroll"><table id="eksNetworkTable"></table></div></div><div class="panel"><h3>Security and identity</h3><div class="scroll"><table id="eksSecurityTable"></table></div></div><div class="panel"><h3>Access entries</h3><div class="scroll"><table id="accessEntriesTable"></table></div></div><div class="panel"><h3>Pod Identity associations</h3><div class="scroll"><table id="podIdentityTable"></table></div></div><div class="panel"><h3>Managed add-ons</h3><div class="scroll"><table id="addonsTable"></table></div></div><div class="panel"><h3>Managed nodegroups</h3><div class="scroll"><table id="nodegroupsTable"></table></div></div></section>
+    <section class="section stack" data-section="advisor">
+      <div class="panel">
+        <h3>Cluster capabilities</h3>
+        <div class="body advisor-body">
+          <p>Cluster-wide assessment; namespace and resource filters do not apply.</p>
+          <p id="advisor-summary"></p>
+          <div id="advisor-capabilities" class="stack"></div>
+        </div>
+      </div>
+    </section>
+<section class="section stack" data-section="eks"><div class="panel"><h3>EKS overview</h3><div class="scroll"><table id="eksOverviewTable"></table></div></div><div class="panel"><h3>Upgrade / rollback insights</h3><div class="scroll"><table id="eksInsightsTable"></table></div></div><div class="panel"><h3>Compute capacity and declared usage</h3><div class="scroll"><table id="eksCapacityTable"></table></div></div><div class="panel"><h3>Network</h3><div class="scroll"><table id="eksNetworkTable"></table></div></div><div class="panel"><h3>Security and identity</h3><div class="scroll"><table id="eksSecurityTable"></table></div></div><div class="panel"><h3>Access entries</h3><div class="scroll"><table id="accessEntriesTable"></table></div></div><div class="panel"><h3>Pod Identity associations</h3><div class="scroll"><table id="podIdentityTable"></table></div></div><div class="panel"><h3>Managed add-ons</h3><div class="scroll"><table id="addonsTable"></table></div></div><div class="panel"><h3>Managed nodegroups</h3><div class="scroll"><table id="nodegroupsTable"></table></div></div></section>
     <section class="section stack" data-section="nodes"><div class="panel"><h3>Nodes</h3><div class="scroll"><table id="nodesTable"></table></div></div></section>
     <section class="section stack" data-section="images"><div class="panel"><h3>Running images</h3><div class="scroll"><table id="imagesTable"></table></div></div><div class="panel"><h3>Running containers</h3><div class="scroll"><table id="containersTable"></table></div></div></section>
     <section class="section stack" data-section="crds"><div class="panel"><h3>CRD types</h3><div class="scroll"><table id="crdTypesTable"></table></div></div><div class="panel"><h3>CRD instances</h3><div class="scroll"><table id="crdInstancesTable"></table></div></div></section>
@@ -93,13 +106,15 @@
   </main>
 </div>
 <div class="drawer" id="drawer"><header><h3 id="drawerTitle">Details</h3><button type="button" onclick="closeDrawer()">Close</button></header><pre id="drawerBody"></pre></div>
+<script id="advisor-data" type="application/json">__TELESKOPE_ADVISOR_JSON__</script>
 <script id="snapshot-data" type="application/json">__TELESKOPE_SNAPSHOT_JSON__</script>
 <script>
+let advisorReport = JSON.parse(document.getElementById("advisor-data").textContent);
 let snapshot = JSON.parse(document.getElementById('snapshot-data').textContent);
 let k = snapshot.kubernetes || {};
 let eks = snapshot.eks || {};
 let cluster = eks.cluster || {};
-const navItems = [['overview','Overview'], ['eks','EKS'], ['nodes','Nodes'], ['images','Running images'], ['crds','Custom resources'], ['workloads','Workloads'], ['network','Network'], ['storage','Storage']];
+const navItems = [['overview','Overview'], ['advisor','Advisor'], ['eks','EKS'], ['nodes','Nodes'], ['images','Running images'], ['crds','Custom resources'], ['workloads','Workloads'], ['network','Network'], ['storage','Storage']];
 const byId = id => document.getElementById(id);
 const esc = v => String(v ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ref = r => !r || !r.name ? '-' : `${(r.kind || '').toLowerCase()}${r.namespace ? '/' + r.namespace : ''}/${r.name}`;
@@ -139,7 +154,7 @@ const resourceTypes = [
 function namespaceMatches(row) { const namespaces = namespacesOf(row); return nsFilter === 'all' || namespaces.includes(nsFilter) || namespaces.length === 0; }
 function currentTopologyResourceFilter() { return activeSection === 'overview' ? resourceFilter : 'all'; }
 function filtered(rows) { return arr(rows).filter(namespaceMatches); }
-function syncResourceFilterState() { byId('resourceType').disabled = activeSection !== 'overview'; }
+function syncResourceFilterState() { byId('focus').disabled = activeSection === 'advisor'; byId('resourceType').disabled = activeSection !== 'overview'; }
 function renderNav() { byId('nav').innerHTML = navItems.map(([id,label],i) => `<button class="${i===0?'active':''}" data-target="${id}"><span class="dot"></span>${label}</button>`).join(''); byId('nav').onclick = e => { const btn = e.target.closest('button'); if (!btn) return; activeSection = btn.dataset.target; document.querySelectorAll('nav button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === activeSection)); syncResourceFilterState(); renderAll(); }; }
 function renderHeader() { byId('title').textContent = cluster.name || k.context || 'Kubernetes cluster'; byId('subtitle').textContent = `${k.version?.gitVersion || cluster.version || 'unknown k8s'} · collected ${snapshot.collectedAt || '-'} · ${snapshot.source?.mode || '-'}`; const namespaces = [...new Set([...arr(k.namespaces).map(n => n.name), ...arr(k.runningContainers).map(c => c.namespace), ...arr(k.customResourceInstances).map(c => c.namespace), ...arr(k.workloads).map(w => w.namespace), ...arr(k.pods).map(p => p.namespace)].filter(Boolean))].sort(); byId('focus').innerHTML = '<option value="all">All namespaces</option>' + namespaces.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join(''); byId('resourceType').innerHTML = resourceTypes.map(([value,label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join(''); }
 function renderCards() { const cards = [['Nodes', arr(k.nodes).length], ['Workloads', arr(k.workloads).length], ['Pods', arr(k.pods).length], ['Images', arr(k.runningImages).length], ['CRDs', arr(k.customResourceDefinitions).length], ['Routes', arr(k.ingresses).reduce((n,i) => n + arr(i.rules).length, 0) + arr(k.gatewayRoutes).length]]; byId('cards').innerHTML = cards.map(([l,v]) => `<div class="card"><div class="label">${l}</div><div class="value">${v || 0}</div></div>`).join(''); }
@@ -219,7 +234,19 @@ function applyTopologyTransform() { const viewport = byId('topologyViewport'); i
 let selectedDetail = null;
 function showText(json) { const obj = JSON.parse(json); selectedDetail = obj; byId('drawerTitle').textContent = obj.name || obj.image || obj.kind || 'Details'; byId('drawerBody').textContent = JSON.stringify(obj, null, 2); byId('drawer').classList.add('open'); }
 function closeDrawer() { selectedDetail = null; byId('drawer').classList.remove('open'); }
-function renderAll() { renderCards(); renderTables(); renderTopology(); }
+let renderedAdvisor = "";
+function renderAdvisor() {
+  const encoded = JSON.stringify(advisorReport);
+  if (encoded === renderedAdvisor) return;
+  renderedAdvisor = encoded;
+  const open = new Set([...document.querySelectorAll('#advisor-capabilities details[open]')].map(el => el.dataset.key));
+  byId('advisor-summary').textContent = advisorReport.summary || 'Waiting for capability analysis.';
+  byId('advisor-capabilities').innerHTML = arr(advisorReport.capabilities).map(c => {
+    const key = c.key + '/' + c.scope;
+    return `<details data-key="${esc(key)}" ${open.has(key) ? 'open' : ''}><summary style="cursor:pointer;padding:12px 0;overflow-wrap:anywhere"><strong>${esc(c.scope)}</strong> · ${esc(c.key)} · ${esc(c.assessment)} / ${esc(c.basis)} · ${esc(c.freshness)}</summary><p>${esc(c.summary)}</p><p>Implementation: ${esc(c.implementation || 'Unknown')} · Coverage: ${esc(c.coverage)}</p><p>${esc(arr(c.constraints).join(' '))}</p><ul>${arr(c.collection).filter(item => item.status !== 'complete').map(item => `<li>${esc(item.resource)}: ${esc(item.status)} — ${esc(item.reason)}</li>`).join('')}</ul><ul>${arr(c.evidence).map(e => `<li style="overflow-wrap:anywhere">${esc(ref(e.resource))} — ${esc(e.field)}: ${esc(e.value)} (collected ${esc(e.collectedAt)})</li>`).join('')}</ul></details>`;
+  }).join('');
+}
+function renderAll() { renderAdvisor(); renderCards(); renderTables(); renderTopology(); }
 document.addEventListener('click', e => { if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
 byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); }, {passive:false});
 byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, detail:e.target.closest('[data-detail]')?.dataset.detail}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });

@@ -284,3 +284,22 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		}
 	}
 }
+
+func TestAdvisorArtifactAndHTML(t *testing.T) {
+	s := &inventory.Snapshot{}
+	artifact, err := WriteDirectory(s, Options{BaseDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(artifact.Dir, "advisor.json"))
+	if err != nil || !strings.Contains(string(data), `"assessment": "unknown"`) {
+		t.Fatalf("advisor artifact: %s %v", data, err)
+	}
+	page, err := HTML(s)
+	if err != nil || strings.Contains(page, "__TELESKOPE_ADVISOR_JSON__") || !strings.Contains(page, `data-section="advisor"`) {
+		t.Fatal("advisor HTML missing or not encoded")
+	}
+	if strings.Contains(LiveHTML(), "__TELESKOPE_ADVISOR_JSON__") {
+		t.Fatal("unresolved live placeholder")
+	}
+}
