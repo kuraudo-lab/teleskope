@@ -1,86 +1,26 @@
-# Teleskope
+<p align="center">
+  <img src="assets/teleskope-icon-128.png" alt="Teleskope icon" width="128" height="128">
+</p>
 
-EKS and Kubernetes inventory, platform component configuration, and workload
-resource topology for human review.
+<h1 align="center">Teleskope</h1>
 
-The first phase focuses on collecting and organizing evidence: EKS metadata,
-add-ons, CNI, CSI, container runtimes, and workload relationships. Automated
-capability assessment and migration gap analysis are future work.
+<p align="center">
+  EKS and Kubernetes inventory for people who need to understand a cluster before they change it.
+</p>
 
-## Status
+<p align="center">
+  <a href="https://github.com/kuraudo-lab/teleskope/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kuraudo-lab/teleskope/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/kuraudo-lab/teleskope/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/kuraudo-lab/teleskope?sort=semver"></a>
+  <a href="https://github.com/kuraudo-lab/teleskope/releases"><img alt="Platforms" src="https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-0f766e"></a>
+</p>
 
-Early EKS collection is implemented for AWS-side inventory. The CLI reads AWS
-shared configuration and credentials through the AWS SDK default config chain,
-then collects cluster metadata, managed add-ons, managed node groups, EKS access
-entries, and Pod Identity associations. It also attempts Kubernetes API
-collection from kubeconfig unless `--skip-kubernetes` is set.
+Teleskope collects EKS metadata, Kubernetes API inventory, platform component
+configuration, and workload topology into reviewable reports. It is built for
+the moment before a migration, upgrade, incident review, or platform cleanup:
+you need the shape of the system, the raw evidence behind it, and a local view
+you can share with teammates without granting cluster access.
 
-```sh
-teleskope scan eks --cluster my-cluster
-teleskope scan eks --cluster my-cluster --profile prod --region ap-northeast-1
-teleskope scan eks --cluster my-cluster --output-dir ./runs
-teleskope scan eks --cluster my-cluster --output json
-teleskope scan k8s --kube-context prod
-```
-
-The default output is a timestamped report directory under the current working
-directory, or under `--output-dir` when provided. Each report contains raw JSON
-files such as `snapshot.json`, `eks.json`, `kubernetes.json`, and
-`coverage.json`, plus `summary.md` and an interactive static `index.html` file
-for review. Scan progress is written to stderr while the final report path is
-written to stdout.
-
-Use `--output human` for a terminal table summary or `--output json` for the
-single full snapshot on stdout. Kubernetes Secret values are not collected;
-Secrets are currently recorded as metadata-only objects.
-
-## Live web inventory
-
-Run a local web server with the same embedded UI as the offline report:
-
-```sh
-teleskope serve k8s --kube-context prod
-teleskope serve k8s --kubeconfig ./config --interval 30s --timeout 2m
-teleskope serve eks --cluster my-cluster --kube-context prod --aws-interval 15m
-teleskope serve eks --cluster my-cluster --skip-kubernetes
-```
-
-Open [localhost:8080](http://localhost:8080). The default listener is
-`127.0.0.1:8080`; use `--listen` to change it. There is no built-in HTTP
-authentication. Inventory can include ConfigMap contents and infrastructure
-details; keep the listener local or put it behind an authenticated access boundary.
-
-Each source scans immediately, then waits after its previous scan finishes:
-Kubernetes defaults to 60 seconds, AWS to 15 minutes, with up to 10% added jitter.
-`--timeout` applies independently to each attempt. Slow scans never overlap.
-Clients and credentials are reused between scans; Kubernetes and AWS failures
-do not stop the web server or the other source. For EKS, select a kubeconfig
-context that points to the same cluster as `--cluster`.
-
-All browsers read one in-memory view. The page checks for updates every 5 seconds
-using conditional HTTP requests and preserves its filters, active section,
-topology pan/zoom, scroll positions, and selected details. “Pause page updates”
-pauses that browser only. Ctrl-C or SIGTERM stops the server and collection.
-
-The status panel distinguishes loading, partial coverage, failed initial
-collection, and stale retained data. Collection details show errors and the next
-attempt time. Initial partial inventory is usable. If a later attempt fails, or
-a previously observed resource cannot be refreshed, the **entire previous result
-for that source** is retained and marked stale. This conservative first version
-avoids mixing old resources with new derived relationships. A successful empty
-list removes old objects. AWS and Kubernetes publication times are independent;
-the combined snapshot is not a transactional cluster-wide observation.
-
-`GET /api/snapshot` returns an envelope with `revision`, `snapshot` (null until
-the first usable result), and per-source `sources` statuses. The revision changes
-when source data is published; ETags also change for status-only updates.
-HTTP requests never trigger scans. Live state is memory-only and is rebuilt on
-restart. Existing `scan` commands and offline artifacts remain available.
-
-This first live version supports polling. Watch/informer mode and packaged
-in-cluster deployment are subsequent steps.
-
-## Download binaries
+## Quick install
 
 Install the latest stable release with one command.
 
@@ -112,6 +52,94 @@ Install scripts and release workflows verify the archive's SHA-256 against
 `shasum -a 256` on macOS, or `Get-FileHash -Algorithm SHA256` in PowerShell.
 Confirm the installation with `teleskope --version`. The initial packages do
 not include Developer ID notarization or Windows Authenticode signatures.
+
+## Quick start
+
+Collect an EKS and Kubernetes inventory:
+
+```sh
+teleskope scan eks --cluster my-cluster
+```
+
+Use AWS profile and region overrides when needed:
+
+```sh
+teleskope scan eks --cluster my-cluster --profile prod --region ap-northeast-1
+```
+
+Collect Kubernetes-only inventory from your current kubeconfig:
+
+```sh
+teleskope scan k8s --kube-context prod
+```
+
+The default output is a timestamped report directory under the current working
+directory. Use `--output-dir` to choose a parent directory, `--output human` for
+a terminal summary, or `--output json` for the full snapshot on stdout.
+
+## What you get
+
+Each report keeps raw evidence and a human-readable view side by side:
+
+| Artifact | Purpose |
+| --- | --- |
+| `snapshot.json` | Complete inventory snapshot for automation and later analysis |
+| `eks.json` | AWS-side EKS metadata, add-ons, node groups, access entries, and Pod Identity associations |
+| `kubernetes.json` | Kubernetes API resources, workloads, networking, storage, RBAC, and platform objects |
+| `coverage.json` | Collection coverage and errors, so partial inventory is explicit |
+| `summary.md` | Markdown review notes for quick scanning and sharing |
+| `index.html` | Interactive static report with filters, topology, and resource details |
+
+Scan progress is written to stderr while the final report path is written to
+stdout. Kubernetes Secret values are not collected; Secrets are recorded as
+metadata-only objects.
+
+## Live inventory
+
+Run a local web server with the same embedded UI as the offline report:
+
+```sh
+teleskope serve k8s --kube-context prod
+teleskope serve k8s --kubeconfig ./config --interval 30s --timeout 2m
+teleskope serve eks --cluster my-cluster --kube-context prod --aws-interval 15m
+teleskope serve eks --cluster my-cluster --skip-kubernetes
+```
+
+Open [localhost:8080](http://localhost:8080). The default listener is
+`127.0.0.1:8080`; use `--listen` to change it. There is no built-in HTTP
+authentication. Inventory can include ConfigMap contents and infrastructure
+details; keep the listener local or put it behind an authenticated access
+boundary.
+
+Each source scans immediately, then waits after its previous scan finishes:
+Kubernetes defaults to 60 seconds, AWS to 15 minutes, with up to 10% added
+jitter. `--timeout` applies independently to each attempt. Slow scans never
+overlap. Clients and credentials are reused between scans; Kubernetes and AWS
+failures do not stop the web server or the other source. For EKS, select a
+kubeconfig context that points to the same cluster as `--cluster`.
+
+All browsers read one in-memory view. The page checks for updates every 5
+seconds using conditional HTTP requests and preserves its filters, active
+section, topology pan/zoom, scroll positions, and selected details. “Pause page
+updates” pauses that browser only. Ctrl-C or SIGTERM stops the server and
+collection.
+
+The status panel distinguishes loading, partial coverage, failed initial
+collection, and stale retained data. Collection details show errors and the next
+attempt time. Initial partial inventory is usable. If a later attempt fails, or
+a previously observed resource cannot be refreshed, the **entire previous result
+for that source** is retained and marked stale. A successful empty list removes
+old objects. AWS and Kubernetes publication times are independent; the combined
+snapshot is not a transactional cluster-wide observation.
+
+`GET /api/snapshot` returns an envelope with `revision`, `snapshot` (null until
+the first usable result), and per-source `sources` statuses. The revision changes
+when source data is published; ETags also change for status-only updates. HTTP
+requests never trigger scans. Live state is memory-only and is rebuilt on
+restart. Existing `scan` commands and offline artifacts remain available.
+
+This first live version supports polling. Watch/informer mode and packaged
+in-cluster deployment are subsequent steps.
 
 ## Releasing
 
