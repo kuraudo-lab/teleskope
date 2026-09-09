@@ -242,7 +242,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"Custom resources",
 		"function namespacesOf",
 		"resourceTypes = [",
-		`<select id="resourceType">`,
+		`<select id="resourceType" aria-label="Resource type">`,
 		"resourceFilter = 'all'",
 		"activeSection = 'overview'",
 		"currentTopologyResourceFilter",

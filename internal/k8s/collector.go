@@ -42,32 +42,56 @@ type Options struct {
 
 // Collect gathers Kubernetes inventory. Baseline connection errors are returned; resource-level collection errors are represented as coverage.
 func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []inventory.CoverageItem, error) {
-	now := time.Now().UTC()
-	var coverage []inventory.CoverageItem
+	c, err := NewCollector(opts)
+	if err != nil {
+		return inventory.Kubernetes{}, nil, err
+	}
+	return c.Collect(ctx)
+}
 
+// Collector reuses authenticated clients across sequential scans.
+type Collector struct {
+	opts                Options
+	client              *kubernetes.Clientset
+	dynamic             dynamic.Interface
+	metadata            metadata.Interface
+	contextName, server string
+}
+
+// NewCollector initializes clients without scanning the cluster.
+func NewCollector(opts Options) (*Collector, error) {
 	config, contextName, server, err := loadRESTConfig(opts)
 	if err != nil {
-		return inventory.Kubernetes{}, nil, fmt.Errorf("connect Kubernetes cluster: %w", err)
+		return nil, fmt.Errorf("connect Kubernetes cluster: %w", err)
 	}
 	progress(opts.Progress, "loaded kubeconfig context=%s server=%s", valueOrDefault(contextName, "-"), valueOrDefault(server, "-"))
 
 	progress(opts.Progress, "creating Kubernetes clients")
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return inventory.Kubernetes{Context: contextName, Server: server}, nil, fmt.Errorf("connect Kubernetes cluster: create client: %w", err)
+		return nil, fmt.Errorf("connect Kubernetes cluster: create client: %w", err)
 	}
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
-		return inventory.Kubernetes{Context: contextName, Server: server}, nil, fmt.Errorf("connect Kubernetes cluster: create dynamic client: %w", err)
+		return nil, fmt.Errorf("connect Kubernetes cluster: create dynamic client: %w", err)
 	}
 	metadataClient, err := metadata.NewForConfig(config)
 	if err != nil {
-		return inventory.Kubernetes{Context: contextName, Server: server}, nil, fmt.Errorf("connect Kubernetes cluster: create metadata client: %w", err)
+		return nil, fmt.Errorf("connect Kubernetes cluster: create metadata client: %w", err)
 	}
 
+	return &Collector{opts: opts, client: client, dynamic: dynamicClient, metadata: metadataClient, contextName: contextName, server: server}, nil
+}
+
+// Collect builds a fresh inventory using the existing clients.
+func (c *Collector) Collect(ctx context.Context) (inventory.Kubernetes, []inventory.CoverageItem, error) {
+	now := time.Now().UTC()
+	var coverage []inventory.CoverageItem
+	opts, client, dynamicClient, metadataClient := c.opts, c.client, c.dynamic, c.metadata
+	contextName, server := c.contextName, c.server
 	kubernetes := inventory.Kubernetes{Context: contextName, Server: server}
 	progress(opts.Progress, "checking Kubernetes API server version")
-	version, err := client.Discovery().ServerVersion()
+	version, err := discovery.ToDiscoveryInterfaceWithContext(client.Discovery()).ServerVersionWithContext(ctx)
 	if err != nil {
 		return kubernetes, nil, fmt.Errorf("connect Kubernetes cluster: server version: %w", err)
 	}
@@ -81,7 +105,7 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 	progress(opts.Progress, "server version=%s platform=%s", valueOrDefault(kubernetes.Version.GitVersion, "-"), valueOrDefault(kubernetes.Version.Platform, "-"))
 
 	progress(opts.Progress, "discovering API resources")
-	apiResources, err := collectAPIResources(client.Discovery())
+	apiResources, err := collectAPIResources(ctx, client.Discovery())
 	kubernetes.APIResources = apiResources
 	if err != nil {
 		coverage = append(coverage, partial("kubernetes", "APIResources", len(apiResources), err, now))
@@ -174,8 +198,8 @@ func loadRESTConfig(opts Options) (*rest.Config, string, string, error) {
 	return config, contextName, server, nil
 }
 
-func collectAPIResources(client discovery.DiscoveryInterface) ([]inventory.APIResource, error) {
-	lists, err := client.ServerPreferredResources()
+func collectAPIResources(ctx context.Context, client discovery.DiscoveryInterface) ([]inventory.APIResource, error) {
+	lists, err := discovery.ToDiscoveryInterfaceWithContext(client).ServerPreferredResourcesWithContext(ctx)
 	resources := make([]inventory.APIResource, 0)
 	for _, list := range lists {
 		gv, parseErr := schema.ParseGroupVersion(list.GroupVersion)
@@ -274,7 +298,7 @@ func collectCore(ctx context.Context, client *kubernetes.Clientset, metadataClie
 
 	secretGVR := schema.GroupVersionResource{Version: "v1", Resource: "secrets"}
 	if secrets, err := metadataClient.Resource(secretGVR).Namespace("").List(ctx, metav1.ListOptions{}); err != nil {
-		*coverage = append(*coverage, denied("kubernetes", "Secrets", err, now))
+		*coverage = append(*coverage, denied("kubernetes", "SecretsMetadata", err, now))
 	} else {
 		for _, secret := range secrets.Items {
 			out.Secrets = append(out.Secrets, inventory.Secret{
@@ -1896,7 +1920,11 @@ func partial(area, resource string, count int, err error, at time.Time) inventor
 }
 
 func denied(area, resource string, err error, at time.Time) inventory.CoverageItem {
-	return inventory.CoverageItem{Area: area, Resource: resource, Status: "denied", Reason: err.Error(), CollectedAt: at}
+	status := "unavailable"
+	if apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) {
+		status = "denied"
+	}
+	return inventory.CoverageItem{Area: area, Resource: resource, Status: status, Reason: err.Error(), CollectedAt: at}
 }
 
 func unavailable(area, resource string, err error, at time.Time) inventory.CoverageItem {

@@ -34,6 +34,52 @@ Use `--output human` for a terminal table summary or `--output json` for the
 single full snapshot on stdout. Kubernetes Secret values are not collected;
 Secrets are currently recorded as metadata-only objects.
 
+## Live web inventory
+
+Run a local web server with the same embedded UI as the offline report:
+
+```sh
+teleskope serve k8s --kube-context prod
+teleskope serve k8s --kubeconfig ./config --interval 30s --timeout 2m
+teleskope serve eks --cluster my-cluster --kube-context prod --aws-interval 15m
+teleskope serve eks --cluster my-cluster --skip-kubernetes
+```
+
+Open [localhost:8080](http://localhost:8080). The default listener is
+`127.0.0.1:8080`; use `--listen` to change it. There is no built-in HTTP
+authentication. Inventory can include ConfigMap contents and infrastructure
+details; keep the listener local or put it behind an authenticated access boundary.
+
+Each source scans immediately, then waits after its previous scan finishes:
+Kubernetes defaults to 60 seconds, AWS to 15 minutes, with up to 10% added jitter.
+`--timeout` applies independently to each attempt. Slow scans never overlap.
+Clients and credentials are reused between scans; Kubernetes and AWS failures
+do not stop the web server or the other source. For EKS, select a kubeconfig
+context that points to the same cluster as `--cluster`.
+
+All browsers read one in-memory view. The page checks for updates every 5 seconds
+using conditional HTTP requests and preserves its filters, active section,
+topology pan/zoom, scroll positions, and selected details. “Pause page updates”
+pauses that browser only. Ctrl-C or SIGTERM stops the server and collection.
+
+The status panel distinguishes loading, partial coverage, failed initial
+collection, and stale retained data. Collection details show errors and the next
+attempt time. Initial partial inventory is usable. If a later attempt fails, or
+a previously observed resource cannot be refreshed, the **entire previous result
+for that source** is retained and marked stale. This conservative first version
+avoids mixing old resources with new derived relationships. A successful empty
+list removes old objects. AWS and Kubernetes publication times are independent;
+the combined snapshot is not a transactional cluster-wide observation.
+
+`GET /api/snapshot` returns an envelope with `revision`, `snapshot` (null until
+the first usable result), and per-source `sources` statuses. The revision changes
+when source data is published; ETags also change for status-only updates.
+HTTP requests never trigger scans. Live state is memory-only and is rebuilt on
+restart. Existing `scan` commands and offline artifacts remain available.
+
+This first live version supports polling. Watch/informer mode and packaged
+in-cluster deployment are subsequent steps.
+
 ## Download binaries
 
 Download an archive and `checksums.txt` from

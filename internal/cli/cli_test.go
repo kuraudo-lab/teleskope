@@ -141,3 +141,19 @@ func TestProgressRendersNumberedStepsAndDetails(t *testing.T) {
 		}
 	}
 }
+
+func TestServeValidation(t *testing.T) {
+	for _, args := range [][]string{
+		{"serve", "eks"},
+		{"serve", "k8s", "--interval", "0s"},
+		{"serve", "k8s", "--timeout", "-1s"},
+		{"serve", "eks", "--cluster", "demo", "--aws-interval", "0s"},
+		{"serve", "k8s", "unexpected"},
+		{"serve", "k8s", "--listen", "invalid-address"},
+	} {
+		var stdout, stderr bytes.Buffer
+		if code := Run(args, &stdout, &stderr); code != 1 {
+			t.Fatalf("%v: code=%d", args, code)
+		}
+	}
+}

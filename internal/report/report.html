@@ -80,7 +80,7 @@
   <main>
     <header>
       <div><div class="eyebrow">Cluster inventory</div><h2 id="title">Loading</h2><p class="sub" id="subtitle"></p></div>
-      <div class="toolbar"><select id="focus"><option value="all">All namespaces</option></select><select id="resourceType"><option value="all">All resource types</option></select></div>
+      <div class="toolbar"><select id="focus" aria-label="Namespace"><option value="all">All namespaces</option></select><select id="resourceType" aria-label="Resource type"><option value="all">All resource types</option></select></div>
     </header>
     <section class="section active" data-section="overview"><div id="cards" class="grid cards"></div><div class="topology-shell"><div class="panel"><h3>Topology</h3><div id="topology" class="topology"></div></div></div></section>
     <section class="section stack" data-section="eks"><div class="panel"><h3>EKS overview</h3><div class="scroll"><table id="eksOverviewTable"></table></div></div><div class="panel"><h3>Upgrade / rollback insights</h3><div class="scroll"><table id="eksInsightsTable"></table></div></div><div class="panel"><h3>Compute capacity and declared usage</h3><div class="scroll"><table id="eksCapacityTable"></table></div></div><div class="panel"><h3>Network</h3><div class="scroll"><table id="eksNetworkTable"></table></div></div><div class="panel"><h3>Security and identity</h3><div class="scroll"><table id="eksSecurityTable"></table></div></div><div class="panel"><h3>Access entries</h3><div class="scroll"><table id="accessEntriesTable"></table></div></div><div class="panel"><h3>Pod Identity associations</h3><div class="scroll"><table id="podIdentityTable"></table></div></div><div class="panel"><h3>Managed add-ons</h3><div class="scroll"><table id="addonsTable"></table></div></div><div class="panel"><h3>Managed nodegroups</h3><div class="scroll"><table id="nodegroupsTable"></table></div></div></section>
@@ -95,10 +95,10 @@
 <div class="drawer" id="drawer"><header><h3 id="drawerTitle">Details</h3><button type="button" onclick="closeDrawer()">Close</button></header><pre id="drawerBody"></pre></div>
 <script id="snapshot-data" type="application/json">__TELESKOPE_SNAPSHOT_JSON__</script>
 <script>
-const snapshot = JSON.parse(document.getElementById('snapshot-data').textContent);
-const k = snapshot.kubernetes || {};
-const eks = snapshot.eks || {};
-const cluster = eks.cluster || {};
+let snapshot = JSON.parse(document.getElementById('snapshot-data').textContent);
+let k = snapshot.kubernetes || {};
+let eks = snapshot.eks || {};
+let cluster = eks.cluster || {};
 const navItems = [['overview','Overview'], ['eks','EKS'], ['nodes','Nodes'], ['images','Running images'], ['crds','Custom resources'], ['workloads','Workloads'], ['network','Network'], ['storage','Storage']];
 const byId = id => document.getElementById(id);
 const esc = v => String(v ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -216,14 +216,15 @@ function renderTopology() {
   byId('topology').innerHTML = `<svg id="topologySvg" viewBox="0 0 ${W} ${H}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${links.map(([a,b]) => { const A = nodes.find(n => n.id === a), B = nodes.find(n => n.id === b); return A && B ? `<line class="link" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>` : ''; }).join('')}${nodes.map(n => `<g class="node" data-detail="${esc(JSON.stringify(n.data))}"><circle cx="${n.x}" cy="${n.y}" r="${n.type === 'image' ? 18 : 22}" fill="${color(n.type)}"/><text x="${n.x + 26}" y="${n.y + 4}">${esc(n.label).slice(0,42)}</text></g>`).join('')}</g></svg><div class="legend"><span><i style="background:#22d3ee"></i>Service</span><span><i style="background:#60a5fa"></i>Workload</span><span><i style="background:#a78bfa"></i>Image</span><span><i style="background:#34d399"></i>Storage</span><span><i style="background:#facc15"></i>Gateway</span><span>Wheel to zoom</span><span>Drag to pan</span></div>`;
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
-function showText(json) { const obj = JSON.parse(json); byId('drawerTitle').textContent = obj.name || obj.image || obj.kind || 'Details'; byId('drawerBody').textContent = JSON.stringify(obj, null, 2); byId('drawer').classList.add('open'); }
-function closeDrawer() { byId('drawer').classList.remove('open'); }
+let selectedDetail = null;
+function showText(json) { const obj = JSON.parse(json); selectedDetail = obj; byId('drawerTitle').textContent = obj.name || obj.image || obj.kind || 'Details'; byId('drawerBody').textContent = JSON.stringify(obj, null, 2); byId('drawer').classList.add('open'); }
+function closeDrawer() { selectedDetail = null; byId('drawer').classList.remove('open'); }
 function renderAll() { renderCards(); renderTables(); renderTopology(); }
 document.addEventListener('click', e => { if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
 byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); }, {passive:false});
-byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
+byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, detail:e.target.closest('[data-detail]')?.dataset.detail}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointermove', e => { if (!topologyDrag.active) return; const dx = e.clientX - topologyDrag.startX, dy = e.clientY - topologyDrag.startY; topologyDrag.moved = topologyDrag.moved || Math.abs(dx) + Math.abs(dy) > 3; topologyView.x = topologyDrag.viewX + dx; topologyView.y = topologyDrag.viewY + dy; applyTopologyTransform(); });
-byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = topologyDrag.moved; topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); });
+byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = topologyDrag.moved; if (!topologyDrag.moved && topologyDrag.detail) showText(topologyDrag.detail); topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointercancel', e => { topologyDrag.active = false; byId('topology').classList.remove('panning'); if (byId('topology').hasPointerCapture(e.pointerId)) byId('topology').releasePointerCapture(e.pointerId); });
 byId('focus').addEventListener('change', e => { nsFilter = e.target.value; renderAll(); });
 byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; renderAll(); });

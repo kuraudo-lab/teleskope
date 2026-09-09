@@ -7,8 +7,10 @@ information. Organize platform components, configuration evidence, and workload
 relationships so people can assess cluster capabilities themselves.
 
 Planned outputs are terminal summaries, TUI, JSON, YAML, Markdown, offline HTML,
-and an interactive local web server. Continuous collection, in-cluster execution,
-automated capability assessment, and migration analysis are later stages.
+and an interactive local web server. Polling-based continuous collection and an embedded web server are now
+implemented through `serve k8s` and `serve eks`. Informer watches, packaged
+in-cluster execution, automated capability assessment, and migration analysis
+remain later stages.
 
 ## Package boundaries
 
@@ -38,3 +40,21 @@ Start with compiled-in modules rather than dynamic plugins.
 - Distinguish configured resource relationships from observed network traffic.
 - Exclude Secret values and sanitize configuration evidence before export.
 - Keep snapshots independently readable without cluster credentials.
+
+## Live polling
+
+`internal/live` owns source scheduling, publication, and the read-only HTTP
+handler. Each source has one sequential worker with a bounded collection context.
+Kubernetes and AWS collectors retain clients between attempts. HTTP readers
+consume pre-encoded immutable responses and never access mutable collector state.
+
+Publication keeps source data separate from the latest attempt's coverage and
+errors. An initial partial result is visible. On a failed attempt or coverage
+regression for an already observed resource, retain the previous whole source
+and mark it stale. A successful empty list is authoritative. This deliberately
+conservative policy preserves source-level derived relationships; resource-level
+merging can be introduced with explicit dependency rules later.
+
+`internal/report` shares its embedded page between offline and live rendering.
+The live entry adds a same-origin polling script and collection status panel.
+No frontend build or separate server is required.

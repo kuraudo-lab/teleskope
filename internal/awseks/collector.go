@@ -26,6 +26,22 @@ type Options struct {
 
 // Collect gathers AWS-side EKS inventory using the default AWS CLI config chain.
 func Collect(ctx context.Context, opts Options) (*inventory.Snapshot, error) {
+	c, err := NewCollector(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return c.Collect(ctx)
+}
+
+// Collector retains the SDK credential cache and EKS client between scans.
+type Collector struct {
+	opts   Options
+	cfg    awssdk.Config
+	client *eks.Client
+}
+
+// NewCollector initializes the AWS configuration and reusable client.
+func NewCollector(ctx context.Context, opts Options) (*Collector, error) {
 	if opts.ClusterName == "" {
 		return nil, fmt.Errorf("cluster name is required")
 	}
@@ -39,8 +55,13 @@ func Collect(ctx context.Context, opts Options) (*inventory.Snapshot, error) {
 		return nil, fmt.Errorf("AWS region is not configured; set AWS_REGION, AWS_DEFAULT_REGION, shared config region, or --region")
 	}
 
+	return &Collector{opts: opts, cfg: cfg, client: eks.NewFromConfig(cfg)}, nil
+}
+
+// Collect builds a fresh AWS inventory.
+func (c *Collector) Collect(ctx context.Context) (*inventory.Snapshot, error) {
+	opts, cfg, client := c.opts, c.cfg, c.client
 	now := time.Now().UTC()
-	client := eks.NewFromConfig(cfg)
 	snapshot := &inventory.Snapshot{
 		SchemaVersion: "teleskope.io/snapshot/v1alpha1",
 		CollectedAt:   now,
