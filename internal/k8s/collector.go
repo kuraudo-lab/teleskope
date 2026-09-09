@@ -51,16 +51,18 @@ func Collect(ctx context.Context, opts Options) (inventory.Kubernetes, []invento
 
 // Collector reuses authenticated clients across sequential scans.
 type Collector struct {
-	opts                Options
-	client              *kubernetes.Clientset
-	dynamic             dynamic.Interface
-	metadata            metadata.Interface
-	contextName, server string
+	opts             Options
+	client           *kubernetes.Clientset
+	dynamic          dynamic.Interface
+	metadata         metadata.Interface
+	contextName      string
+	contextNamespace string
+	server           string
 }
 
 // NewCollector initializes clients without scanning the cluster.
 func NewCollector(opts Options) (*Collector, error) {
-	config, contextName, server, err := loadRESTConfig(opts)
+	config, contextName, contextNamespace, server, err := loadRESTConfig(opts)
 	if err != nil {
 		return nil, fmt.Errorf("connect Kubernetes cluster: %w", err)
 	}
@@ -80,7 +82,7 @@ func NewCollector(opts Options) (*Collector, error) {
 		return nil, fmt.Errorf("connect Kubernetes cluster: create metadata client: %w", err)
 	}
 
-	return &Collector{opts: opts, client: client, dynamic: dynamicClient, metadata: metadataClient, contextName: contextName, server: server}, nil
+	return &Collector{opts: opts, client: client, dynamic: dynamicClient, metadata: metadataClient, contextName: contextName, contextNamespace: contextNamespace, server: server}, nil
 }
 
 // Collect builds a fresh inventory using the existing clients.
@@ -127,7 +129,7 @@ func (c *Collector) Collect(ctx context.Context) (inventory.Kubernetes, []invent
 	progress(opts.Progress, "workloads=%d", len(kubernetes.Workloads))
 
 	progress(opts.Progress, "collecting networking")
-	collectNetworking(ctx, client, dynamicClient, &kubernetes, &coverage, now)
+	collectNetworking(ctx, client, dynamicClient, &kubernetes, &coverage, now, c.contextNamespace)
 	progress(opts.Progress, "network services=%d endpointSlices=%d ingresses=%d ingressClasses=%d gatewayClasses=%d gateways=%d gatewayRoutes=%d", len(kubernetes.Services), len(kubernetes.EndpointSlices), len(kubernetes.Ingresses), len(kubernetes.IngressClasses), len(kubernetes.GatewayClasses), len(kubernetes.Gateways), len(kubernetes.GatewayRoutes))
 
 	progress(opts.Progress, "collecting storage")
@@ -167,7 +169,7 @@ func valueOrDefault(value, fallback string) string {
 	return value
 }
 
-func loadRESTConfig(opts Options) (*rest.Config, string, string, error) {
+func loadRESTConfig(opts Options) (*rest.Config, string, string, string, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	if opts.Kubeconfig != "" {
 		rules.ExplicitPath = opts.Kubeconfig
@@ -179,23 +181,25 @@ func loadRESTConfig(opts Options) (*rest.Config, string, string, error) {
 	loading := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
 	raw, err := loading.RawConfig()
 	if err != nil {
-		return nil, "", "", fmt.Errorf("load kubeconfig: %w", err)
+		return nil, "", "", "", fmt.Errorf("load kubeconfig: %w", err)
 	}
 	config, err := loading.ClientConfig()
 	if err != nil {
-		return nil, raw.CurrentContext, "", fmt.Errorf("build Kubernetes client config: %w", err)
+		return nil, raw.CurrentContext, "", "", fmt.Errorf("build Kubernetes client config: %w", err)
 	}
 	contextName := raw.CurrentContext
 	if opts.Context != "" {
 		contextName = opts.Context
 	}
+	contextNamespace := ""
 	server := config.Host
 	if ctxConfig, ok := raw.Contexts[contextName]; ok {
+		contextNamespace = ctxConfig.Namespace
 		if cluster, ok := raw.Clusters[ctxConfig.Cluster]; ok && cluster.Server != "" {
 			server = cluster.Server
 		}
 	}
-	return config, contextName, server, nil
+	return config, contextName, contextNamespace, server, nil
 }
 
 func collectAPIResources(ctx context.Context, client discovery.DiscoveryInterface) ([]inventory.APIResource, error) {
@@ -423,7 +427,7 @@ func collectWorkloads(ctx context.Context, client *kubernetes.Clientset, out *in
 	*coverage = append(*coverage, complete("kubernetes", "Workloads", len(out.Workloads)-start, now))
 }
 
-func collectNetworking(ctx context.Context, client *kubernetes.Clientset, dynamicClient dynamic.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
+func collectNetworking(ctx context.Context, client *kubernetes.Clientset, dynamicClient dynamic.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time, contextNamespace string) {
 	if endpointSlices, err := client.DiscoveryV1().EndpointSlices("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "EndpointSlices", err, now))
 	} else {
@@ -448,11 +452,11 @@ func collectNetworking(ctx context.Context, client *kubernetes.Clientset, dynami
 		}
 		*coverage = append(*coverage, complete("kubernetes", "Ingresses", len(out.Ingresses), now))
 	}
-	collectGateways(ctx, dynamicClient, out, coverage, now)
+	collectGateways(ctx, dynamicClient, out, coverage, now, contextNamespace)
 }
 
-func collectGateways(ctx context.Context, client dynamic.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
-	classes, classVersion, err := listFirstGatewayResource(ctx, client, gatewayResourceVersions("gatewayclasses", "v1", "v1beta1")...)
+func collectGateways(ctx context.Context, client dynamic.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time, contextNamespace string) {
+	classes, classVersion, err := listFirstGatewayResource(ctx, client, contextNamespace, gatewayResourceCandidates(out.APIResources, "gatewayclasses", "v1", "v1beta1")...)
 	if err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "GatewayClasses", err, now))
 	} else {
@@ -462,7 +466,7 @@ func collectGateways(ctx context.Context, client dynamic.Interface, out *invento
 		*coverage = append(*coverage, complete("kubernetes", "GatewayClasses", len(classes), now))
 	}
 
-	gateways, gatewayVersion, err := listFirstGatewayResource(ctx, client, gatewayResourceVersions("gateways", "v1", "v1beta1")...)
+	gateways, gatewayVersion, err := listFirstGatewayResource(ctx, client, contextNamespace, gatewayResourceCandidates(out.APIResources, "gateways", "v1", "v1beta1")...)
 	if err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "Gateways", err, now))
 	} else {
@@ -475,17 +479,17 @@ func collectGateways(ctx context.Context, client dynamic.Interface, out *invento
 	routeTypes := []struct {
 		name string
 		kind string
-		gvrs []schema.GroupVersionResource
+		gvrs []gatewayResourceCandidate
 	}{
-		{name: "HTTPRoutes", kind: "HTTPRoute", gvrs: gatewayResourceVersions("httproutes", "v1", "v1beta1")},
-		{name: "GRPCRoutes", kind: "GRPCRoute", gvrs: gatewayResourceVersions("grpcroutes", "v1", "v1beta1")},
-		{name: "TLSRoutes", kind: "TLSRoute", gvrs: gatewayResourceVersions("tlsroutes", "v1alpha2")},
-		{name: "TCPRoutes", kind: "TCPRoute", gvrs: gatewayResourceVersions("tcproutes", "v1alpha2")},
-		{name: "UDPRoutes", kind: "UDPRoute", gvrs: gatewayResourceVersions("udproutes", "v1alpha2")},
+		{name: "HTTPRoutes", kind: "HTTPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "httproutes", "v1", "v1beta1")},
+		{name: "GRPCRoutes", kind: "GRPCRoute", gvrs: gatewayResourceCandidates(out.APIResources, "grpcroutes", "v1", "v1beta1")},
+		{name: "TLSRoutes", kind: "TLSRoute", gvrs: gatewayResourceCandidates(out.APIResources, "tlsroutes", "v1alpha2")},
+		{name: "TCPRoutes", kind: "TCPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "tcproutes", "v1alpha2")},
+		{name: "UDPRoutes", kind: "UDPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "udproutes", "v1alpha2")},
 	}
 	start := len(out.GatewayRoutes)
 	for _, routeType := range routeTypes {
-		items, version, err := listFirstGatewayResource(ctx, client, routeType.gvrs...)
+		items, version, err := listFirstGatewayResource(ctx, client, contextNamespace, routeType.gvrs...)
 		if err != nil {
 			*coverage = append(*coverage, denied("kubernetes", routeType.name, err, now))
 			continue
@@ -498,29 +502,62 @@ func collectGateways(ctx context.Context, client dynamic.Interface, out *invento
 	*coverage = append(*coverage, complete("kubernetes", "GatewayRoutes", len(out.GatewayRoutes)-start, now))
 }
 
-func gatewayResourceVersions(resource string, versions ...string) []schema.GroupVersionResource {
-	out := make([]schema.GroupVersionResource, 0, len(versions))
+type gatewayResourceCandidate struct {
+	gvr        schema.GroupVersionResource
+	namespaced bool
+}
+
+func gatewayResourceCandidates(apiResources []inventory.APIResource, resource string, versions ...string) []gatewayResourceCandidate {
+	discovered := map[string]inventory.APIResource{}
+	groupDiscovered := false
+	for _, apiResource := range apiResources {
+		if apiResource.Group != "gateway.networking.k8s.io" {
+			continue
+		}
+		groupDiscovered = true
+		if apiResource.Resource == resource && containsString(apiResource.Verbs, "list") {
+			key := apiResource.Group + "/" + apiResource.Version + "/" + apiResource.Resource
+			discovered[key] = apiResource
+		}
+	}
+
+	out := make([]gatewayResourceCandidate, 0, len(versions))
 	for _, version := range versions {
-		out = append(out, schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: version, Resource: resource})
+		gvr := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: version, Resource: resource}
+		key := gvr.Group + "/" + gvr.Version + "/" + gvr.Resource
+		if apiResource, ok := discovered[key]; ok {
+			out = append(out, gatewayResourceCandidate{gvr: gvr, namespaced: apiResource.Namespaced})
+		}
+	}
+	if len(out) == 0 && !groupDiscovered {
+		for _, version := range versions {
+			out = append(out, gatewayResourceCandidate{
+				gvr:        schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: version, Resource: resource},
+				namespaced: resource != "gatewayclasses",
+			})
+		}
 	}
 	return out
 }
 
-func listFirstGatewayResource(ctx context.Context, client dynamic.Interface, gvrs ...schema.GroupVersionResource) ([]unstructured.Unstructured, string, error) {
-	for _, gvr := range gvrs {
-		items, found, err := listGatewayResource(ctx, client, gvr)
+func listFirstGatewayResource(ctx context.Context, client dynamic.Interface, contextNamespace string, resources ...gatewayResourceCandidate) ([]unstructured.Unstructured, string, error) {
+	for _, resource := range resources {
+		items, found, err := listGatewayResource(ctx, client, resource, contextNamespace)
 		if err != nil {
-			return nil, gvr.Version, err
+			return nil, resource.gvr.Version, err
 		}
 		if found {
-			return items, gvr.Version, nil
+			return items, resource.gvr.Version, nil
 		}
 	}
 	return nil, "", nil
 }
 
-func listGatewayResource(ctx context.Context, client dynamic.Interface, gvr schema.GroupVersionResource) ([]unstructured.Unstructured, bool, error) {
-	list, err := client.Resource(gvr).Namespace("").List(ctx, metav1.ListOptions{})
+func listGatewayResource(ctx context.Context, client dynamic.Interface, resource gatewayResourceCandidate, contextNamespace string) ([]unstructured.Unstructured, bool, error) {
+	list, err := client.Resource(resource.gvr).Namespace("").List(ctx, metav1.ListOptions{})
+	if err != nil && resource.namespaced && contextNamespace != "" && (apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err)) {
+		list, err = client.Resource(resource.gvr).Namespace(contextNamespace).List(ctx, metav1.ListOptions{})
+	}
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, false, nil
@@ -1208,6 +1245,15 @@ func gatewayKind(group, kind string) string {
 		return group
 	}
 	return group + "/" + kind
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func mapStorageClass(class storagev1.StorageClass) inventory.StorageClass {

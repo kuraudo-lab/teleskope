@@ -341,7 +341,7 @@ func TestCollectGatewaysFallsBackToV1Beta1AndMapsRoutes(t *testing.T) {
 	kubernetes := inventory.Kubernetes{}
 	var coverage []inventory.CoverageItem
 
-	collectGateways(context.Background(), client, &kubernetes, &coverage, time.Now().UTC())
+	collectGateways(context.Background(), client, &kubernetes, &coverage, time.Now().UTC(), "")
 
 	if len(kubernetes.GatewayClasses) != 1 || kubernetes.GatewayClasses[0].APIVersion != "gateway.networking.k8s.io/v1beta1" || kubernetes.GatewayClasses[0].ControllerName != "gateway.k8s.aws/alb" {
 		t.Fatalf("gateway classes = %#v, want v1beta1 alb", kubernetes.GatewayClasses)
@@ -365,5 +365,125 @@ func TestCollectGatewaysFallsBackToV1Beta1AndMapsRoutes(t *testing.T) {
 	}
 	if len(route.Rules[0].BackendRefs) != 1 || route.Rules[0].BackendRefs[0].Kind != "Service" || route.Rules[0].BackendRefs[0].Name != "web" {
 		t.Fatalf("backend refs = %#v, want service app/web", route.Rules[0].BackendRefs)
+	}
+}
+
+func TestCollectGatewaysUsesDiscoveredV1GatewayAPI(t *testing.T) {
+	gatewayClassGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses"}
+	gatewayGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}
+	httpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		runtime.NewScheme(),
+		map[schema.GroupVersionResource]string{
+			gatewayClassGVR: "GatewayClassList",
+			gatewayGVR:      "GatewayList",
+			httpRouteGVR:    "HTTPRouteList",
+		},
+	)
+	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
+		switch action.GetResource() {
+		case gatewayClassGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "GatewayClass",
+				"metadata":   map[string]any{"name": "alb"},
+				"spec":       map[string]any{"controllerName": "gateway.k8s.aws/alb"},
+			}}}}, nil
+		case gatewayGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "Gateway",
+				"metadata":   map[string]any{"namespace": "app", "name": "public"},
+				"spec": map[string]any{
+					"gatewayClassName": "alb",
+					"listeners": []any{map[string]any{
+						"name":     "http",
+						"protocol": "HTTP",
+						"port":     int64(80),
+					}},
+				},
+			}}}}, nil
+		case httpRouteGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "HTTPRoute",
+				"metadata":   map[string]any{"namespace": "app", "name": "web"},
+				"spec": map[string]any{
+					"parentRefs": []any{map[string]any{"name": "public"}},
+					"rules": []any{map[string]any{
+						"backendRefs": []any{map[string]any{"name": "web", "port": int64(80)}},
+					}},
+				},
+			}}}}, nil
+		default:
+			return true, &unstructured.UnstructuredList{}, nil
+		}
+	})
+	kubernetes := inventory.Kubernetes{APIResources: []inventory.APIResource{
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses", Kind: "GatewayClass", Verbs: []string{"get", "list"}},
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways", Kind: "Gateway", Namespaced: true, Verbs: []string{"get", "list"}},
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes", Kind: "HTTPRoute", Namespaced: true, Verbs: []string{"get", "list"}},
+	}}
+	var coverage []inventory.CoverageItem
+
+	collectGateways(context.Background(), client, &kubernetes, &coverage, time.Now().UTC(), "")
+
+	if len(kubernetes.GatewayClasses) != 1 || kubernetes.GatewayClasses[0].APIVersion != "gateway.networking.k8s.io/v1" {
+		t.Fatalf("gateway classes = %#v, want discovered v1 GatewayClass", kubernetes.GatewayClasses)
+	}
+	if len(kubernetes.Gateways) != 1 || kubernetes.Gateways[0].APIVersion != "gateway.networking.k8s.io/v1" || kubernetes.Gateways[0].ClassName != "alb" {
+		t.Fatalf("gateways = %#v, want discovered v1 Gateway", kubernetes.Gateways)
+	}
+	if len(kubernetes.GatewayRoutes) != 1 || kubernetes.GatewayRoutes[0].Kind != "HTTPRoute" || kubernetes.GatewayRoutes[0].APIVersion != "gateway.networking.k8s.io/v1" {
+		t.Fatalf("gateway routes = %#v, want discovered v1 HTTPRoute", kubernetes.GatewayRoutes)
+	}
+}
+
+func TestCollectGatewaysFallsBackToContextNamespaceWhenAllNamespacesDenied(t *testing.T) {
+	gatewayGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}
+	httpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		runtime.NewScheme(),
+		map[schema.GroupVersionResource]string{
+			gatewayGVR:   "GatewayList",
+			httpRouteGVR: "HTTPRouteList",
+		},
+	)
+	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
+		if action.GetNamespace() == "" {
+			return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), action.GetResource().Resource, nil)
+		}
+		switch action.GetResource() {
+		case gatewayGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "Gateway",
+				"metadata":   map[string]any{"namespace": action.GetNamespace(), "name": "public"},
+				"spec":       map[string]any{"gatewayClassName": "alb"},
+			}}}}, nil
+		case httpRouteGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "HTTPRoute",
+				"metadata":   map[string]any{"namespace": action.GetNamespace(), "name": "web"},
+				"spec":       map[string]any{"parentRefs": []any{map[string]any{"name": "public"}}},
+			}}}}, nil
+		default:
+			return true, &unstructured.UnstructuredList{}, nil
+		}
+	})
+	kubernetes := inventory.Kubernetes{APIResources: []inventory.APIResource{
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways", Kind: "Gateway", Namespaced: true, Verbs: []string{"list"}},
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes", Kind: "HTTPRoute", Namespaced: true, Verbs: []string{"list"}},
+	}}
+	var coverage []inventory.CoverageItem
+
+	collectGateways(context.Background(), client, &kubernetes, &coverage, time.Now().UTC(), "app")
+
+	if len(kubernetes.Gateways) != 1 || kubernetes.Gateways[0].Namespace != "app" {
+		t.Fatalf("gateways = %#v, want one gateway from context namespace", kubernetes.Gateways)
+	}
+	if len(kubernetes.GatewayRoutes) != 1 || kubernetes.GatewayRoutes[0].Namespace != "app" {
+		t.Fatalf("gateway routes = %#v, want one route from context namespace", kubernetes.GatewayRoutes)
 	}
 }
