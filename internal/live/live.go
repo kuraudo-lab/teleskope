@@ -359,8 +359,50 @@ func (s *Store) Handler() http.Handler {
 			if r.Method == http.MethodGet {
 				_, _ = w.Write(body)
 			}
+		case "/api/export/snapshot.json":
+			snapshot, err := s.exportSnapshot()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+			body, err := report.SnapshotJSON(snapshot)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Disposition", `attachment; filename="snapshot.json"`)
+			if r.Method == http.MethodGet {
+				_, _ = strings.NewReader(body).WriteTo(w)
+			}
+		case "/api/export/summary.md":
+			snapshot, err := s.exportSnapshot()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+			w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+			w.Header().Set("Content-Disposition", `attachment; filename="summary.md"`)
+			if r.Method == http.MethodGet {
+				_, _ = strings.NewReader(report.Markdown(snapshot)).WriteTo(w)
+			}
 		default:
 			http.NotFound(w, r)
 		}
 	})
+}
+
+func (s *Store) exportSnapshot() (*inventory.Snapshot, error) {
+	s.mu.RLock()
+	body := append([]byte(nil), s.body...)
+	s.mu.RUnlock()
+
+	var out response
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, err
+	}
+	if out.Snapshot == nil {
+		return nil, fmt.Errorf("snapshot unavailable")
+	}
+	return out.Snapshot, nil
 }

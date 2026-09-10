@@ -151,6 +151,39 @@ func TestHTTPReadOnlyAndConditionalRequests(t *testing.T) {
 	}
 }
 
+func TestHTTPExportUsesCurrentSnapshot(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	h := s.Handler()
+
+	missing := httptest.NewRecorder()
+	h.ServeHTTP(missing, httptest.NewRequest("GET", "/api/export/summary.md", nil))
+	if missing.Code != 503 {
+		t.Fatalf("export without snapshot = %d, want 503", missing.Code)
+	}
+
+	s.finish("kubernetes", podSnapshot(1, "complete"), nil, time.Now())
+	for _, item := range []struct {
+		path        string
+		contentType string
+		want        string
+	}{
+		{"/api/export/snapshot.json", "application/json", `"schemaVersion": "teleskope.io/snapshot/v1alpha1"`},
+		{"/api/export/summary.md", "text/markdown; charset=utf-8", "# Teleskope scan summary"},
+	} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", item.path, nil))
+		if w.Code != 200 {
+			t.Fatalf("%s = %d: %s", item.path, w.Code, w.Body.String())
+		}
+		if got := w.Header().Get("Content-Type"); got != item.contentType {
+			t.Fatalf("%s content type = %q, want %q", item.path, got, item.contentType)
+		}
+		if !strings.Contains(w.Body.String(), item.want) {
+			t.Fatalf("%s missing %q:\n%s", item.path, item.want, w.Body.String())
+		}
+	}
+}
+
 func TestEventBufferKeepsRecentEvents(t *testing.T) {
 	s := newTestStore(t, "kubernetes")
 

@@ -38,9 +38,19 @@
     .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     input, select { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; outline:none; }
     input:focus, select:focus { border-color:rgba(96,165,250,.75); box-shadow:0 0 0 3px rgba(96,165,250,.14); }
+    .export-button,
     .theme-toggle { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; min-width:42px; height:42px; padding:0 12px; cursor:pointer; font-size:16px; }
+    .export-button { font-size:14px; }
+    .export-button:hover,
     .theme-toggle:hover { background:var(--nav-hover); }
+    .export-button:focus-visible,
     .theme-toggle:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+    .export { position:relative; }
+    .export-menu { position:absolute; right:0; top:calc(100% + 8px); display:none; min-width:150px; padding:6px; background:var(--drawer-bg); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); z-index:20; }
+    .export.open .export-menu { display:grid; gap:4px; }
+    .export-menu button { background:transparent; color:var(--text); border:0; border-radius:8px; padding:9px 10px; text-align:left; cursor:pointer; font-size:14px; }
+    .export-menu button:hover { background:var(--nav-hover); }
+    .export-menu button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
     .grid { display:grid; gap:16px; }
     .cards { grid-template-columns:repeat(6,minmax(0,1fr)); margin-bottom:18px; }
     .card { background:var(--card-bg); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
@@ -97,7 +107,7 @@
   <main>
     <header>
       <div><div class="eyebrow">Cluster inventory</div><h2 id="title">Loading</h2><p class="sub" id="subtitle"></p></div>
-      <div class="toolbar"><select id="focus" aria-label="Namespace"><option value="all">All namespaces</option></select><select id="resourceType" aria-label="Resource type"><option value="all">All resource types</option></select><button type="button" id="themeToggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch theme">Theme</button></div>
+      <div class="toolbar"><select id="focus" aria-label="Namespace"><option value="all">All namespaces</option></select><select id="resourceType" aria-label="Resource type"><option value="all">All resource types</option></select><div class="export" id="exportMenu"><button type="button" id="exportReport" class="export-button" aria-haspopup="menu" aria-expanded="false">Export</button><div class="export-menu" role="menu" aria-label="Export format"><button type="button" role="menuitem" data-export-format="json">JSON</button><button type="button" role="menuitem" data-export-format="markdown">Markdown</button></div></div><button type="button" id="themeToggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch theme">Theme</button></div>
     </header>
     <section class="section active" data-section="overview"><div id="cards" class="grid cards"></div><div class="topology-shell"><div class="panel"><h3>Topology</h3><div id="topology" class="topology"></div></div></div></section>
     <section class="section stack" data-section="advisor">
@@ -122,9 +132,11 @@
 <div class="drawer" id="drawer"><header><h3 id="drawerTitle">Details</h3><button type="button" onclick="closeDrawer()">Close</button></header><pre id="drawerBody"></pre></div>
 <script id="advisor-data" type="application/json">__TELESKOPE_ADVISOR_JSON__</script>
 <script id="snapshot-data" type="application/json">__TELESKOPE_SNAPSHOT_JSON__</script>
+<script id="markdown-data" type="text/plain">__TELESKOPE_MARKDOWN__</script>
 <script>
 let advisorReport = JSON.parse(document.getElementById("advisor-data").textContent);
 let snapshot = JSON.parse(document.getElementById('snapshot-data').textContent);
+let reportMarkdown = document.getElementById('markdown-data').textContent;
 let k = snapshot.kubernetes || {};
 let eks = snapshot.eks || {};
 let cluster = eks.cluster || {};
@@ -151,6 +163,13 @@ function storedTheme() { try { const theme = localStorage.getItem(themeKey); ret
 function effectiveTheme() { return storedTheme() || (themeQuery?.matches ? 'dark' : 'light'); }
 function updateThemeToggle() { const next = effectiveTheme() === 'dark' ? 'light' : 'dark'; const btn = byId('themeToggle'); btn.textContent = next === 'dark' ? 'Dark' : 'Light'; btn.setAttribute('aria-label', `Switch to ${next} theme`); btn.title = `Switch to ${next} theme`; }
 function initThemeToggle() { updateThemeToggle(); byId('themeToggle').addEventListener('click', () => { const next = effectiveTheme() === 'dark' ? 'light' : 'dark'; try { localStorage.setItem(themeKey, next); } catch (_) {} document.documentElement.dataset.theme = next; updateThemeToggle(); }); themeQuery?.addEventListener('change', () => { if (!storedTheme()) updateThemeToggle(); }); }
+const exportExt = format => format === 'markdown' ? 'md' : 'json';
+const exportType = format => format === 'markdown' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
+function exportBaseName() { const target = (cluster.name || k.context || 'teleskope-scan').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'teleskope-scan'; const collected = snapshot.collectedAt ? String(snapshot.collectedAt).replace(/[:.]/g, '-').replace(/z$/i, 'Z') : 'latest'; return `${target}-${collected}`; }
+function downloadText(name, content, type) { const blob = new Blob([content], {type}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+async function exportReport(format) { const ext = exportExt(format); const filename = `${exportBaseName()}.${ext}`; let content; if (document.body.dataset.live === 'true') { const path = format === 'markdown' ? '/api/export/summary.md' : '/api/export/snapshot.json'; const response = await fetch(path, {cache:'no-store'}); if (!response.ok) throw new Error(`export failed: HTTP ${response.status}`); content = await response.text(); } else { content = format === 'markdown' ? reportMarkdown : JSON.stringify(snapshot, null, 2) + '\n'; } downloadText(filename, content, exportType(format)); }
+function closeExportMenu() { byId('exportMenu').classList.remove('open'); byId('exportReport').setAttribute('aria-expanded', 'false'); }
+function toggleExportMenu() { const menu = byId('exportMenu'); const open = !menu.classList.contains('open'); menu.classList.toggle('open', open); byId('exportReport').setAttribute('aria-expanded', String(open)); }
 function nodeTotals() { const out = {capacityCpu:0, allocatableCpu:0, capacityMemory:0, allocatableMemory:0, capacityPods:0, allocatablePods:0}; arr(k.nodes).forEach(n => { out.capacityCpu += quantityValue(n.capacity?.cpu, 'cpu'); out.allocatableCpu += quantityValue(n.allocatable?.cpu, 'cpu'); out.capacityMemory += quantityValue(n.capacity?.memory, 'memory'); out.allocatableMemory += quantityValue(n.allocatable?.memory, 'memory'); out.capacityPods += quantityValue(n.capacity?.pods, 'count'); out.allocatablePods += quantityValue(n.allocatable?.pods, 'count'); }); return out; }
 function declaredTotals() { const out = {requestCpu:0, limitCpu:0, requestMemory:0, limitMemory:0}; const visit = c => { out.requestCpu += quantityValue(c.resources?.['requests.cpu'], 'cpu'); out.limitCpu += quantityValue(c.resources?.['limits.cpu'], 'cpu'); out.requestMemory += quantityValue(c.resources?.['requests.memory'], 'memory'); out.limitMemory += quantityValue(c.resources?.['limits.memory'], 'memory'); }; const pods = arr(k.pods); if (pods.length) pods.forEach(p => [...arr(p.initContainers), ...arr(p.containers), ...arr(p.ephemeralContainers)].forEach(visit)); else arr(k.workloads).forEach(w => [...arr(w.initContainers), ...arr(w.containers)].forEach(visit)); return out; }
 function resourceMap(v) { if (!v) return '-'; const keys = ['cpu','memory','pods','ephemeral-storage','nvidia.com/gpu']; const used = new Set(); const parts = keys.filter(key => v[key]).map(key => { used.add(key); return `${key}=${v[key]}`; }); Object.keys(v).sort().filter(key => !used.has(key)).forEach(key => parts.push(`${key}=${v[key]}`)); return parts.join(', ') || '-'; }
@@ -267,7 +286,7 @@ function renderAdvisor() {
   }).join('');
 }
 function renderAll() { renderAdvisor(); renderCards(); renderTables(); renderTopology(); }
-document.addEventListener('click', e => { if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
+document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
 byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); }, {passive:false});
 byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, detail:e.target.closest('[data-detail]')?.dataset.detail}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointermove', e => { if (!topologyDrag.active) return; const dx = e.clientX - topologyDrag.startX, dy = e.clientY - topologyDrag.startY; topologyDrag.moved = topologyDrag.moved || Math.abs(dx) + Math.abs(dy) > 3; topologyView.x = topologyDrag.viewX + dx; topologyView.y = topologyDrag.viewY + dy; applyTopologyTransform(); });
@@ -275,6 +294,8 @@ byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) 
 byId('topology').addEventListener('pointercancel', e => { topologyDrag.active = false; byId('topology').classList.remove('panning'); if (byId('topology').hasPointerCapture(e.pointerId)) byId('topology').releasePointerCapture(e.pointerId); });
 byId('focus').addEventListener('change', e => { nsFilter = e.target.value; renderAll(); });
 byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; renderAll(); });
+byId('exportReport').addEventListener('click', toggleExportMenu);
+byId('exportMenu').addEventListener('click', e => { const item = e.target.closest('[data-export-format]'); if (!item) return; closeExportMenu(); exportReport(item.dataset.exportFormat).catch(error => alert(error.message)); });
 initThemeToggle(); renderNav(); renderHeader(); renderAll();
 syncResourceFilterState();
 </script>

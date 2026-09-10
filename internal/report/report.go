@@ -86,7 +86,7 @@ func WriteDirectory(snapshot *inventory.Snapshot, opts Options) (*Artifact, erro
 	if err := artifact.writeText("summary.md", markdown(snapshot, target)); err != nil {
 		return nil, err
 	}
-	html, err := HTML(snapshot)
+	html, err := html(snapshot, target)
 	if err != nil {
 		return nil, err
 	}

@@ -220,7 +220,9 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		`rel="icon" type="image/png"`,
 		`aria-hidden="true"><img src="data:image/png;base64,`,
 		`<script id="snapshot-data" type="application/json">`,
+		`<script id="markdown-data" type="text/plain">`,
 		`"schemaVersion": "teleskope.io/snapshot/v1alpha1"`,
+		"Target: `Prod Cluster`",
 		"Running images",
 		"EKS overview",
 		"Upgrade / rollback insights",
@@ -243,6 +245,15 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function namespacesOf",
 		"resourceTypes = [",
 		`<select id="resourceType" aria-label="Resource type">`,
+		`id="exportReport"`,
+		`id="exportMenu"`,
+		`data-export-format="json"`,
+		`data-export-format="markdown"`,
+		"function downloadText",
+		"async function exportReport",
+		"function toggleExportMenu",
+		"/api/export/snapshot.json",
+		"/api/export/summary.md",
 		`id="themeToggle"`,
 		`prefers-color-scheme: dark`,
 		`teleskope.theme`,
@@ -307,5 +318,8 @@ func TestAdvisorArtifactAndHTML(t *testing.T) {
 	}
 	if strings.Contains(LiveHTML(), "__TELESKOPE_ADVISOR_JSON__") {
 		t.Fatal("unresolved live placeholder")
+	}
+	if strings.Contains(LiveHTML(), "__TELESKOPE_MARKDOWN__") {
+		t.Fatal("unresolved live markdown placeholder")
 	}
 }
