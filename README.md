@@ -103,6 +103,22 @@ each result to see evidence and limitations. It distinguishes unknown capability
 from unsupported configuration and marks retained live data as stale. See
 [Advisor semantics](docs/advisor.md) for the first version's scope.
 
+## Migration comparison
+
+Compare two scan reports to plan migration from a source cluster to a target
+cluster:
+
+```sh
+teleskope compare --source ./source-scan --target ./target-scan --output markdown
+```
+
+`--source` and `--target` accept either a scan report directory or a
+`snapshot.json` file. The comparison is deterministic and does not call an LLM.
+It highlights Kubernetes version differences, advisor capability gaps, missing
+or changed API resources, CRDs, networking classes, storage classes, CSI drivers,
+runtime classes, node platforms, workload references, and incomplete collection
+coverage. Supported outputs are `human`, `markdown`, and `json`.
+
 ## Live inventory
 
 Run a local web server with the same embedded UI as the offline report:

@@ -10,6 +10,7 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/awseks"
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
+	"github.com/kuraudo-lab/teleskope/internal/compare"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/k8s"
 	"github.com/kuraudo-lab/teleskope/internal/render"
@@ -53,6 +54,7 @@ func NewRootCommand(stdout, stderr io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(newScanCommand(stdout, stderr))
+	cmd.AddCommand(newCompareCommand(stdout, stderr))
 	cmd.AddCommand(newServeCommand(stdout, stderr))
 	return cmd
 }
@@ -233,6 +235,77 @@ func newScanK8sCommand(stdout, stderr io.Writer) *cobra.Command {
 func validOutput(output string) bool {
 	switch strings.ToLower(output) {
 	case "report", "human", "json":
+		return true
+	default:
+		return false
+	}
+}
+
+func newCompareCommand(stdout, stderr io.Writer) *cobra.Command {
+	var sourcePath string
+	var targetPath string
+	var output string
+
+	cmd := &cobra.Command{
+		Use:   "compare [--source <scan-dir-or-snapshot.json>] [--target <scan-dir-or-snapshot.json>]",
+		Short: "Compare two scan results for migration planning",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 2 {
+				return fmt.Errorf("compare accepts at most two positional paths")
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 && sourcePath == "" {
+				sourcePath = args[0]
+			}
+			if len(args) > 1 && targetPath == "" {
+				targetPath = args[1]
+			}
+			if sourcePath == "" {
+				return fmt.Errorf("--source is required")
+			}
+			if targetPath == "" {
+				return fmt.Errorf("--target is required")
+			}
+			if !validCompareOutput(output) {
+				return fmt.Errorf("unsupported output %q; expected human, markdown, or json", output)
+			}
+
+			progress := newProgress(stderr)
+			progress.Step("loading source scan result")
+			source, err := compare.LoadSnapshot(sourcePath)
+			if err != nil {
+				return err
+			}
+			progress.Step("loading target scan result")
+			target, err := compare.LoadSnapshot(targetPath)
+			if err != nil {
+				return err
+			}
+			progress.Step("analyzing migration differences")
+			report := compare.Analyze(source, target)
+			switch strings.ToLower(output) {
+			case "json":
+				return compare.WriteJSON(stdout, report)
+			case "markdown":
+				_, err = fmt.Fprint(stdout, compare.Markdown(report))
+				return err
+			default:
+				return compare.WriteHuman(stdout, report)
+			}
+		},
+	}
+
+	cmd.Flags().StringVar(&sourcePath, "source", "", "source scan report directory or snapshot.json")
+	cmd.Flags().StringVar(&targetPath, "target", "", "target scan report directory or snapshot.json")
+	cmd.Flags().StringVarP(&output, "output", "o", "human", "output format: human, markdown, json")
+	return cmd
+}
+
+func validCompareOutput(output string) bool {
+	switch strings.ToLower(output) {
+	case "human", "markdown", "json":
 		return true
 	default:
 		return false

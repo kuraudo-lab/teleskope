@@ -2,9 +2,14 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
 
 func TestRunVersion(t *testing.T) {
@@ -156,4 +161,65 @@ func TestServeValidation(t *testing.T) {
 			t.Fatalf("%v: code=%d", args, code)
 		}
 	}
+}
+
+func TestCompareCommandReadsReportDirectories(t *testing.T) {
+	base := t.TempDir()
+	sourceDir := writeCLISnapshot(t, base, "source", "v1.31.0")
+	targetDir := writeCLISnapshot(t, base, "target", "v1.30.0")
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"compare", sourceDir, targetDir, "--output", "markdown"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("Run returned %d, want 0; stderr=%s", code, stderr.String())
+	}
+	for _, want := range []string{"# Teleskope migration comparison", "Kubernetes versions differ"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q:\n%s", want, stdout.String())
+		}
+	}
+	if !strings.Contains(stderr.String(), "loading source scan result") || !strings.Contains(stderr.String(), "analyzing migration differences") {
+		t.Fatalf("stderr missing progress:\n%s", stderr.String())
+	}
+}
+
+func TestCompareCommandValidatesInput(t *testing.T) {
+	for _, args := range [][]string{
+		{"compare"},
+		{"compare", "--source", "one"},
+		{"compare", "--source", "one", "--target", "two", "--output", "yaml"},
+		{"compare", "one", "two", "three"},
+	} {
+		var stdout, stderr bytes.Buffer
+		if code := Run(args, &stdout, &stderr); code != 1 {
+			t.Fatalf("%v: code=%d stdout=%s stderr=%s", args, code, stdout.String(), stderr.String())
+		}
+	}
+}
+
+func writeCLISnapshot(t *testing.T, base, name, version string) string {
+	t.Helper()
+	dir := filepath.Join(base, name)
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := inventory.Snapshot{
+		SchemaVersion: "teleskope.io/snapshot/v1alpha1",
+		CollectedAt:   time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC),
+		Source:        inventory.Source{Tool: "teleskope", Version: "test", Mode: "test"},
+		EKS:           inventory.EKSInventory{Cluster: inventory.Cluster{Name: name, Version: strings.TrimPrefix(version, "v")}},
+		Kubernetes: inventory.Kubernetes{
+			Context: name,
+			Version: inventory.KubernetesVersion{GitVersion: version},
+		},
+	}
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "snapshot.json"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }
