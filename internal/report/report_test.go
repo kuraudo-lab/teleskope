@@ -243,6 +243,11 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function namespacesOf",
 		"resourceTypes = [",
 		`<select id="resourceType" aria-label="Resource type">`,
+		`id="themeToggle"`,
+		`prefers-color-scheme: dark`,
+		`teleskope.theme`,
+		`localStorage.setItem(themeKey, next)`,
+		`document.documentElement.dataset.theme = next`,
 		"resourceFilter = 'all'",
 		"activeSection = 'overview'",
 		"currentTopologyResourceFilter",
@@ -277,6 +282,7 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		`id="live-events"`,
 		"Recent events",
 		"live-event-list",
+		"background:var(--live-event-bg)",
 		"renderLiveStatus(data.sources, data.events)",
 	} {
 		if !strings.Contains(html, want) {
