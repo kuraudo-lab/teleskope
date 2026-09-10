@@ -21,6 +21,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultKubernetesServeInterval = 5 * time.Minute
+
 func newServeCommand(stdout, stderr io.Writer) *cobra.Command {
 	cmd := &cobra.Command{Use: "serve", Short: "Serve a live read-only inventory with periodic collection"}
 	cmd.AddCommand(newServeTarget("k8s", stdout, stderr), newServeTarget("eks", stdout, stderr))
@@ -77,14 +79,11 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 							return nil, err
 						}
 						data, coverage, err := collector.Collect(ctx)
-						if err != nil {
+						snapshot := liveKubernetesSnapshot(data, coverage)
+						if err != nil && !hasLiveKubernetesData(data, coverage) {
 							return nil, err
 						}
-						return &inventory.Snapshot{
-							SchemaVersion: "teleskope.io/snapshot/v1alpha1", CollectedAt: time.Now().UTC(),
-							Source:     inventory.Source{Tool: "teleskope", Version: buildinfo.Version, Mode: "live/poll"},
-							Kubernetes: data, Coverage: coverage,
-						}, nil
+						return snapshot, err
 					},
 					Log: log,
 				})
@@ -150,8 +149,8 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&listen, "listen", "127.0.0.1:8080", "HTTP listen address (no built-in authentication)")
-	cmd.Flags().DurationVar(&interval, "interval", time.Minute, "delay between completed Kubernetes scans (plus up to 10% jitter)")
-	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "timeout for each collection attempt")
+	cmd.Flags().DurationVar(&interval, "interval", defaultKubernetesServeInterval, "delay between completed Kubernetes scans (plus up to 10% jitter)")
+	cmd.Flags().DurationVar(&timeout, "timeout", defaultCollectionTimeout, "timeout for each collection attempt")
 	cmd.Flags().StringVar(&kubeOpts.Kubeconfig, "kubeconfig", "", "path to kubeconfig")
 	cmd.Flags().StringVar(&kubeOpts.Context, "kube-context", "", "kubeconfig context")
 	awsInterval = 15 * time.Minute
@@ -161,6 +160,56 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 		cmd.Flags().BoolVar(&skipKubernetes, "skip-kubernetes", false, "collect only AWS-side inventory")
 	}
 	return cmd
+}
+
+func liveKubernetesSnapshot(data inventory.Kubernetes, coverage []inventory.CoverageItem) *inventory.Snapshot {
+	return &inventory.Snapshot{
+		SchemaVersion: "teleskope.io/snapshot/v1alpha1", CollectedAt: time.Now().UTC(),
+		Source:     inventory.Source{Tool: "teleskope", Version: buildinfo.Version, Mode: "live/poll"},
+		Kubernetes: data, Coverage: coverage,
+	}
+}
+
+func hasLiveKubernetesData(data inventory.Kubernetes, coverage []inventory.CoverageItem) bool {
+	return len(coverage) > 0 ||
+		data.Version.GitVersion != "" ||
+		len(data.APIResources) > 0 ||
+		len(data.CustomResourceDefinitions) > 0 ||
+		len(data.CustomResourceInstances) > 0 ||
+		len(data.CustomResourceCounts) > 0 ||
+		len(data.APIServices) > 0 ||
+		len(data.Namespaces) > 0 ||
+		len(data.Nodes) > 0 ||
+		len(data.ServiceAccounts) > 0 ||
+		len(data.Workloads) > 0 ||
+		len(data.Pods) > 0 ||
+		len(data.RunningImages) > 0 ||
+		len(data.RunningContainers) > 0 ||
+		len(data.Services) > 0 ||
+		len(data.EndpointSlices) > 0 ||
+		len(data.IngressClasses) > 0 ||
+		len(data.Ingresses) > 0 ||
+		len(data.GatewayClasses) > 0 ||
+		len(data.Gateways) > 0 ||
+		len(data.GatewayRoutes) > 0 ||
+		len(data.StorageClasses) > 0 ||
+		len(data.PersistentVolumes) > 0 ||
+		len(data.PersistentVolumeClaims) > 0 ||
+		len(data.CSIDrivers) > 0 ||
+		len(data.CSINodes) > 0 ||
+		len(data.VolumeAttachments) > 0 ||
+		len(data.RuntimeClasses) > 0 ||
+		len(data.ConfigMaps) > 0 ||
+		len(data.Secrets) > 0 ||
+		len(data.RBAC.Roles) > 0 ||
+		len(data.RBAC.RoleBindings) > 0 ||
+		len(data.RBAC.ClusterRoles) > 0 ||
+		len(data.RBAC.ClusterRoleBindings) > 0 ||
+		len(data.Policies.HorizontalPodAutoscalers) > 0 ||
+		len(data.Policies.PodDisruptionBudgets) > 0 ||
+		len(data.Policies.NetworkPolicies) > 0 ||
+		len(data.Policies.ResourceQuotas) > 0 ||
+		len(data.Policies.LimitRanges) > 0
 }
 
 func sourceNames(sources []live.Source) string {

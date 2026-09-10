@@ -76,7 +76,7 @@ These are architectural tradeoffs, not measured benchmarks for this repository.
 
 Recommended polling defaults are configurable intervals, jitter, request deadlines,
 and at most one active collection per source. Do not queue overlapping full scans.
-Start with a conservative interval such as 60 seconds, then tune using cluster size,
+Start with a conservative interval such as 5 minutes, then tune using cluster size,
 scan duration, throttling, and freshness requirements.
 
 For watch mode, use client-go shared informers for built-in resources, dynamic

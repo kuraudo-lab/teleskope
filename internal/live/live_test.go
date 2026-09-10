@@ -100,6 +100,26 @@ func TestPartialInitialDataAndIndependentSources(t *testing.T) {
 		t.Fatalf("sources coupled: %+v", got)
 	}
 }
+
+func TestPartialSnapshotWithErrorIsPublished(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+
+	partial := podSnapshot(1, "complete")
+	partial.Coverage = append(partial.Coverage, inventory.CoverageItem{Area: "kubernetes", Resource: "Nodes", Status: "unavailable", Reason: "nodes unavailable"})
+	s.finish("kubernetes", partial, errors.New("nodes unavailable"), time.Now())
+
+	got := readView(t, s)
+	if got.Snapshot == nil || len(got.Snapshot.Kubernetes.Pods) != 1 {
+		t.Fatalf("partial snapshot was not published: %+v", got)
+	}
+	if got.Sources["kubernetes"].State != "partial" {
+		t.Fatalf("state = %q, want partial", got.Sources["kubernetes"].State)
+	}
+	if got.Sources["kubernetes"].Error == "" {
+		t.Fatal("partial publish should retain the collection error")
+	}
+}
+
 func TestHTTPReadOnlyAndConditionalRequests(t *testing.T) {
 	s := newTestStore(t, "kubernetes")
 	h := s.Handler()

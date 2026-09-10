@@ -136,7 +136,7 @@ Run a local web server with the same embedded UI as the offline report:
 
 ```sh
 teleskope serve k8s --kube-context prod
-teleskope serve k8s --kubeconfig ./config --interval 30s --timeout 2m
+teleskope serve k8s --kubeconfig ./config --interval 5m --timeout 5m
 teleskope serve eks --cluster my-cluster --kube-context prod --aws-interval 15m
 teleskope serve eks --cluster my-cluster --skip-kubernetes
 ```
@@ -148,7 +148,7 @@ details; keep the listener local or put it behind an authenticated access
 boundary.
 
 Each source scans immediately, then waits after its previous scan finishes:
-Kubernetes defaults to 60 seconds, AWS to 15 minutes, with up to 10% added
+Kubernetes defaults to 5 minutes, AWS to 15 minutes, with up to 10% added
 jitter. `--timeout` applies independently to each attempt. Slow scans never
 overlap. Clients and credentials are reused between scans; Kubernetes and AWS
 failures do not stop the web server or the other source. For EKS, select a

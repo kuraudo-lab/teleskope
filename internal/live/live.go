@@ -246,6 +246,7 @@ func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, nex
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e := s.entries[name]
+	attemptErr := err
 	e.status.Refreshing, e.status.NextAttempt = false, &next
 	e.status.Coverage = nil
 	if snapshot != nil {
@@ -254,19 +255,25 @@ func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, nex
 	if err == nil && snapshot == nil {
 		err = fmt.Errorf("collector returned no snapshot")
 	}
-	if err == nil && e.snapshot != nil {
-		err = coverageRegression(e.snapshot.Coverage, snapshot.Coverage)
+	var regressionErr error
+	if snapshot != nil && e.snapshot != nil {
+		regressionErr = coverageRegression(e.snapshot.Coverage, snapshot.Coverage)
+		if regressionErr != nil {
+			err = regressionErr
+		}
 	}
 	var owned inventory.Snapshot
-	if err == nil {
+	publish := snapshot != nil && regressionErr == nil
+	if publish {
 		// Clone once at publication; no caller-owned maps enter the shared store.
 		var data []byte
 		data, err = json.Marshal(snapshot)
 		if err == nil {
 			err = json.Unmarshal(data, &owned)
 		}
+		publish = err == nil
 	}
-	if err != nil {
+	if !publish {
 		e.status.State = "error"
 		if e.snapshot != nil {
 			e.status.State = "stale"
@@ -276,6 +283,10 @@ func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, nex
 		e.snapshot = &owned
 		now := time.Now().UTC()
 		e.status.LastSuccess, e.status.Error, e.status.State = &now, "", "ready"
+		if attemptErr != nil {
+			e.status.Error = attemptErr.Error()
+			e.status.State = "partial"
+		}
 		for _, c := range snapshot.Coverage {
 			if c.Status != "complete" {
 				e.status.State = "partial"

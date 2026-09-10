@@ -18,6 +18,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultCollectionTimeout = 5 * time.Minute
+
 // Run executes the CLI and returns its process exit code.
 func Run(args []string, stdout, stderr io.Writer) int {
 	cmd := NewRootCommand(stdout, stderr)
@@ -153,7 +155,7 @@ func newScanEKSCommand(stdout, stderr io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&skipKubernetes, "skip-kubernetes", false, "skip Kubernetes API collection")
 	cmd.Flags().StringVarP(&output, "output", "o", "report", "output format: report, human, json")
 	cmd.Flags().StringVar(&outputDir, "output-dir", ".", "parent directory for timestamped report output")
-	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "collection timeout")
+	cmd.Flags().DurationVar(&timeout, "timeout", defaultCollectionTimeout, "collection timeout")
 	return cmd
 }
 
@@ -229,7 +231,7 @@ func newScanK8sCommand(stdout, stderr io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&opts.Context, "kube-context", "", "kubeconfig context for Kubernetes API collection")
 	cmd.Flags().StringVarP(&output, "output", "o", "report", "output format: report, human, json")
 	cmd.Flags().StringVar(&outputDir, "output-dir", ".", "parent directory for timestamped report output")
-	cmd.Flags().DurationVar(&timeout, "timeout", 2*time.Minute, "collection timeout")
+	cmd.Flags().DurationVar(&timeout, "timeout", defaultCollectionTimeout, "collection timeout")
 	return cmd
 }
 

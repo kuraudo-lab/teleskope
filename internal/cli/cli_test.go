@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/spf13/cobra"
 )
 
 func TestRunVersion(t *testing.T) {
@@ -160,6 +161,42 @@ func TestServeValidation(t *testing.T) {
 		if code := Run(args, &stdout, &stderr); code != 1 {
 			t.Fatalf("%v: code=%d", args, code)
 		}
+	}
+}
+
+func TestCollectionDefaults(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	for _, cmd := range []*cobra.Command{
+		newScanEKSCommand(&stdout, &stderr),
+		newScanK8sCommand(&stdout, &stderr),
+		newServeTarget("k8s", &stdout, &stderr),
+	} {
+		timeout, err := cmd.Flags().GetDuration("timeout")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if timeout != 5*time.Minute {
+			t.Fatalf("%s timeout = %s, want 5m", cmd.Use, timeout)
+		}
+	}
+	interval, err := newServeTarget("k8s", &stdout, &stderr).Flags().GetDuration("interval")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if interval != 5*time.Minute {
+		t.Fatalf("serve k8s interval = %s, want 5m", interval)
+	}
+}
+
+func TestLiveKubernetesDataDetection(t *testing.T) {
+	if hasLiveKubernetesData(inventory.Kubernetes{Context: "prod", Server: "https://example.invalid"}, nil) {
+		t.Fatal("connection metadata alone should not publish a partial snapshot")
+	}
+	if !hasLiveKubernetesData(inventory.Kubernetes{}, []inventory.CoverageItem{{Area: "kubernetes", Resource: "Pods", Status: "partial", ObjectCount: 1}}) {
+		t.Fatal("coverage should publish a partial snapshot")
+	}
+	if !hasLiveKubernetesData(inventory.Kubernetes{Pods: []inventory.Pod{{ObjectRef: inventory.ObjectRef{Name: "web"}}}}, nil) {
+		t.Fatal("collected resources should publish a partial snapshot")
 	}
 }
 
