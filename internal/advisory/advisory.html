@@ -4,147 +4,247 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Teleskope migration advisory</title>
+  <script>
+    (() => {
+      try {
+        const theme = localStorage.getItem('teleskope.theme');
+        if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+      } catch (_) {}
+    })();
+  </script>
   <style>
-    :root { color-scheme: light dark; --bg:#f7f9fc; --panel:#fff; --panel-2:#eef3f8; --text:#172033; --muted:#61708a; --line:#d9e1ec; --cyan:#1282a2; --amber:#b7791f; --red:#c2410c; --green:#15803d; --chip:#eef6fa; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#0b1120; --panel:#111827; --panel-2:#172033; --text:#e5edf7; --muted:#99a7bd; --line:#263349; --cyan:#38bdf8; --amber:#fbbf24; --red:#fb7185; --green:#4ade80; --chip:#172a3a; } }
+    :root { color-scheme: light dark; --bg:#f6f8fb; --panel:rgba(255,255,255,.88); --panel-2:rgba(248,250,252,.9); --line:rgba(15,23,42,.13); --text:#0f172a; --muted:#64748b; --blue:#2563eb; --cyan:#0891b2; --green:#10b981; --amber:#d97706; --red:#e11d48; --purple:#7c3aed; --chip:rgba(37,99,235,.1); --chip-text:#1e3a8a; --aside-bg:rgba(255,255,255,.72); --nav-hover:rgba(37,99,235,.11); --control-bg:rgba(255,255,255,.92); --card-bg:linear-gradient(180deg,rgba(255,255,255,.94),rgba(241,245,249,.86)); --table-line:rgba(15,23,42,.08); --table-head-bg:rgba(248,250,252,.96); --table-hover:rgba(37,99,235,.06); --drawer-bg:rgba(255,255,255,.97); --pre:#334155; --shadow:0 24px 80px rgba(15,23,42,.14); --radius:18px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme]) { color-scheme: dark; --bg:#08111f; --panel:rgba(17,29,50,.82); --panel-2:rgba(11,20,35,.88); --line:rgba(148,163,184,.18); --text:#e5eefb; --muted:#91a4bd; --blue:#60a5fa; --cyan:#22d3ee; --green:#34d399; --amber:#f59e0b; --red:#fb7185; --purple:#a78bfa; --chip:rgba(96,165,250,.12); --chip-text:#cfe5ff; --aside-bg:rgba(4,10,20,.58); --nav-hover:rgba(96,165,250,.12); --control-bg:rgba(15,23,42,.9); --card-bg:linear-gradient(180deg,rgba(30,41,59,.84),rgba(15,23,42,.76)); --table-line:rgba(148,163,184,.12); --table-head-bg:rgba(15,23,42,.96); --table-hover:rgba(96,165,250,.06); --drawer-bg:rgba(8,17,31,.96); --pre:#cbd5e1; --shadow:0 24px 80px rgba(0,0,0,.42); } }
+    :root[data-theme="dark"] { color-scheme: dark; --bg:#08111f; --panel:rgba(17,29,50,.82); --panel-2:rgba(11,20,35,.88); --line:rgba(148,163,184,.18); --text:#e5eefb; --muted:#91a4bd; --blue:#60a5fa; --cyan:#22d3ee; --green:#34d399; --amber:#f59e0b; --red:#fb7185; --purple:#a78bfa; --chip:rgba(96,165,250,.12); --chip-text:#cfe5ff; --aside-bg:rgba(4,10,20,.58); --nav-hover:rgba(96,165,250,.12); --control-bg:rgba(15,23,42,.9); --card-bg:linear-gradient(180deg,rgba(30,41,59,.84),rgba(15,23,42,.76)); --table-line:rgba(148,163,184,.12); --table-head-bg:rgba(15,23,42,.96); --table-hover:rgba(96,165,250,.06); --drawer-bg:rgba(8,17,31,.96); --pre:#cbd5e1; --shadow:0 24px 80px rgba(0,0,0,.42); }
+    :root[data-theme="light"] { color-scheme: light; }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; background:linear-gradient(135deg,var(--bg),var(--panel-2)); color:var(--text); font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    .shell { display:grid; grid-template-columns:260px minmax(0,1fr); min-height:100vh; }
-    aside { border-right:1px solid var(--line); padding:24px; background:color-mix(in srgb,var(--panel) 88%,transparent); }
-    main { padding:28px; overflow:auto; }
-    h1,h2,h3,p { margin-top:0; }
-    h1 { font-size:22px; margin-bottom:6px; }
-    h2 { font-size:18px; margin-bottom:14px; }
-    h3 { font-size:15px; margin-bottom:10px; }
-    .muted { color:var(--muted); }
-    .stack { display:grid; gap:16px; }
-    .panel { background:var(--panel); border:1px solid var(--line); border-radius:18px; box-shadow:0 20px 60px rgba(15,23,42,.08); }
-    .panel header { padding:18px 20px; border-bottom:1px solid var(--line); }
-    .body { padding:20px; }
+    body { margin:0; background:radial-gradient(circle at 20% -10%,rgba(34,211,238,.16),transparent 34%),radial-gradient(circle at 92% 10%,rgba(167,139,250,.20),transparent 34%),var(--bg); color:var(--text); }
+    .app { min-height:100vh; display:grid; grid-template-columns:280px 1fr; }
+    aside { border-right:1px solid var(--line); background:var(--aside-bg); backdrop-filter:blur(16px); padding:24px 18px; position:sticky; top:0; height:100vh; }
+    .brand { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+    .logo { width:42px; height:42px; border-radius:14px; box-shadow:0 0 30px rgba(34,211,238,.35); flex:none; display:grid; place-items:center; color:white; background:linear-gradient(135deg,var(--blue),var(--cyan)); font-weight:900; font-size:20px; }
+    .brand h1 { font-size:18px; line-height:1.1; margin:0; }
+    .brand p { color:var(--muted); margin:2px 0 0; font-size:12px; }
+    nav button { width:100%; display:flex; align-items:center; gap:10px; background:transparent; color:var(--muted); border:0; text-align:left; padding:11px 12px; border-radius:12px; cursor:pointer; font-size:14px; }
+    nav button:hover, nav button.active { background:var(--nav-hover); color:var(--text); }
+    .dot { width:8px; height:8px; border-radius:999px; background:var(--blue); box-shadow:0 0 16px currentColor; flex:none; }
+    main { padding:28px; width:100%; min-width:0; }
+    header { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; margin-bottom:22px; }
+    .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.12em; font-size:12px; font-weight:700; }
+    h2 { margin:4px 0 8px; font-size:34px; letter-spacing:-.04em; }
+    h3 { margin:0; }
+    .sub { color:var(--muted); margin:0; max-width:780px; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    input, select { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; outline:none; }
+    input:focus, select:focus { border-color:rgba(96,165,250,.75); box-shadow:0 0 0 3px rgba(96,165,250,.14); }
+    button { font:inherit; }
+    .primary, .export-button, .theme-toggle { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; min-width:42px; height:42px; padding:0 12px; cursor:pointer; font-size:14px; }
+    .primary { background:var(--blue); border-color:var(--blue); color:white; font-weight:700; }
+    .primary:disabled, .export-button:disabled { opacity:.55; cursor:not-allowed; }
+    .primary:hover, .export-button:hover, .theme-toggle:hover { background:var(--nav-hover); color:var(--text); }
+    .primary:hover { background:var(--blue); color:white; }
+    .primary:focus-visible, .export-button:focus-visible, .theme-toggle:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+    .export { position:relative; }
+    .export-menu { position:absolute; right:0; top:calc(100% + 8px); display:none; min-width:150px; padding:6px; background:var(--drawer-bg); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); z-index:20; }
+    .export.open .export-menu { display:grid; gap:4px; }
+    .export-menu button { background:transparent; color:var(--text); border:0; border-radius:8px; padding:9px 10px; text-align:left; cursor:pointer; font-size:14px; }
+    .export-menu button:hover { background:var(--nav-hover); }
+    .export-menu button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+    .grid { display:grid; gap:16px; }
+    .cards { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:18px; }
+    .card { background:var(--card-bg); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); min-width:0; }
+    .card .label { color:var(--muted); font-size:12px; }
+    .card .value { font-size:28px; font-weight:800; margin-top:6px; letter-spacing:-.04em; overflow-wrap:anywhere; }
+    .section, .section.stack { display:none; }
+    .section.active { display:block; }
+    .section.stack.active { display:grid; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+    .panel h3 { margin:0; padding:16px 18px; border-bottom:1px solid var(--line); font-size:16px; }
+    .panel .body { padding:16px 18px; }
     .upload-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
-    label.file { display:grid; gap:8px; padding:16px; border:1px dashed var(--line); border-radius:14px; background:var(--panel-2); cursor:pointer; }
-    input[type=file] { width:100%; color:var(--muted); }
-    button { border:1px solid var(--line); background:var(--chip); color:var(--text); border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; }
-    button.primary { background:var(--cyan); border-color:var(--cyan); color:#fff; }
-    button:disabled { opacity:.55; cursor:not-allowed; }
-    nav { display:grid; gap:8px; margin-top:24px; }
-    nav button { text-align:left; background:transparent; }
-    nav button.active { background:var(--chip); border-color:var(--cyan); }
-    .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-    .card { padding:14px; border:1px solid var(--line); border-radius:14px; background:var(--panel-2); }
-    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
-    .value { font-size:24px; font-weight:800; }
-    table { width:100%; border-collapse:collapse; }
-    th,td { text-align:left; vertical-align:top; padding:9px 10px; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
-    th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:var(--chip); font-weight:700; }
-    .blocker { color:var(--red); }
-    .warn { color:var(--amber); }
-    .info { color:var(--cyan); }
-    .hidden { display:none !important; }
-    .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
-    pre { white-space:pre-wrap; overflow:auto; max-height:60vh; padding:16px; border-radius:14px; background:#020617; color:#dbeafe; }
-    @media (max-width:900px) { .shell { grid-template-columns:1fr; } aside { border-right:0; border-bottom:1px solid var(--line); } .upload-grid,.cards { grid-template-columns:1fr; } }
+    .file { display:grid; gap:8px; padding:16px; border:1px dashed var(--line); border-radius:12px; background:var(--panel-2); cursor:pointer; min-width:0; }
+    .file strong { font-size:14px; }
+    .file input { width:100%; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { padding:10px 12px; border-bottom:1px solid var(--table-line); vertical-align:top; overflow-wrap:anywhere; }
+    th { color:var(--muted); text-align:left; font-weight:600; position:sticky; top:0; background:var(--table-head-bg); z-index:1; }
+    tr:hover td { background:var(--table-hover); }
+    .scroll { overflow-x:auto; overflow-y:visible; }
+    .badge { border-radius:999px; padding:3px 8px; font-size:12px; font-weight:700; display:inline-flex; }
+    .blocker { color:#450a0a; background:var(--red); }
+    .warn { color:#422006; background:var(--amber); }
+    .info { color:#083344; background:var(--cyan); }
+    .muted { color:var(--muted); }
+    .stack { gap:16px; }
+    .inventory-diffs { display:grid; gap:16px; }
+    pre { max-height:70vh; overflow:auto; white-space:pre-wrap; color:var(--pre); font-size:12px; margin:0; }
+    .empty { color:var(--muted); padding:18px; }
+    @media (max-width:1000px) { .app { grid-template-columns:1fr; } aside { position:relative; height:auto; } header { flex-direction:column; } .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } .upload-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <aside>
-      <h1>Teleskope</h1>
-      <p class="muted">migration advisory</p>
-      <nav id="nav">
-        <button class="active" data-section="overview">Overview</button>
-        <button data-section="findings">Findings</button>
-        <button data-section="capabilities">Capabilities</button>
-        <button data-section="inventory">Inventory</button>
-        <button data-section="coverage">Coverage</button>
-        <button data-section="markdown">Markdown</button>
-      </nav>
-    </aside>
-    <main class="stack">
-      <section class="panel">
-        <header>
-          <h2>Compare scan results</h2>
-          <p class="muted">Choose the source and target <code>snapshot.json</code> files from two Teleskope scan reports. Analysis runs locally in this server and does not connect to either cluster.</p>
-        </header>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo" aria-hidden="true">T</div><div><h1>Teleskope</h1><p>migration advisory</p></div></div>
+    <nav id="nav"></nav>
+  </aside>
+  <main>
+    <header>
+      <div>
+        <div class="eyebrow">Advisory</div>
+        <h2>Compare scan results</h2>
+        <p class="sub">Choose the source and target <code>snapshot.json</code> files from two Teleskope scan reports. Analysis runs locally in this server.</p>
+      </div>
+      <div class="toolbar">
+        <button id="runCompare" class="primary" type="submit" form="compareForm">Compare</button>
+        <div class="export" id="exportMenu">
+          <button type="button" id="exportReport" class="export-button" aria-haspopup="menu" aria-expanded="false" disabled>Export</button>
+          <div class="export-menu" role="menu" aria-label="Export format">
+            <button type="button" role="menuitem" data-export-format="json">JSON</button>
+            <button type="button" role="menuitem" data-export-format="markdown">Markdown</button>
+          </div>
+        </div>
+        <button type="button" id="themeToggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch theme">Theme</button>
+      </div>
+    </header>
+    <section class="section stack active" data-section="overview">
+      <div class="panel">
+        <h3>Inputs</h3>
         <div class="body">
-          <form id="compareForm" class="stack">
+          <form id="compareForm" class="grid">
             <div class="upload-grid">
               <label class="file"><strong>Source snapshot</strong><span class="muted">Current cluster</span><input id="source" name="source" type="file" accept=".json,application/json" required /></label>
               <label class="file"><strong>Target snapshot</strong><span class="muted">Migration destination</span><input id="target" name="target" type="file" accept=".json,application/json" required /></label>
             </div>
-            <div class="actions">
-              <button id="runCompare" class="primary" type="submit">Compare</button>
-              <button id="downloadJSON" type="button" disabled>Download JSON</button>
-              <button id="downloadMarkdown" type="button" disabled>Download Markdown</button>
-              <span id="status" class="muted">Waiting for two snapshots.</span>
-            </div>
+            <div id="status" class="muted">Waiting for two snapshots.</div>
           </form>
         </div>
-      </section>
-
-      <section class="panel section" data-section="overview"><header><h2>Overview</h2></header><div class="body stack"><div id="summary" class="muted">Run a comparison to see migration findings.</div><div id="clusterCards" class="cards"></div></div></section>
-      <section class="panel section hidden" data-section="findings"><header><h2>Findings</h2></header><div class="body"><table id="findingsTable"></table></div></section>
-      <section class="panel section hidden" data-section="capabilities"><header><h2>Capability differences</h2></header><div class="body"><table id="capabilityTable"></table></div></section>
-      <section class="panel section hidden" data-section="inventory"><header><h2>Inventory differences</h2></header><div class="body" id="inventoryDiffs"></div></section>
-      <section class="panel section hidden" data-section="coverage"><header><h2>Coverage warnings</h2></header><div class="body"><table id="coverageTable"></table></div></section>
-      <section class="panel section hidden" data-section="markdown"><header><h2>Markdown report</h2></header><div class="body"><pre id="markdownBody">Run a comparison to generate Markdown.</pre></div></section>
-    </main>
-  </div>
-  <script>
-    let latest = null;
-    const byId = id => document.getElementById(id);
-    const esc = value => String(value ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const arr = value => Array.isArray(value) ? value : [];
-    const table = (id, headers, rows) => {
-      byId(id).innerHTML = '<thead><tr>' + headers.map(h => `<th>${esc(h)}</th>`).join('') + '</tr></thead><tbody>' + (rows.length ? rows.map(row => '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>').join('') : `<tr><td colspan="${headers.length}" class="muted">No entries</td></tr>`) + '</tbody>';
-    };
-    const pill = value => `<span class="pill ${esc(value)}">${esc(value)}</span>`;
-    const join = value => arr(value).map(esc).join(', ') || '-';
-    function render(result) {
-      latest = result;
-      const report = result.report || {};
-      byId('summary').textContent = report.summary || 'No summary.';
-      byId('clusterCards').innerHTML = [report.source, report.target].filter(Boolean).map(c => `<div class="card"><div class="label">${esc(c.role)}</div><div class="value">${esc(c.name)}</div><div class="muted">Kubernetes ${esc(c.version)} · ${esc(c.region || c.context || '-')}</div></div>`).join('');
-      table('findingsTable', ['Severity', 'Category', 'Finding', 'Source', 'Target', 'Recommendation'], arr(report.findings).map(f => [pill(f.severity), esc(f.category), esc(f.summary), esc(f.source), esc(f.target), esc(f.recommendation)]));
-      table('capabilityTable', ['Capability', 'Scope', 'Source', 'Target', 'Summary'], arr(report.capabilityDiffs).map(d => [esc(d.key), esc(d.scope), esc(d.sourceAssessment), esc(d.targetAssessment), esc(d.summary)]));
-      byId('inventoryDiffs').innerHTML = arr(report.inventoryDiffs).map(d => `<section class="stack"><h3>${esc(d.category)}</h3><p><strong>Only in source:</strong> ${join(d.onlyInSource)}</p><p><strong>Only in target:</strong> ${join(d.onlyInTarget)}</p><p><strong>Changed:</strong> ${join(d.changed)}</p></section>`).join('') || '<p class="muted">No inventory differences.</p>';
-      table('coverageTable', ['Role', 'Area', 'Resource', 'Status', 'Reason'], arr(report.coverageWarnings).map(w => [esc(w.role), esc(w.area), esc(w.resource), esc(w.status), esc(w.reason)]));
-      byId('markdownBody').textContent = result.markdown || '';
-      byId('downloadJSON').disabled = false;
-      byId('downloadMarkdown').disabled = false;
-    }
-    function download(name, content, type) {
-      const blob = new Blob([content], {type});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = name; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-    byId('compareForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      byId('runCompare').disabled = true;
-      byId('status').textContent = 'Analyzing snapshots…';
-      try {
-        const form = new FormData(e.currentTarget);
-        const response = await fetch('/api/compare', {method:'POST', body:form});
-        if (!response.ok) throw new Error(await response.text());
-        render(await response.json());
-        byId('status').textContent = 'Comparison ready.';
-      } catch (error) {
-        byId('status').textContent = error.message;
-      } finally {
-        byId('runCompare').disabled = false;
-      }
-    });
-    byId('downloadJSON').addEventListener('click', () => latest && download('teleskope-comparison.json', JSON.stringify(latest.report, null, 2) + '\n', 'application/json'));
-    byId('downloadMarkdown').addEventListener('click', () => latest && download('teleskope-comparison.md', latest.markdown, 'text/markdown'));
-    byId('nav').addEventListener('click', e => {
-      const button = e.target.closest('button[data-section]');
-      if (!button) return;
-      document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b === button));
-      document.querySelectorAll('.section').forEach(s => s.classList.toggle('hidden', s.dataset.section !== button.dataset.section));
-    });
-  </script>
+      </div>
+      <div id="clusterCards" class="grid cards"></div>
+      <div class="panel">
+        <h3>Summary</h3>
+        <div class="body"><p id="summary" class="muted">Run a comparison to see migration findings.</p></div>
+      </div>
+    </section>
+    <section class="section stack" data-section="findings"><div class="panel"><h3>Findings</h3><div class="scroll"><table id="findingsTable"></table></div></div></section>
+    <section class="section stack" data-section="capabilities"><div class="panel"><h3>Capability differences</h3><div class="scroll"><table id="capabilityTable"></table></div></div></section>
+    <section class="section stack" data-section="inventory"><div class="panel"><h3>Inventory differences</h3><div class="body inventory-diffs" id="inventoryDiffs"></div></div></section>
+    <section class="section stack" data-section="coverage"><div class="panel"><h3>Coverage warnings</h3><div class="scroll"><table id="coverageTable"></table></div></div></section>
+    <section class="section stack" data-section="markdown"><div class="panel"><h3>Markdown report</h3><div class="body"><pre id="markdownBody">Run a comparison to generate Markdown.</pre></div></div></section>
+  </main>
+</div>
+<script>
+const navItems = [['overview','Overview'], ['findings','Findings'], ['capabilities','Capabilities'], ['inventory','Inventory'], ['coverage','Coverage'], ['markdown','Markdown']];
+let activeSection = 'overview';
+let latest = null;
+const byId = id => document.getElementById(id);
+const esc = value => String(value ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const arr = value => Array.isArray(value) ? value : [];
+const join = value => arr(value).map(esc).join(', ') || '-';
+function table(id, headers, rows) {
+  const body = rows.length ? rows.map(row => '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>').join('') : `<tr><td class="empty" colspan="${headers.length}">No entries</td></tr>`;
+  byId(id).innerHTML = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody>`;
+}
+function badge(value) { return `<span class="badge ${esc(value)}">${esc(value)}</span>`; }
+function downloadText(filename, content, type) {
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function closeExportMenu() {
+  byId('exportMenu').classList.remove('open');
+  byId('exportReport').setAttribute('aria-expanded', 'false');
+}
+function toggleExportMenu() {
+  if (!latest) return;
+  const menu = byId('exportMenu');
+  const open = !menu.classList.contains('open');
+  menu.classList.toggle('open', open);
+  byId('exportReport').setAttribute('aria-expanded', String(open));
+}
+function exportReport(format) {
+  if (!latest) return;
+  if (format === 'markdown') {
+    downloadText('teleskope-comparison.md', latest.markdown || '', 'text/markdown');
+    return;
+  }
+  downloadText('teleskope-comparison.json', JSON.stringify(latest.report, null, 2) + '\n', 'application/json');
+}
+const themeKey = 'teleskope.theme';
+const themeQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function storedTheme() { try { const theme = localStorage.getItem(themeKey); return theme === 'dark' || theme === 'light' ? theme : ''; } catch (_) { return ''; } }
+function effectiveTheme() { return storedTheme() || (themeQuery?.matches ? 'dark' : 'light'); }
+function updateThemeToggle() {
+  const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+  const btn = byId('themeToggle');
+  btn.textContent = next === 'dark' ? 'Dark' : 'Light';
+  btn.setAttribute('aria-label', `Switch to ${next} theme`);
+  btn.title = `Switch to ${next} theme`;
+}
+function initThemeToggle() {
+  updateThemeToggle();
+  byId('themeToggle').addEventListener('click', () => {
+    const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(themeKey, next); } catch (_) {}
+    document.documentElement.dataset.theme = next;
+    updateThemeToggle();
+  });
+  themeQuery?.addEventListener('change', () => { if (!storedTheme()) updateThemeToggle(); });
+}
+function renderNav() {
+  byId('nav').innerHTML = navItems.map(([id,label],i) => `<button class="${i===0?'active':''}" data-target="${id}"><span class="dot"></span>${label}</button>`).join('');
+  byId('nav').onclick = e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    activeSection = btn.dataset.target;
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === activeSection));
+  };
+}
+function render(result) {
+  latest = result;
+  const report = result.report || {};
+  byId('summary').textContent = report.summary || 'No summary.';
+  const clusters = [report.source, report.target].filter(Boolean);
+  byId('clusterCards').innerHTML = clusters.map(c => `<div class="card"><div class="label">${esc(c.role)}</div><div class="value">${esc(c.name)}</div><div class="muted">Kubernetes ${esc(c.version)} - ${esc(c.region || c.context || '-')}</div></div>`).join('');
+  table('findingsTable', ['Severity', 'Category', 'Finding', 'Source', 'Target', 'Recommendation'], arr(report.findings).map(f => [badge(f.severity), esc(f.category), esc(f.summary), esc(f.source), esc(f.target), esc(f.recommendation)]));
+  table('capabilityTable', ['Capability', 'Scope', 'Source', 'Target', 'Summary'], arr(report.capabilityDiffs).map(d => [esc(d.key), esc(d.scope), esc(d.sourceAssessment), esc(d.targetAssessment), esc(d.summary)]));
+  byId('inventoryDiffs').innerHTML = arr(report.inventoryDiffs).map(d => `<div><h3>${esc(d.category)}</h3><p><strong>Only in source:</strong> ${join(d.onlyInSource)}</p><p><strong>Only in target:</strong> ${join(d.onlyInTarget)}</p><p><strong>Changed:</strong> ${join(d.changed)}</p></div>`).join('') || '<p class="muted">No inventory differences.</p>';
+  table('coverageTable', ['Role', 'Area', 'Resource', 'Status', 'Reason'], arr(report.coverageWarnings).map(w => [esc(w.role), esc(w.area), esc(w.resource), esc(w.status), esc(w.reason)]));
+  byId('markdownBody').textContent = result.markdown || '';
+  byId('exportReport').disabled = false;
+}
+byId('compareForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  byId('runCompare').disabled = true;
+  byId('status').textContent = 'Analyzing snapshots...';
+  try {
+    const form = new FormData(e.currentTarget);
+    const response = await fetch('/api/compare', {method:'POST', body:form});
+    if (!response.ok) throw new Error(await response.text());
+    render(await response.json());
+    byId('status').textContent = 'Comparison ready.';
+  } catch (error) {
+    byId('status').textContent = error.message;
+  } finally {
+    byId('runCompare').disabled = false;
+  }
+});
+document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); });
+byId('exportReport').addEventListener('click', toggleExportMenu);
+byId('exportMenu').addEventListener('click', e => {
+  const item = e.target.closest('[data-export-format]');
+  if (!item) return;
+  closeExportMenu();
+  exportReport(item.dataset.exportFormat);
+});
+initThemeToggle();
+renderNav();
+</script>
 </body>
 </html>

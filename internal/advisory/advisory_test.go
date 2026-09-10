@@ -20,7 +20,24 @@ func TestHandlerServesPageAndComparesUploads(t *testing.T) {
 	if page.Code != http.StatusOK {
 		t.Fatalf("page status = %d", page.Code)
 	}
-	for _, want := range []string{"migration advisory", `name="source"`, `name="target"`, "/api/compare"} {
+	for _, want := range []string{
+		"migration advisory",
+		`class="app"`,
+		`class="brand"`,
+		`<nav id="nav"></nav>`,
+		`class="toolbar"`,
+		`id="exportMenu"`,
+		`id="exportReport"`,
+		`data-export-format="json"`,
+		`data-export-format="markdown"`,
+		`id="themeToggle"`,
+		`prefers-color-scheme: dark`,
+		`teleskope.theme`,
+		`localStorage.setItem(themeKey, next)`,
+		`name="source"`,
+		`name="target"`,
+		"/api/compare",
+	} {
 		if !strings.Contains(page.Body.String(), want) {
 			t.Fatalf("page missing %q", want)
 		}
