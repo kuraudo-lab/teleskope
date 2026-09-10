@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teleskope migration advisory</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f7f9fc; --panel:#fff; --panel-2:#eef3f8; --text:#172033; --muted:#61708a; --line:#d9e1ec; --cyan:#1282a2; --amber:#b7791f; --red:#c2410c; --green:#15803d; --chip:#eef6fa; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0b1120; --panel:#111827; --panel-2:#172033; --text:#e5edf7; --muted:#99a7bd; --line:#263349; --cyan:#38bdf8; --amber:#fbbf24; --red:#fb7185; --green:#4ade80; --chip:#172a3a; } }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:linear-gradient(135deg,var(--bg),var(--panel-2)); color:var(--text); font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .shell { display:grid; grid-template-columns:260px minmax(0,1fr); min-height:100vh; }
+    aside { border-right:1px solid var(--line); padding:24px; background:color-mix(in srgb,var(--panel) 88%,transparent); }
+    main { padding:28px; overflow:auto; }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { font-size:22px; margin-bottom:6px; }
+    h2 { font-size:18px; margin-bottom:14px; }
+    h3 { font-size:15px; margin-bottom:10px; }
+    .muted { color:var(--muted); }
+    .stack { display:grid; gap:16px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:18px; box-shadow:0 20px 60px rgba(15,23,42,.08); }
+    .panel header { padding:18px 20px; border-bottom:1px solid var(--line); }
+    .body { padding:20px; }
+    .upload-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    label.file { display:grid; gap:8px; padding:16px; border:1px dashed var(--line); border-radius:14px; background:var(--panel-2); cursor:pointer; }
+    input[type=file] { width:100%; color:var(--muted); }
+    button { border:1px solid var(--line); background:var(--chip); color:var(--text); border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; }
+    button.primary { background:var(--cyan); border-color:var(--cyan); color:#fff; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    nav { display:grid; gap:8px; margin-top:24px; }
+    nav button { text-align:left; background:transparent; }
+    nav button.active { background:var(--chip); border-color:var(--cyan); }
+    .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .card { padding:14px; border:1px solid var(--line); border-radius:14px; background:var(--panel-2); }
+    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .value { font-size:24px; font-weight:800; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { text-align:left; vertical-align:top; padding:9px 10px; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:var(--chip); font-weight:700; }
+    .blocker { color:var(--red); }
+    .warn { color:var(--amber); }
+    .info { color:var(--cyan); }
+    .hidden { display:none !important; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
+    pre { white-space:pre-wrap; overflow:auto; max-height:60vh; padding:16px; border-radius:14px; background:#020617; color:#dbeafe; }
+    @media (max-width:900px) { .shell { grid-template-columns:1fr; } aside { border-right:0; border-bottom:1px solid var(--line); } .upload-grid,.cards { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <h1>Teleskope</h1>
+      <p class="muted">migration advisory</p>
+      <nav id="nav">
+        <button class="active" data-section="overview">Overview</button>
+        <button data-section="findings">Findings</button>
+        <button data-section="capabilities">Capabilities</button>
+        <button data-section="inventory">Inventory</button>
+        <button data-section="coverage">Coverage</button>
+        <button data-section="markdown">Markdown</button>
+      </nav>
+    </aside>
+    <main class="stack">
+      <section class="panel">
+        <header>
+          <h2>Compare scan results</h2>
+          <p class="muted">Choose the source and target <code>snapshot.json</code> files from two Teleskope scan reports. Analysis runs locally in this server and does not connect to either cluster.</p>
+        </header>
+        <div class="body">
+          <form id="compareForm" class="stack">
+            <div class="upload-grid">
+              <label class="file"><strong>Source snapshot</strong><span class="muted">Current cluster</span><input id="source" name="source" type="file" accept=".json,application/json" required /></label>
+              <label class="file"><strong>Target snapshot</strong><span class="muted">Migration destination</span><input id="target" name="target" type="file" accept=".json,application/json" required /></label>
+            </div>
+            <div class="actions">
+              <button id="runCompare" class="primary" type="submit">Compare</button>
+              <button id="downloadJSON" type="button" disabled>Download JSON</button>
+              <button id="downloadMarkdown" type="button" disabled>Download Markdown</button>
+              <span id="status" class="muted">Waiting for two snapshots.</span>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel section" data-section="overview"><header><h2>Overview</h2></header><div class="body stack"><div id="summary" class="muted">Run a comparison to see migration findings.</div><div id="clusterCards" class="cards"></div></div></section>
+      <section class="panel section hidden" data-section="findings"><header><h2>Findings</h2></header><div class="body"><table id="findingsTable"></table></div></section>
+      <section class="panel section hidden" data-section="capabilities"><header><h2>Capability differences</h2></header><div class="body"><table id="capabilityTable"></table></div></section>
+      <section class="panel section hidden" data-section="inventory"><header><h2>Inventory differences</h2></header><div class="body" id="inventoryDiffs"></div></section>
+      <section class="panel section hidden" data-section="coverage"><header><h2>Coverage warnings</h2></header><div class="body"><table id="coverageTable"></table></div></section>
+      <section class="panel section hidden" data-section="markdown"><header><h2>Markdown report</h2></header><div class="body"><pre id="markdownBody">Run a comparison to generate Markdown.</pre></div></section>
+    </main>
+  </div>
+  <script>
+    let latest = null;
+    const byId = id => document.getElementById(id);
+    const esc = value => String(value ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const arr = value => Array.isArray(value) ? value : [];
+    const table = (id, headers, rows) => {
+      byId(id).innerHTML = '<thead><tr>' + headers.map(h => `<th>${esc(h)}</th>`).join('') + '</tr></thead><tbody>' + (rows.length ? rows.map(row => '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>').join('') : `<tr><td colspan="${headers.length}" class="muted">No entries</td></tr>`) + '</tbody>';
+    };
+    const pill = value => `<span class="pill ${esc(value)}">${esc(value)}</span>`;
+    const join = value => arr(value).map(esc).join(', ') || '-';
+    function render(result) {
+      latest = result;
+      const report = result.report || {};
+      byId('summary').textContent = report.summary || 'No summary.';
+      byId('clusterCards').innerHTML = [report.source, report.target].filter(Boolean).map(c => `<div class="card"><div class="label">${esc(c.role)}</div><div class="value">${esc(c.name)}</div><div class="muted">Kubernetes ${esc(c.version)} · ${esc(c.region || c.context || '-')}</div></div>`).join('');
+      table('findingsTable', ['Severity', 'Category', 'Finding', 'Source', 'Target', 'Recommendation'], arr(report.findings).map(f => [pill(f.severity), esc(f.category), esc(f.summary), esc(f.source), esc(f.target), esc(f.recommendation)]));
+      table('capabilityTable', ['Capability', 'Scope', 'Source', 'Target', 'Summary'], arr(report.capabilityDiffs).map(d => [esc(d.key), esc(d.scope), esc(d.sourceAssessment), esc(d.targetAssessment), esc(d.summary)]));
+      byId('inventoryDiffs').innerHTML = arr(report.inventoryDiffs).map(d => `<section class="stack"><h3>${esc(d.category)}</h3><p><strong>Only in source:</strong> ${join(d.onlyInSource)}</p><p><strong>Only in target:</strong> ${join(d.onlyInTarget)}</p><p><strong>Changed:</strong> ${join(d.changed)}</p></section>`).join('') || '<p class="muted">No inventory differences.</p>';
+      table('coverageTable', ['Role', 'Area', 'Resource', 'Status', 'Reason'], arr(report.coverageWarnings).map(w => [esc(w.role), esc(w.area), esc(w.resource), esc(w.status), esc(w.reason)]));
+      byId('markdownBody').textContent = result.markdown || '';
+      byId('downloadJSON').disabled = false;
+      byId('downloadMarkdown').disabled = false;
+    }
+    function download(name, content, type) {
+      const blob = new Blob([content], {type});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    byId('compareForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      byId('runCompare').disabled = true;
+      byId('status').textContent = 'Analyzing snapshots…';
+      try {
+        const form = new FormData(e.currentTarget);
+        const response = await fetch('/api/compare', {method:'POST', body:form});
+        if (!response.ok) throw new Error(await response.text());
+        render(await response.json());
+        byId('status').textContent = 'Comparison ready.';
+      } catch (error) {
+        byId('status').textContent = error.message;
+      } finally {
+        byId('runCompare').disabled = false;
+      }
+    });
+    byId('downloadJSON').addEventListener('click', () => latest && download('teleskope-comparison.json', JSON.stringify(latest.report, null, 2) + '\n', 'application/json'));
+    byId('downloadMarkdown').addEventListener('click', () => latest && download('teleskope-comparison.md', latest.markdown, 'text/markdown'));
+    byId('nav').addEventListener('click', e => {
+      const button = e.target.closest('button[data-section]');
+      if (!button) return;
+      document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b === button));
+      document.querySelectorAll('.section').forEach(s => s.classList.toggle('hidden', s.dataset.section !== button.dataset.section));
+    });
+  </script>
+</body>
+</html>

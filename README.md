@@ -119,6 +119,17 @@ or changed API resources, CRDs, networking classes, storage classes, CSI drivers
 runtime classes, node platforms, workload references, and incomplete collection
 coverage. Supported outputs are `human`, `markdown`, and `json`.
 
+For a local web workflow, start the advisory UI and choose the two
+`snapshot.json` files in the browser:
+
+```sh
+teleskope advisory
+```
+
+The default listener is `127.0.0.1:8080`; use `--listen` to change it. The
+browser uploads the two snapshots to the local server, which runs the same
+deterministic comparison module used by `teleskope compare`.
+
 ## Live inventory
 
 Run a local web server with the same embedded UI as the offline report:

@@ -3,6 +3,7 @@
 package compare
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -153,9 +154,15 @@ func LoadSnapshot(path string) (*inventory.Snapshot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read snapshot %s: %w", path, err)
 	}
+	return DecodeSnapshot(path, bytes.NewReader(data))
+}
+
+// DecodeSnapshot reads one snapshot JSON document.
+func DecodeSnapshot(name string, r io.Reader) (*inventory.Snapshot, error) {
 	var snapshot inventory.Snapshot
-	if err := json.Unmarshal(data, &snapshot); err != nil {
-		return nil, fmt.Errorf("decode snapshot %s: %w", path, err)
+	decoder := json.NewDecoder(r)
+	if err := decoder.Decode(&snapshot); err != nil {
+		return nil, fmt.Errorf("decode snapshot %s: %w", name, err)
 	}
 	return &snapshot, nil
 }

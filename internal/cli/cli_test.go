@@ -163,6 +163,19 @@ func TestServeValidation(t *testing.T) {
 	}
 }
 
+func TestAdvisoryValidation(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"advisory", "--listen", "invalid-address"}, &stdout, &stderr)
+
+	if code != 1 {
+		t.Fatalf("Run returned %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "listen") {
+		t.Fatalf("stderr = %q, want listen error", stderr.String())
+	}
+}
+
 func TestCompareCommandReadsReportDirectories(t *testing.T) {
 	base := t.TempDir()
 	sourceDir := writeCLISnapshot(t, base, "source", "v1.31.0")
