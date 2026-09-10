@@ -1,7 +1,14 @@
 // Same-origin browser updates read the shared snapshot; they never trigger scans.
 let liveRevision = -1, liveETag = '', updatesPaused = false;
-const liveStatus = byId('live-status');
-liveStatus.innerHTML = '<div id="live-message" role="status" aria-atomic="true">Waiting for first snapshot…</div><details id="live-coverage"><summary>Collection details</summary><div id="live-details"></div></details><details id="live-events" open><summary>Recent events</summary><div id="live-event-list" class="live-event-list"></div></details><button id="pause-updates" type="button">Pause page updates</button>';
+document.querySelectorAll('.section').forEach(section => {
+  const progress = document.createElement('div');
+  progress.className = 'live-progress';
+  progress.setAttribute('role', 'status');
+  progress.setAttribute('aria-live', 'polite');
+  progress.innerHTML = '<span class="live-progress-icon spinning"></span><span>Waiting for first snapshot…</span>';
+  section.prepend(progress);
+});
+document.querySelector('.toolbar').insertAdjacentHTML('beforeend', '<button id="pause-updates" class="export-button" type="button">Pause updates</button>');
 document.querySelector('.brand p').textContent = 'live cluster inventory';
 byId('title').textContent = 'Waiting for first snapshot';
 byId('subtitle').textContent = 'Collection runs in the background. This page retries automatically.';
@@ -10,7 +17,7 @@ byId('pause-updates').onclick = () => {
   liveETag = '';
   byId('pause-updates').textContent = updatesPaused ? 'Resume page updates' : 'Pause page updates';
   byId('pause-updates').setAttribute('aria-pressed', String(updatesPaused));
-  if (updatesPaused) byId('live-message').textContent = 'Page updates paused. Background collection continues.';
+  if (updatesPaused) updateLiveProgress('⏸', 'Page updates paused. Background collection continues.', false);
 };
 function detailKey(obj) {
   if (obj.uid) return 'uid:' + obj.uid;
@@ -48,19 +55,17 @@ function applyLiveSnapshot(next) {
 }
 function renderLiveStatus(sources, events) {
   const labels = {loading:'Loading', ready:'Up to date', partial:'Partial coverage', stale:'Stale — showing previous data', error:'No data — collection failed'};
-  const lines = Object.entries(sources).map(([name, s]) => {
+  const entries = Object.entries(sources);
+  const lines = entries.map(([name, s]) => {
     const last = s.lastSuccess ? new Date(s.lastSuccess).toLocaleString() : 'none yet';
     return name + ': ' + (labels[s.state] || s.state) + (s.refreshing ? ' · refreshing' : '') + ' · last published ' + last;
   });
-  const message = lines.join('\n');
-  if (byId('live-message').textContent !== message) byId('live-message').textContent = message;
-  byId('live-message').style.whiteSpace = 'pre-line';
-  byId('live-details').innerHTML = Object.entries(sources).map(([name, s]) => {
-    const errors = (s.coverage || []).filter(c => c.status !== 'complete');
-    return '<p><strong>' + esc(name) + '</strong>' + (s.error ? ': ' + esc(s.error) : '') +
-      (s.nextAttempt ? ' · next attempt ' + esc(new Date(s.nextAttempt).toLocaleTimeString()) : '') + '</p>' +
-      errors.map(c => '<p>' + esc(c.resource) + ': ' + esc(c.status) + ' — ' + esc(c.reason) + '</p>').join('');
-  }).join('');
+  const hasRefreshing = entries.some(([, s]) => s.refreshing || s.state === 'loading');
+  const hasError = entries.some(([, s]) => s.state === 'error');
+  const hasStale = entries.some(([, s]) => s.state === 'stale');
+  const hasPartial = entries.some(([, s]) => s.state === 'partial');
+  const icon = hasRefreshing ? '⟳' : hasError ? '×' : hasStale || hasPartial ? '!' : '✓';
+  updateLiveProgress(icon, lines.join(' | ') || 'Waiting for first snapshot…', hasRefreshing);
   byId('live-event-list').innerHTML = arr(events).slice(-80).reverse().map(event => {
     const at = event.at ? new Date(event.at).toLocaleTimeString() : '-';
     const level = event.level || 'info';
@@ -71,6 +76,11 @@ function renderLiveStatus(sources, events) {
       '<span class="live-event-message">' + esc(event.message || '-') + '</span>' +
       '</div>';
   }).join('') || '<p class="muted">No events yet</p>';
+}
+function updateLiveProgress(icon, message, spinning) {
+  document.querySelectorAll('.live-progress').forEach(progress => {
+    progress.innerHTML = '<span class="live-progress-icon' + (spinning ? ' spinning' : '') + '">' + (spinning ? '' : esc(icon)) + '</span><span>' + esc(message) + '</span>';
+  });
 }
 async function refreshLivePage() {
   try {
@@ -98,7 +108,7 @@ async function refreshLivePage() {
     }
   } catch (error) {
     liveETag = ''; // Re-render status after reconnect, even if the revision is unchanged.
-    if (!updatesPaused) byId('live-message').textContent = 'Connection lost — displayed data may be stale. Retrying automatically. ' + error.message;
+    if (!updatesPaused) updateLiveProgress('!', 'Connection lost — displayed data may be stale. Retrying automatically. ' + error.message, false);
   } finally {
     setTimeout(refreshLivePage, 5000);
   }

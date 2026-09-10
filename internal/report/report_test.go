@@ -244,6 +244,8 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"Custom resources",
 		"function namespacesOf",
 		"resourceTypes = [",
+		`data-section="events"`,
+		"['events', 'Events']",
 		`<select id="resourceType" aria-label="Resource type">`,
 		`id="exportReport"`,
 		`id="exportMenu"`,
@@ -290,14 +292,22 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 	html := LiveHTML()
 	for _, want := range []string{
 		`<body data-live="true" class="live-loading">`,
-		`id="live-events"`,
 		"Recent events",
 		"live-event-list",
+		"live-progress",
+		"spinning",
+		"@keyframes teleskope-spin",
+		"updateLiveProgress",
 		"background:var(--live-event-bg)",
 		"renderLiveStatus(data.sources, data.events)",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("live HTML missing %q", want)
+		}
+	}
+	for _, old := range []string{`id="live-status"`, `id="live-events"`, "Collection details"} {
+		if strings.Contains(html, old) {
+			t.Fatalf("live HTML should not include top-level live status artifact %q", old)
 		}
 	}
 }
