@@ -12,6 +12,9 @@ implemented through `serve k8s` and `serve eks`. Informer watches, packaged
 in-cluster execution, migration analysis and active capability verification remain later stages.
 Read-only capability summaries are implemented in `internal/advisor`; see
 [Advisor](advisor.md) for evidence semantics and limitations.
+Multi-cluster support should be modeled as single-cluster collectors remotely
+writing cluster report envelopes to a separate hub process; see
+[Multi-cluster hub design](multi-cluster-hub.md).
 
 ## Package boundaries
 
