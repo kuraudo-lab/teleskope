@@ -39,6 +39,11 @@ Useful outputs include:
 - Workload purpose explanations inferred from namespace, workload name, labels,
   annotations, owner kind, container images, ports, service accounts, services,
   ingresses, and gateway routes.
+- Workload storage dependencies, including volumes, PVC/PV bindings,
+  StorageClasses, provisioners, CSI drivers, requested capacity, volume mode,
+  and access modes.
+- Workload network dependencies, including Services, ports, Ingress hosts and
+  classes, Gateway routes, parent refs, and backend refs.
 - High-signal operational or migration risks, tied back to specific resources.
 - Questions or follow-up checks when the evidence is weak.
 
@@ -46,7 +51,11 @@ Container image interpretation is valuable but must be labelled as inference.
 An image such as `redis`, `nginx`, `istio/proxyv2`, `external-dns`,
 `cert-manager`, or `aws-load-balancer-controller` can suggest purpose, but it
 cannot prove the business role of a workload. The output should distinguish
-observed facts from inferred purpose.
+observed facts from inferred purpose. Kubernetes core mechanisms such as RBAC,
+admission webhooks, resource quotas, limit ranges, PDBs, and NetworkPolicies
+should not be analyzed as standalone capabilities in scan analysis; they matter
+only when their presence or settings affect migration planning or a specific
+workload.
 
 ### Compare analysis
 
@@ -151,11 +160,13 @@ For scan, the context should prioritize:
 
 - Cluster identity, Kubernetes version, source mode, and coverage.
 - Advisor capabilities.
-- Workloads, pods, running images, running containers, services, ingresses,
-  gateways, gateway routes, service accounts, ConfigMaps and selected policy
-  references.
-- RBAC, network policies, resource quotas, PDBs, and admission webhooks when
-  they affect workload interpretation or migration risk.
+- Workloads enriched with their storage and network dependencies: container
+  images, volumes, PVC/PV bindings, StorageClasses, access modes, CSI drivers,
+  Services, Service ports, Ingresses, Gateway routes, parent refs, and backend
+  refs.
+- Core Kubernetes resource counts such as RBAC, network policies, resource
+  quotas, PDBs, and admission webhooks as migration background, not as objects
+  for standalone explanation.
 
 For compare and advisory, the context should prioritize:
 
@@ -208,29 +219,35 @@ keys and tool access belong in the local server or CLI process.
 
 ## Configuration
 
-LLM analysis should be opt-in. A first CLI shape can be:
+LLM analysis should be opt-in and configured from `$HOME/.teleskope/config.yaml`
+in the first implementation. The first provider seam targets OpenAI-compatible
+`/v1/chat/completions` endpoints. A minimal config is:
+
+```yaml
+llm:
+  provider: openai-compatible
+  base_url: https://api.openai.com/v1
+  api_key_env: OPENAI_API_KEY
+  model: <model-name>
+  timeout: 5m
+```
+
+`api_key` can be used instead of `api_key_env` for local-only setups. A first CLI
+shape can be:
 
 ```bash
 teleskope analyze scan ./scan-report --output markdown
 teleskope analyze compare --source ./source-scan --target ./target-scan --output markdown
 ```
 
-Later, scan and compare can grow convenience flags:
+The CLI should also support `--config` for alternate config files and
+`--output context` for inspecting the trimmed model context without calling a
+provider. Later, scan and compare can grow convenience flags:
 
 ```bash
-teleskope scan k8s --llm-analysis --llm-model <model>
+teleskope scan k8s --llm-analysis
 teleskope compare --source ./source --target ./target --llm-analysis
 ```
-
-Possible environment variables:
-
-- `TELESKOPE_LLM_PROVIDER`
-- `TELESKOPE_LLM_MODEL`
-- `TELESKOPE_LLM_API_KEY`
-- `TELESKOPE_LLM_WEB_SEARCH`
-
-Exact names can be decided during implementation. Avoid adding a config file in
-the first version.
 
 ## Output artifacts
 
@@ -242,6 +259,11 @@ Offline reports can add optional files when LLM analysis runs:
 The existing `snapshot.json`, `advisor.json`, `summary.md`, and `index.html`
 should remain valid without LLM output. The HTML report can render the analysis
 when the artifact is present and hide the section otherwise.
+
+For `serve`, the live UI exposes an explicit Analyze action after a snapshot is
+available. The browser sends `POST /api/analyze`; the local server loads the
+same LLM config used by the CLI and returns the structured analysis plus a
+Markdown rendering. The live polling loop must not trigger analysis implicitly.
 
 For advisory, `/api/compare` should continue returning the deterministic report.
 A separate endpoint such as `/api/analyze` can generate LLM analysis from the
@@ -288,9 +310,10 @@ provider calls behind explicit manual or integration-test flags.
    post-processing commands.
 5. Add a provider adapter and environment-variable configuration.
 6. Add optional web search support behind an explicit flag.
-7. Extend offline report artifacts and HTML rendering to include optional
+7. Add serve web support through a user-triggered `/api/analyze` action.
+8. Extend offline report artifacts and HTML rendering to include optional
    analysis results.
-8. Add advisory web support through a separate analysis endpoint.
+9. Add advisory web support through a separate analysis endpoint.
 
 ## Explicit non-goals for the first version
 
