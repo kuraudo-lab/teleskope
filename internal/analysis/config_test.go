@@ -16,6 +16,7 @@ func TestLoadConfigReadsOpenAICompatibleModel(t *testing.T) {
   api_key_env: TELESKOPE_TEST_LLM_KEY
   model: local-model
   timeout: 2s
+  json_mode: false
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -33,6 +34,9 @@ func TestLoadConfigReadsOpenAICompatibleModel(t *testing.T) {
 	if cfg.LLM.Timeout != 2*time.Second {
 		t.Fatalf("timeout = %s", cfg.LLM.Timeout)
 	}
+	if cfg.LLM.UseJSONMode() {
+		t.Fatal("json_mode = true, want false from config")
+	}
 }
 
 func TestLoadConfigRequiresModelAndKey(t *testing.T) {
@@ -45,5 +49,12 @@ func TestLoadConfigRequiresModelAndKey(t *testing.T) {
 
 	if _, err := LoadConfig(path); err == nil {
 		t.Fatal("LoadConfig succeeded without model and api key")
+	}
+}
+
+func TestLLMConfigDefaultsToJSONMode(t *testing.T) {
+	cfg := LLMConfig{}
+	if !cfg.UseJSONMode() {
+		t.Fatal("json mode should default to true")
 	}
 }

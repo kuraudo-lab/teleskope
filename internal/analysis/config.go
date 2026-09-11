@@ -21,6 +21,11 @@ type LLMConfig struct {
 	APIKeyEnv string        `yaml:"api_key_env"`
 	Model     string        `yaml:"model"`
 	Timeout   time.Duration `yaml:"timeout"`
+	JSONMode  *bool         `yaml:"json_mode"`
+}
+
+func (c LLMConfig) UseJSONMode() bool {
+	return c.JSONMode == nil || *c.JSONMode
 }
 
 func DefaultConfigPath() (string, error) {

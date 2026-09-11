@@ -16,6 +16,7 @@ type OpenAICompatible struct {
 	APIKey     string
 	Model      string
 	Timeout    time.Duration
+	JSONMode   bool
 	HTTPClient *http.Client
 }
 
@@ -24,7 +25,7 @@ func NewOpenAICompatible(cfg LLMConfig) *OpenAICompatible {
 	if cfg.Timeout > 0 {
 		client = &http.Client{Timeout: cfg.Timeout}
 	}
-	return &OpenAICompatible{BaseURL: strings.TrimRight(cfg.BaseURL, "/"), APIKey: cfg.APIKey, Model: cfg.Model, Timeout: cfg.Timeout, HTTPClient: client}
+	return &OpenAICompatible{BaseURL: strings.TrimRight(cfg.BaseURL, "/"), APIKey: cfg.APIKey, Model: cfg.Model, Timeout: cfg.Timeout, JSONMode: cfg.UseJSONMode(), HTTPClient: client}
 }
 
 func (a *OpenAICompatible) Analyze(ctx context.Context, req Request) (Result, error) {
@@ -42,8 +43,10 @@ func (a *OpenAICompatible) Analyze(ctx context.Context, req Request) (Result, er
 			{Role: "system", Content: prompt},
 			{Role: "user", Content: string(modelInput)},
 		},
-		Temperature:    ptrFloat64(0.2),
-		ResponseFormat: &responseFormat{Type: "json_object"},
+		Temperature: ptrFloat64(0.2),
+	}
+	if a.JSONMode {
+		payload.ResponseFormat = &responseFormat{Type: "json_object"}
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -76,7 +79,11 @@ func (a *OpenAICompatible) Analyze(ctx context.Context, req Request) (Result, er
 		return Result{}, fmt.Errorf("read llm response: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return Result{}, fmt.Errorf("llm provider returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
+		message := strings.TrimSpace(string(body))
+		if resp.StatusCode == http.StatusBadRequest && a.JSONMode && looksLikeJSONModeError(message) {
+			return Result{}, fmt.Errorf("llm provider returned %s: %s (try setting llm.json_mode: false for providers that do not support OpenAI JSON mode)", resp.Status, message)
+		}
+		return Result{}, fmt.Errorf("llm provider returned %s: %s", resp.Status, message)
 	}
 	var chatResp chatCompletionResponse
 	if err := json.Unmarshal(body, &chatResp); err != nil {
@@ -86,7 +93,7 @@ func (a *OpenAICompatible) Analyze(ctx context.Context, req Request) (Result, er
 		return Result{}, fmt.Errorf("llm response did not include message content")
 	}
 	var result Result
-	content := stripJSONFence(chatResp.Choices[0].Message.Content)
+	content := extractJSONContent(chatResp.Choices[0].Message.Content)
 	if err := json.Unmarshal([]byte(content), &result); err != nil {
 		return Result{}, fmt.Errorf("decode llm analysis JSON: %w", err)
 	}
@@ -116,6 +123,27 @@ type chatCompletionResponse struct {
 }
 
 func ptrFloat64(v float64) *float64 { return &v }
+
+func looksLikeJSONModeError(message string) bool {
+	message = strings.ToLower(message)
+	return strings.Contains(message, "response_format") || strings.Contains(message, "json") || strings.Contains(message, "missing field name")
+}
+
+func extractJSONContent(value string) string {
+	value = stripJSONFence(value)
+	if json.Valid([]byte(value)) {
+		return value
+	}
+	start := strings.Index(value, "{")
+	end := strings.LastIndex(value, "}")
+	if start >= 0 && end > start {
+		candidate := strings.TrimSpace(value[start : end+1])
+		if json.Valid([]byte(candidate)) {
+			return candidate
+		}
+	}
+	return value
+}
 
 func stripJSONFence(value string) string {
 	value = strings.TrimSpace(value)

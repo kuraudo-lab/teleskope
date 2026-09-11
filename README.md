@@ -135,6 +135,8 @@ llm:
   api_key_env: OPENAI_API_KEY
   model: <model-name>
   timeout: 5m
+  # Set to false for providers that reject OpenAI JSON mode, such as some gpt-oss-120b deployments.
+  json_mode: true
 ```
 
 `api_key` can be used instead of `api_key_env` for local-only setups. Analyze a
