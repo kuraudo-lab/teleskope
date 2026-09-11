@@ -14,7 +14,9 @@ Read-only capability summaries are implemented in `internal/advisor`; see
 [Advisor](advisor.md) for evidence semantics and limitations.
 Multi-cluster support should be modeled as single-cluster collectors remotely
 writing cluster report envelopes to a separate hub process; see
-[Multi-cluster hub design](multi-cluster-hub.md).
+[Multi-cluster hub design](multi-cluster-hub.md). Optional LLM-backed summaries
+should be added as a post-collection narrative layer rather than replacing
+advisor or compare rules; see [LLM analysis design](llm-analysis.md).
 
 ## Package boundaries
 
