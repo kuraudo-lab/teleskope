@@ -190,7 +190,7 @@ func writeRunningContainers(w io.Writer, kubernetes inventory.Kubernetes) {
 }
 
 func writeRouting(w io.Writer, kubernetes inventory.Kubernetes) {
-	if len(kubernetes.IngressClasses) == 0 && len(kubernetes.Ingresses) == 0 && len(kubernetes.GatewayClasses) == 0 && len(kubernetes.Gateways) == 0 && len(kubernetes.GatewayRoutes) == 0 && len(kubernetes.Services) == 0 {
+	if len(kubernetes.IngressClasses) == 0 && len(kubernetes.Ingresses) == 0 && len(kubernetes.GatewayClasses) == 0 && len(kubernetes.Gateways) == 0 && len(kubernetes.GatewayRoutes) == 0 && len(kubernetes.ReferenceGrants) == 0 && len(kubernetes.GatewayPolicies) == 0 && len(kubernetes.Services) == 0 {
 		return
 	}
 	fmt.Fprintln(w, "routing")
@@ -225,6 +225,12 @@ func writeRouting(w io.Writer, kubernetes inventory.Kubernetes) {
 	}
 	for _, route := range sortedGatewayRoutes(kubernetes.GatewayRoutes) {
 		fmt.Fprintf(table, "%s\t%s\t%s\thosts=%s parents=%s\t%s\t-\n", strings.ToLower(route.Kind), namespaced(route.ObjectRef), routeRuleSummary(route.Rules), strings.Join(route.Hostnames, ","), parentRefsValue(route.ParentRefs), routeBackends(route.Rules))
+	}
+	for _, grant := range sortedReferenceGrants(kubernetes.ReferenceGrants) {
+		fmt.Fprintf(table, "reference-grant\t%s\t-\tfrom=%s\tto=%s\t-\n", namespaced(grant.ObjectRef), grantRefsValue(grant.From), grantRefsValue(grant.To))
+	}
+	for _, policy := range sortedGatewayPolicies(kubernetes.GatewayPolicies) {
+		fmt.Fprintf(table, "%s\t%s\t-\ttargets=%s\t%s\t-\n", strings.ToLower(policy.Kind), namespaced(policy.ObjectRef), refsValue(policy.TargetRefs), strings.Join(policy.Details, ","))
 	}
 	for _, service := range sortedServices(kubernetes.Services) {
 		fmt.Fprintf(table, "service\t%s\t%s\t%s\t%s\t%d\n",
@@ -517,6 +523,22 @@ func sortedGatewayRoutes(items []inventory.GatewayRoute) []inventory.GatewayRout
 	return out
 }
 
+func sortedReferenceGrants(items []inventory.ReferenceGrant) []inventory.ReferenceGrant {
+	out := append([]inventory.ReferenceGrant(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedGatewayPolicies(items []inventory.GatewayPolicy) []inventory.GatewayPolicy {
+	out := append([]inventory.GatewayPolicy(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].Kind, out[i].Namespace, out[i].Name}, "\x00")
+		right := strings.Join([]string{out[j].Kind, out[j].Namespace, out[j].Name}, "\x00")
+		return left < right
+	})
+	return out
+}
+
 func sortedServices(items []inventory.Service) []inventory.Service {
 	out := append([]inventory.Service(nil), items...)
 	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
@@ -799,6 +821,35 @@ func parentRefsValue(refs []inventory.GatewayParentRef) string {
 	}
 	sort.Strings(parts)
 	return strings.Join(parts, ",")
+}
+
+func grantRefsValue(refs []inventory.GatewayGrantRef) string {
+	if len(refs) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		value := gatewayKind(ref.Group, ref.Kind)
+		if ref.Namespace != "" {
+			value += " ns=" + ref.Namespace
+		}
+		if ref.Name != "" {
+			value += " name=" + ref.Name
+		}
+		parts = append(parts, value)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+func gatewayKind(group, kind string) string {
+	if group == "" {
+		return value(kind)
+	}
+	if kind == "" {
+		return group
+	}
+	return group + "/" + kind
 }
 
 func routeRuleSummary(rules []inventory.GatewayRouteRule) string {

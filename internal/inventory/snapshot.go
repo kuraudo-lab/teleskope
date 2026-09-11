@@ -247,6 +247,8 @@ type Kubernetes struct {
 	GatewayClasses            []GatewayClass             `json:"gatewayClasses,omitempty"`
 	Gateways                  []Gateway                  `json:"gateways,omitempty"`
 	GatewayRoutes             []GatewayRoute             `json:"gatewayRoutes,omitempty"`
+	ReferenceGrants           []ReferenceGrant           `json:"referenceGrants,omitempty"`
+	GatewayPolicies           []GatewayPolicy            `json:"gatewayPolicies,omitempty"`
 	StorageClasses            []StorageClass             `json:"storageClasses,omitempty"`
 	PersistentVolumes         []PersistentVolume         `json:"persistentVolumes,omitempty"`
 	PersistentVolumeClaims    []PersistentVolumeClaim    `json:"persistentVolumeClaims,omitempty"`
@@ -583,6 +585,28 @@ type GatewayParentRef struct {
 type GatewayRouteRule struct {
 	Matches     []string    `json:"matches,omitempty"`
 	BackendRefs []ObjectRef `json:"backendRefs,omitempty"`
+}
+
+// ReferenceGrant records a Gateway API ReferenceGrant.
+type ReferenceGrant struct {
+	ObjectRef
+	From []GatewayGrantRef `json:"from,omitempty"`
+	To   []GatewayGrantRef `json:"to,omitempty"`
+}
+
+// GatewayGrantRef records one side of a ReferenceGrant.
+type GatewayGrantRef struct {
+	Group     string `json:"group,omitempty"`
+	Kind      string `json:"kind,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
+}
+
+// GatewayPolicy records Gateway API policy attachments.
+type GatewayPolicy struct {
+	ObjectRef
+	TargetRefs []ObjectRef `json:"targetRefs,omitempty"`
+	Details    []string    `json:"details,omitempty"`
 }
 
 // StorageClass records provisioner and parameters.

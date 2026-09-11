@@ -130,7 +130,7 @@ func (c *Collector) Collect(ctx context.Context) (inventory.Kubernetes, []invent
 
 	progress(opts.Progress, "collecting networking")
 	collectNetworking(ctx, client, dynamicClient, &kubernetes, &coverage, now, c.contextNamespace)
-	progress(opts.Progress, "network services=%d endpointSlices=%d ingresses=%d ingressClasses=%d gatewayClasses=%d gateways=%d gatewayRoutes=%d", len(kubernetes.Services), len(kubernetes.EndpointSlices), len(kubernetes.Ingresses), len(kubernetes.IngressClasses), len(kubernetes.GatewayClasses), len(kubernetes.Gateways), len(kubernetes.GatewayRoutes))
+	progress(opts.Progress, "network services=%d endpointSlices=%d ingresses=%d ingressClasses=%d gatewayClasses=%d gateways=%d gatewayRoutes=%d referenceGrants=%d gatewayPolicies=%d", len(kubernetes.Services), len(kubernetes.EndpointSlices), len(kubernetes.Ingresses), len(kubernetes.IngressClasses), len(kubernetes.GatewayClasses), len(kubernetes.Gateways), len(kubernetes.GatewayRoutes), len(kubernetes.ReferenceGrants), len(kubernetes.GatewayPolicies))
 
 	progress(opts.Progress, "collecting storage")
 	collectStorage(ctx, client, &kubernetes, &coverage, now)
@@ -482,10 +482,10 @@ func collectGateways(ctx context.Context, client dynamic.Interface, out *invento
 		gvrs []gatewayResourceCandidate
 	}{
 		{name: "HTTPRoutes", kind: "HTTPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "httproutes", "v1", "v1beta1")},
-		{name: "GRPCRoutes", kind: "GRPCRoute", gvrs: gatewayResourceCandidates(out.APIResources, "grpcroutes", "v1", "v1beta1")},
-		{name: "TLSRoutes", kind: "TLSRoute", gvrs: gatewayResourceCandidates(out.APIResources, "tlsroutes", "v1alpha2")},
-		{name: "TCPRoutes", kind: "TCPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "tcproutes", "v1alpha2")},
-		{name: "UDPRoutes", kind: "UDPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "udproutes", "v1alpha2")},
+		{name: "GRPCRoutes", kind: "GRPCRoute", gvrs: gatewayResourceCandidates(out.APIResources, "grpcroutes", "v1", "v1beta1", "v1alpha2")},
+		{name: "TLSRoutes", kind: "TLSRoute", gvrs: gatewayResourceCandidates(out.APIResources, "tlsroutes", "v1", "v1alpha3", "v1alpha2")},
+		{name: "TCPRoutes", kind: "TCPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "tcproutes", "v1", "v1alpha2")},
+		{name: "UDPRoutes", kind: "UDPRoute", gvrs: gatewayResourceCandidates(out.APIResources, "udproutes", "v1", "v1alpha2")},
 	}
 	start := len(out.GatewayRoutes)
 	for _, routeType := range routeTypes {
@@ -500,6 +500,39 @@ func collectGateways(ctx context.Context, client dynamic.Interface, out *invento
 		*coverage = append(*coverage, complete("kubernetes", routeType.name, len(items), now))
 	}
 	*coverage = append(*coverage, complete("kubernetes", "GatewayRoutes", len(out.GatewayRoutes)-start, now))
+
+	grants, grantVersion, err := listFirstGatewayResource(ctx, client, contextNamespace, gatewayResourceCandidates(out.APIResources, "referencegrants", "v1", "v1beta1", "v1alpha2")...)
+	if err != nil {
+		*coverage = append(*coverage, denied("kubernetes", "ReferenceGrants", err, now))
+	} else {
+		for _, item := range grants {
+			out.ReferenceGrants = append(out.ReferenceGrants, mapReferenceGrant(item, grantVersion))
+		}
+		*coverage = append(*coverage, complete("kubernetes", "ReferenceGrants", len(grants), now))
+	}
+
+	policyTypes := []struct {
+		name        string
+		defaultKind string
+		gvrs        []gatewayResourceCandidate
+	}{
+		{name: "BackendTLSPolicies", defaultKind: "BackendTLSPolicy", gvrs: gatewayResourceCandidates(out.APIResources, "backendtlspolicies", "v1", "v1alpha3")},
+		{name: "BackendTrafficPolicies", defaultKind: "BackendTrafficPolicy", gvrs: gatewayResourceCandidates(out.APIResources, "backendtrafficpolicies", "v1alpha1")},
+		{name: "XBackendTrafficPolicies", defaultKind: "XBackendTrafficPolicy", gvrs: gatewayResourceCandidatesForGroup(out.APIResources, "gateway.networking.x-k8s.io", "xbackendtrafficpolicies", "v1alpha1")},
+	}
+	policyStart := len(out.GatewayPolicies)
+	for _, policyType := range policyTypes {
+		items, version, err := listFirstGatewayResource(ctx, client, contextNamespace, policyType.gvrs...)
+		if err != nil {
+			*coverage = append(*coverage, denied("kubernetes", policyType.name, err, now))
+			continue
+		}
+		for _, item := range items {
+			out.GatewayPolicies = append(out.GatewayPolicies, mapGatewayPolicy(item, version, policyType.defaultKind))
+		}
+		*coverage = append(*coverage, complete("kubernetes", policyType.name, len(items), now))
+	}
+	*coverage = append(*coverage, complete("kubernetes", "GatewayPolicies", len(out.GatewayPolicies)-policyStart, now))
 }
 
 type gatewayResourceCandidate struct {
@@ -508,13 +541,15 @@ type gatewayResourceCandidate struct {
 }
 
 func gatewayResourceCandidates(apiResources []inventory.APIResource, resource string, versions ...string) []gatewayResourceCandidate {
+	return gatewayResourceCandidatesForGroup(apiResources, "gateway.networking.k8s.io", resource, versions...)
+}
+
+func gatewayResourceCandidatesForGroup(apiResources []inventory.APIResource, group, resource string, versions ...string) []gatewayResourceCandidate {
 	discovered := map[string]inventory.APIResource{}
-	groupDiscovered := false
 	for _, apiResource := range apiResources {
-		if apiResource.Group != "gateway.networking.k8s.io" {
+		if apiResource.Group != group {
 			continue
 		}
-		groupDiscovered = true
 		if apiResource.Resource == resource && containsString(apiResource.Verbs, "list") {
 			key := apiResource.Group + "/" + apiResource.Version + "/" + apiResource.Resource
 			discovered[key] = apiResource
@@ -523,16 +558,16 @@ func gatewayResourceCandidates(apiResources []inventory.APIResource, resource st
 
 	out := make([]gatewayResourceCandidate, 0, len(versions))
 	for _, version := range versions {
-		gvr := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: version, Resource: resource}
+		gvr := schema.GroupVersionResource{Group: group, Version: version, Resource: resource}
 		key := gvr.Group + "/" + gvr.Version + "/" + gvr.Resource
 		if apiResource, ok := discovered[key]; ok {
 			out = append(out, gatewayResourceCandidate{gvr: gvr, namespaced: apiResource.Namespaced})
 		}
 	}
-	if len(out) == 0 && !groupDiscovered {
+	if len(out) == 0 {
 		for _, version := range versions {
 			out = append(out, gatewayResourceCandidate{
-				gvr:        schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: version, Resource: resource},
+				gvr:        schema.GroupVersionResource{Group: group, Version: version, Resource: resource},
 				namespaced: resource != "gatewayclasses",
 			})
 		}
@@ -1163,6 +1198,87 @@ func mapGatewayRoute(item unstructured.Unstructured, version, defaultKind string
 			continue
 		}
 		out.Rules = append(out.Rules, gatewayRouteRule(rule, item.GetNamespace()))
+	}
+	return out
+}
+
+func mapReferenceGrant(item unstructured.Unstructured, version string) inventory.ReferenceGrant {
+	out := inventory.ReferenceGrant{ObjectRef: objectRef(gatewayAPIVersion(item, version), "ReferenceGrant", item.GetNamespace(), item.GetName(), item.GetUID())}
+	fromRefs, _, _ := unstructured.NestedSlice(item.Object, "spec", "from")
+	for _, raw := range fromRefs {
+		ref, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		out.From = append(out.From, gatewayGrantRef(ref, item.GetNamespace()))
+	}
+	toRefs, _, _ := unstructured.NestedSlice(item.Object, "spec", "to")
+	for _, raw := range toRefs {
+		ref, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		out.To = append(out.To, gatewayGrantRef(ref, item.GetNamespace()))
+	}
+	return out
+}
+
+func gatewayGrantRef(value map[string]any, defaultNamespace string) inventory.GatewayGrantRef {
+	out := inventory.GatewayGrantRef{Namespace: defaultNamespace}
+	out.Group, _, _ = unstructured.NestedString(value, "group")
+	out.Kind, _, _ = unstructured.NestedString(value, "kind")
+	out.Namespace, _, _ = unstructured.NestedString(value, "namespace")
+	if out.Namespace == "" {
+		out.Namespace = defaultNamespace
+	}
+	out.Name, _, _ = unstructured.NestedString(value, "name")
+	return out
+}
+
+func mapGatewayPolicy(item unstructured.Unstructured, version, defaultKind string) inventory.GatewayPolicy {
+	kind := item.GetKind()
+	if kind == "" {
+		kind = defaultKind
+	}
+	apiVersion := item.GetAPIVersion()
+	if apiVersion == "" {
+		group := "gateway.networking.k8s.io"
+		if kind == "XBackendTrafficPolicy" {
+			group = "gateway.networking.x-k8s.io"
+		}
+		apiVersion = group + "/" + version
+	}
+	out := inventory.GatewayPolicy{ObjectRef: objectRef(apiVersion, kind, item.GetNamespace(), item.GetName(), item.GetUID())}
+	if targetRef, ok, _ := unstructured.NestedMap(item.Object, "spec", "targetRef"); ok {
+		out.TargetRefs = append(out.TargetRefs, objectRefFromGatewayRef(targetRef, item.GetNamespace(), ""))
+	}
+	targetRefs, _, _ := unstructured.NestedSlice(item.Object, "spec", "targetRefs")
+	for _, raw := range targetRefs {
+		targetRef, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		out.TargetRefs = append(out.TargetRefs, objectRefFromGatewayRef(targetRef, item.GetNamespace(), ""))
+	}
+	out.Details = appendGatewayPolicyDetails(out.Details, item.Object)
+	return out
+}
+
+func appendGatewayPolicyDetails(out []string, object map[string]any) []string {
+	if hostname, _, _ := unstructured.NestedString(object, "spec", "validation", "hostname"); hostname != "" {
+		out = append(out, "validation.hostname="+hostname)
+	}
+	if wellKnownCAs, _, _ := unstructured.NestedString(object, "spec", "validation", "wellKnownCACertificates"); wellKnownCAs != "" {
+		out = append(out, "validation.wellKnownCACertificates="+wellKnownCAs)
+	}
+	if refs, ok, _ := unstructured.NestedSlice(object, "spec", "validation", "caCertificateRefs"); ok && len(refs) > 0 {
+		out = append(out, fmt.Sprintf("validation.caCertificateRefs=%d", len(refs)))
+	}
+	if mode, _, _ := unstructured.NestedString(object, "spec", "sessionPersistence", "sessionName"); mode != "" {
+		out = append(out, "sessionPersistence.sessionName="+mode)
+	}
+	if retries, ok, _ := unstructured.NestedMap(object, "spec", "retryConstraint"); ok && len(retries) > 0 {
+		out = append(out, fmt.Sprintf("retryConstraint=%d fields", len(retries)))
 	}
 	return out
 }

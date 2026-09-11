@@ -18,6 +18,34 @@ import (
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
 
+func gatewayAPIListKinds() map[schema.GroupVersionResource]string {
+	return map[schema.GroupVersionResource]string{
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses"}:                  "GatewayClassList",
+		{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "gatewayclasses"}:             "GatewayClassList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}:                        "GatewayList",
+		{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "gateways"}:                   "GatewayList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}:                      "HTTPRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "httproutes"}:                 "HTTPRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "grpcroutes"}:                      "GRPCRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "grpcroutes"}:                 "GRPCRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "grpcroutes"}:                "GRPCRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "tlsroutes"}:                       "TLSRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha3", Resource: "tlsroutes"}:                 "TLSRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "tlsroutes"}:                 "TLSRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "tcproutes"}:                       "TCPRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "tcproutes"}:                 "TCPRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "udproutes"}:                       "UDPRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "udproutes"}:                 "UDPRouteList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "referencegrants"}:                 "ReferenceGrantList",
+		{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "referencegrants"}:            "ReferenceGrantList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "referencegrants"}:           "ReferenceGrantList",
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "backendtlspolicies"}:              "BackendTLSPolicyList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha3", Resource: "backendtlspolicies"}:        "BackendTLSPolicyList",
+		{Group: "gateway.networking.k8s.io", Version: "v1alpha1", Resource: "backendtrafficpolicies"}:    "BackendTrafficPolicyList",
+		{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Resource: "xbackendtrafficpolicies"}: "XBackendTrafficPolicyList",
+	}
+}
+
 func TestRunningContainersIncludeOnlyRunningStatuses(t *testing.T) {
 	started := metav1.NewTime(time.Date(2026, 9, 7, 1, 2, 3, 0, time.UTC))
 	pod := mapPod(corev1.Pod{
@@ -258,10 +286,6 @@ func TestWorkloadFromTemplateRecordsAppContainerImages(t *testing.T) {
 }
 
 func TestCollectGatewaysFallsBackToV1Beta1AndMapsRoutes(t *testing.T) {
-	gatewayClassV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses"}
-	gatewayV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}
-	httpRouteV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
-	grpcRouteV1GVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "grpcroutes"}
 	gatewayClassGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "gatewayclasses"}
 	gatewayGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "gateways"}
 	httpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "httproutes"}
@@ -271,19 +295,7 @@ func TestCollectGatewaysFallsBackToV1Beta1AndMapsRoutes(t *testing.T) {
 	udpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "udproutes"}
 	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
 		runtime.NewScheme(),
-		map[schema.GroupVersionResource]string{
-			gatewayClassV1GVR: "GatewayClassList",
-			gatewayV1GVR:      "GatewayList",
-			httpRouteV1GVR:    "HTTPRouteList",
-			grpcRouteV1GVR:    "GRPCRouteList",
-			gatewayClassGVR:   "GatewayClassList",
-			gatewayGVR:        "GatewayList",
-			httpRouteGVR:      "HTTPRouteList",
-			grpcRouteGVR:      "GRPCRouteList",
-			tlsRouteGVR:       "TLSRouteList",
-			tcpRouteGVR:       "TCPRouteList",
-			udpRouteGVR:       "UDPRouteList",
-		},
+		gatewayAPIListKinds(),
 	)
 	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
 		resource := action.GetResource()
@@ -374,11 +386,7 @@ func TestCollectGatewaysUsesDiscoveredV1GatewayAPI(t *testing.T) {
 	httpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
 	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
 		runtime.NewScheme(),
-		map[schema.GroupVersionResource]string{
-			gatewayClassGVR: "GatewayClassList",
-			gatewayGVR:      "GatewayList",
-			httpRouteGVR:    "HTTPRouteList",
-		},
+		gatewayAPIListKinds(),
 	)
 	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
 		switch action.GetResource() {
@@ -439,15 +447,111 @@ func TestCollectGatewaysUsesDiscoveredV1GatewayAPI(t *testing.T) {
 	}
 }
 
+func TestCollectGatewaysFallsBackWhenHTTPRouteMissingFromDiscovery(t *testing.T) {
+	httpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		runtime.NewScheme(),
+		gatewayAPIListKinds(),
+	)
+	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
+		switch action.GetResource() {
+		case httpRouteGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "HTTPRoute",
+				"metadata":   map[string]any{"namespace": "app", "name": "web"},
+				"spec":       map[string]any{"parentRefs": []any{map[string]any{"name": "public"}}},
+			}}}}, nil
+		default:
+			return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
+		}
+	})
+	kubernetes := inventory.Kubernetes{APIResources: []inventory.APIResource{
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses", Kind: "GatewayClass", Verbs: []string{"get", "list"}},
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways", Kind: "Gateway", Namespaced: true, Verbs: []string{"get", "list"}},
+	}}
+	var coverage []inventory.CoverageItem
+
+	collectGateways(context.Background(), client, &kubernetes, &coverage, time.Now().UTC(), "")
+
+	if len(kubernetes.GatewayRoutes) != 1 || kubernetes.GatewayRoutes[0].Kind != "HTTPRoute" || kubernetes.GatewayRoutes[0].Name != "web" {
+		t.Fatalf("gateway routes = %#v, want fallback v1 HTTPRoute", kubernetes.GatewayRoutes)
+	}
+}
+
+func TestCollectGatewaysCollectsGrantsAndPolicies(t *testing.T) {
+	referenceGrantGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "referencegrants"}
+	backendTLSPolicyGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "backendtlspolicies"}
+	backendTrafficPolicyGVR := schema.GroupVersionResource{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Resource: "xbackendtrafficpolicies"}
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		runtime.NewScheme(),
+		gatewayAPIListKinds(),
+	)
+	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
+		switch action.GetResource() {
+		case referenceGrantGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1beta1",
+				"kind":       "ReferenceGrant",
+				"metadata":   map[string]any{"namespace": "backend", "name": "allow-app"},
+				"spec": map[string]any{
+					"from": []any{map[string]any{"group": "gateway.networking.k8s.io", "kind": "HTTPRoute", "namespace": "app"}},
+					"to":   []any{map[string]any{"group": "", "kind": "Service", "name": "api"}},
+				},
+			}}}}, nil
+		case backendTLSPolicyGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "BackendTLSPolicy",
+				"metadata":   map[string]any{"namespace": "backend", "name": "api-tls"},
+				"spec": map[string]any{
+					"targetRefs": []any{map[string]any{"group": "", "kind": "Service", "name": "api"}},
+					"validation": map[string]any{"hostname": "api.backend.svc", "caCertificateRefs": []any{map[string]any{"name": "api-ca"}}},
+				},
+			}}}}, nil
+		case backendTrafficPolicyGVR:
+			return true, &unstructured.UnstructuredList{Items: []unstructured.Unstructured{{Object: map[string]any{
+				"apiVersion": "gateway.networking.x-k8s.io/v1alpha1",
+				"kind":       "XBackendTrafficPolicy",
+				"metadata":   map[string]any{"namespace": "backend", "name": "api-traffic"},
+				"spec": map[string]any{
+					"targetRef":       map[string]any{"group": "", "kind": "Service", "name": "api"},
+					"retryConstraint": map[string]any{"budget": map[string]any{"percent": int64(10)}},
+				},
+			}}}}, nil
+		default:
+			return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
+		}
+	})
+	kubernetes := inventory.Kubernetes{APIResources: []inventory.APIResource{
+		{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "referencegrants", Kind: "ReferenceGrant", Namespaced: true, Verbs: []string{"get", "list"}},
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "backendtlspolicies", Kind: "BackendTLSPolicy", Namespaced: true, Verbs: []string{"get", "list"}},
+		{Group: "gateway.networking.x-k8s.io", Version: "v1alpha1", Resource: "xbackendtrafficpolicies", Kind: "XBackendTrafficPolicy", Namespaced: true, Verbs: []string{"get", "list"}},
+	}}
+	var coverage []inventory.CoverageItem
+
+	collectGateways(context.Background(), client, &kubernetes, &coverage, time.Now().UTC(), "")
+
+	if len(kubernetes.ReferenceGrants) != 1 || kubernetes.ReferenceGrants[0].Name != "allow-app" || len(kubernetes.ReferenceGrants[0].From) != 1 || len(kubernetes.ReferenceGrants[0].To) != 1 {
+		t.Fatalf("reference grants = %#v, want one grant with from/to refs", kubernetes.ReferenceGrants)
+	}
+	if len(kubernetes.GatewayPolicies) != 2 {
+		t.Fatalf("gateway policies = %#v, want BackendTLSPolicy and XBackendTrafficPolicy", kubernetes.GatewayPolicies)
+	}
+	if kubernetes.GatewayPolicies[0].Kind != "BackendTLSPolicy" || len(kubernetes.GatewayPolicies[0].TargetRefs) != 1 || len(kubernetes.GatewayPolicies[0].Details) == 0 {
+		t.Fatalf("first gateway policy = %#v, want backend TLS policy with target and details", kubernetes.GatewayPolicies[0])
+	}
+	if kubernetes.GatewayPolicies[1].Kind != "XBackendTrafficPolicy" || len(kubernetes.GatewayPolicies[1].TargetRefs) != 1 || len(kubernetes.GatewayPolicies[1].Details) == 0 {
+		t.Fatalf("second gateway policy = %#v, want backend traffic policy with target and details", kubernetes.GatewayPolicies[1])
+	}
+}
+
 func TestCollectGatewaysFallsBackToContextNamespaceWhenAllNamespacesDenied(t *testing.T) {
 	gatewayGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}
 	httpRouteGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
 	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
 		runtime.NewScheme(),
-		map[schema.GroupVersionResource]string{
-			gatewayGVR:   "GatewayList",
-			httpRouteGVR: "HTTPRouteList",
-		},
+		gatewayAPIListKinds(),
 	)
 	client.Fake.PrependReactor("list", "*", func(action ktesting.Action) (bool, runtime.Object, error) {
 		if action.GetNamespace() == "" {

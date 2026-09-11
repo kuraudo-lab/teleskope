@@ -192,6 +192,8 @@ func hasLiveKubernetesData(data inventory.Kubernetes, coverage []inventory.Cover
 		len(data.GatewayClasses) > 0 ||
 		len(data.Gateways) > 0 ||
 		len(data.GatewayRoutes) > 0 ||
+		len(data.ReferenceGrants) > 0 ||
+		len(data.GatewayPolicies) > 0 ||
 		len(data.StorageClasses) > 0 ||
 		len(data.PersistentVolumes) > 0 ||
 		len(data.PersistentVolumeClaims) > 0 ||
