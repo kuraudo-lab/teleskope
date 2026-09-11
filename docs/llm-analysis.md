@@ -230,12 +230,14 @@ llm:
   api_key_env: OPENAI_API_KEY
   model: <model-name>
   timeout: 5m
-  # Set to false for providers that reject OpenAI JSON mode, such as some gpt-oss-120b deployments.
+  # Set to false for providers that reject OpenAI JSON mode or return plain text, such as some gpt-oss-120b deployments.
   json_mode: true
 ```
 
-`api_key` can be used instead of `api_key_env` for local-only setups. A first CLI
-shape can be:
+`api_key` can be used instead of `api_key_env` for local-only setups. Set
+`json_mode: false` when an OpenAI-compatible provider rejects `response_format`
+or returns plain text instead of JSON; Teleskope will preserve that response as
+plain text analysis. A first CLI shape can be:
 
 ```bash
 teleskope analyze scan ./scan-report --output markdown
