@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kuraudo-lab/teleskope/internal/advisor"
+	"github.com/kuraudo-lab/teleskope/internal/analysis"
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/report"
@@ -55,15 +57,17 @@ const maxEvents = 200
 
 // Store owns all mutable state; handlers receive pre-encoded immutable responses.
 type Store struct {
-	mu       sync.RWMutex
-	order    []string
-	sources  []Source
-	entries  map[string]*entry
-	events   []Event
-	eventSeq uint64
-	revision uint64
-	body     []byte
-	etag     string
+	mu              sync.RWMutex
+	order           []string
+	sources         []Source
+	entries         map[string]*entry
+	events          []Event
+	eventSeq        uint64
+	revision        uint64
+	body            []byte
+	etag            string
+	analysisCache   *analysisCache
+	analysisRunning atomic.Bool
 }
 
 type response struct {
@@ -72,6 +76,24 @@ type response struct {
 	Snapshot *inventory.Snapshot `json:"snapshot"`
 	Sources  map[string]Status   `json:"sources"`
 	Events   []Event             `json:"events,omitempty"`
+}
+
+type AnalyzeResponse struct {
+	Analysis analysis.Result `json:"analysis"`
+	Markdown string          `json:"markdown"`
+}
+
+type analysisCache struct {
+	revision uint64
+	response AnalyzeResponse
+}
+
+// HandlerOptions configures optional live HTTP actions.
+type HandlerOptions struct {
+	Analyzer   analysis.Analyzer
+	ConfigPath string
+	Timeout    time.Duration
+	Log        func(format string, args ...any)
 }
 
 // New validates the source configuration before any collection starts.
@@ -338,26 +360,36 @@ func (s *Store) encode() {
 	s.etag = fmt.Sprintf("\"%x\"", sha256.Sum256(s.body))
 }
 
-// Handler only reads the store. HTTP traffic cannot initiate collection.
+// Handler serves the live UI. HTTP traffic cannot initiate collection; LLM analysis is only triggered by explicit POST.
 func (s *Store) Handler() http.Handler {
+	return s.HandlerWithOptions(HandlerOptions{})
+}
+
+// HandlerWithOptions serves the live UI with injectable LLM analysis dependencies.
+func (s *Store) HandlerWithOptions(opts HandlerOptions) http.Handler {
 	page := report.LiveHTML()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			w.Header().Set("Allow", "GET, HEAD")
-			http.Error(w, "read-only endpoint", http.StatusMethodNotAllowed)
-			return
-		}
 		switch r.URL.Path {
 		case "/":
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			if r.Method == http.MethodGet {
 				_, _ = strings.NewReader(page).WriteTo(w)
 			}
 		case "/api/snapshot":
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
 			s.mu.RLock()
 			body, etag := s.body, s.etag
 			s.mu.RUnlock()
@@ -371,6 +403,11 @@ func (s *Store) Handler() http.Handler {
 				_, _ = w.Write(body)
 			}
 		case "/api/export/snapshot.json":
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
 			snapshot, err := s.exportSnapshot()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -387,6 +424,11 @@ func (s *Store) Handler() http.Handler {
 				_, _ = strings.NewReader(body).WriteTo(w)
 			}
 		case "/api/export/summary.md":
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
 			snapshot, err := s.exportSnapshot()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -397,23 +439,125 @@ func (s *Store) Handler() http.Handler {
 			if r.Method == http.MethodGet {
 				_, _ = strings.NewReader(report.Markdown(snapshot)).WriteTo(w)
 			}
+		case "/api/analyze":
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", "POST")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			s.handleAnalyze(w, r, opts)
 		default:
 			http.NotFound(w, r)
 		}
 	})
 }
 
+func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, opts HandlerOptions) {
+	started := time.Now()
+	requestID := fmt.Sprintf("%x", started.UnixNano())
+	snapshot, revision, err := s.exportSnapshotView()
+	if err != nil {
+		s.addAnalysisEvent(opts, "error", "LLM analysis failed id=%s phase=snapshot error=%s", requestID, err)
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if cached, ok := s.cachedAnalysis(revision); ok {
+		s.addAnalysisEvent(opts, "info", "LLM analysis cache_hit id=%s revision=%d model=%s", requestID, revision, cached.Analysis.Model)
+		s.writeAnalyzeResponse(w, cached)
+		return
+	}
+	if !s.analysisRunning.CompareAndSwap(false, true) {
+		s.addAnalysisEvent(opts, "warn", "LLM analysis rejected id=%s revision=%d reason=already_running", requestID, revision)
+		http.Error(w, "analysis already running", http.StatusConflict)
+		return
+	}
+	defer s.analysisRunning.Store(false)
+	s.addAnalysisEvent(opts, "info", "LLM analysis started id=%s revision=%d", requestID, revision)
+	req := analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: snapshot}
+	if contextBytes, err := analysis.BuildContext(req); err != nil {
+		s.addAnalysisEvent(opts, "warn", "LLM analysis context sizing failed id=%s error=%s", requestID, err)
+	} else {
+		s.addAnalysisEvent(opts, "debug", "LLM analysis context ready id=%s revision=%d bytes=%d collectedAt=%s", requestID, revision, len(contextBytes), snapshot.CollectedAt.Format(time.RFC3339))
+	}
+	analyzer := opts.Analyzer
+	if analyzer == nil {
+		cfg, err := analysis.LoadConfig(opts.ConfigPath)
+		if err != nil {
+			s.addAnalysisEvent(opts, "error", "LLM analysis failed id=%s phase=config error=%s", requestID, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if opts.Timeout > 0 {
+			cfg.LLM.Timeout = opts.Timeout
+		}
+		s.addAnalysisEvent(opts, "info", "LLM analysis config loaded id=%s provider=%s model=%s timeout=%s", requestID, cfg.LLM.Provider, cfg.LLM.Model, cfg.LLM.Timeout)
+		analyzer = analysis.NewOpenAICompatible(cfg.LLM)
+	} else {
+		s.addAnalysisEvent(opts, "debug", "LLM analysis using injected analyzer id=%s", requestID)
+	}
+	ctx := r.Context()
+	if opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
+		defer cancel()
+	}
+	result, err := analyzer.Analyze(ctx, req)
+	if err != nil {
+		s.addAnalysisEvent(opts, "error", "LLM analysis failed id=%s phase=request duration=%s error=%s", requestID, time.Since(started).Round(time.Millisecond), err)
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	s.addAnalysisEvent(opts, "info", "LLM analysis completed id=%s revision=%d model=%s duration=%s", requestID, revision, result.Model, time.Since(started).Round(time.Millisecond))
+	out := AnalyzeResponse{Analysis: result, Markdown: analysis.Markdown(result)}
+	s.storeAnalysis(revision, out)
+	s.writeAnalyzeResponse(w, out)
+}
+
+func (s *Store) addAnalysisEvent(opts HandlerOptions, level, format string, args ...any) {
+	s.AddEvent("analysis", level, format, args...)
+	if opts.Log != nil {
+		opts.Log("[analysis] "+format, args...)
+	}
+}
+
+func (s *Store) cachedAnalysis(revision uint64) (AnalyzeResponse, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.analysisCache == nil || s.analysisCache.revision != revision {
+		return AnalyzeResponse{}, false
+	}
+	return s.analysisCache.response, true
+}
+
+func (s *Store) storeAnalysis(revision uint64, out AnalyzeResponse) {
+	s.mu.Lock()
+	s.analysisCache = &analysisCache{revision: revision, response: out}
+	s.mu.Unlock()
+}
+
+func (s *Store) writeAnalyzeResponse(w http.ResponseWriter, out AnalyzeResponse) {
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	_ = encoder.Encode(out)
+}
+
 func (s *Store) exportSnapshot() (*inventory.Snapshot, error) {
+	snapshot, _, err := s.exportSnapshotView()
+	return snapshot, err
+}
+
+func (s *Store) exportSnapshotView() (*inventory.Snapshot, uint64, error) {
 	s.mu.RLock()
 	body := append([]byte(nil), s.body...)
 	s.mu.RUnlock()
 
 	var out response
 	if err := json.Unmarshal(body, &out); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if out.Snapshot == nil {
-		return nil, fmt.Errorf("snapshot unavailable")
+		return nil, out.Revision, fmt.Errorf("snapshot unavailable")
 	}
-	return out.Snapshot, nil
+	return out.Snapshot, out.Revision, nil
 }

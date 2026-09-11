@@ -2,14 +2,17 @@
 package advisory
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 
 	_ "embed"
 
+	"github.com/kuraudo-lab/teleskope/internal/analysis"
 	"github.com/kuraudo-lab/teleskope/internal/compare"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
@@ -24,8 +27,25 @@ type compareResponse struct {
 	Markdown string         `json:"markdown"`
 }
 
+type analyzeResponse struct {
+	Analysis analysis.Result `json:"analysis"`
+	Markdown string          `json:"markdown"`
+}
+
+// Options configures the advisory HTTP handler.
+type Options struct {
+	Analyzer   analysis.Analyzer
+	ConfigPath string
+	Timeout    time.Duration
+}
+
 // Handler returns a local-only web UI for comparing two uploaded scan snapshots.
 func Handler() http.Handler {
+	return HandlerWithOptions(Options{})
+}
+
+// HandlerWithOptions returns an advisory handler with injectable analysis dependencies.
+func HandlerWithOptions(opts Options) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -49,10 +69,65 @@ func Handler() http.Handler {
 				return
 			}
 			handleCompare(w, r)
+		case "/api/analyze":
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", "POST")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			handleAnalyze(w, r, opts)
 		default:
 			http.NotFound(w, r)
 		}
 	})
+}
+
+func handleAnalyze(w http.ResponseWriter, r *http.Request, opts Options) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxSnapshotUploadBytes*2)
+	if err := r.ParseMultipartForm(maxSnapshotUploadBytes); err != nil {
+		http.Error(w, "parse upload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	source, err := decodeUploadedSnapshot(r.MultipartForm, "source")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	target, err := decodeUploadedSnapshot(r.MultipartForm, "target")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	report := compare.Analyze(source, target)
+	req := analysis.Request{UseCase: analysis.UseCaseAdvisory, Source: source, Target: target, CompareReport: &report}
+	analyzer := opts.Analyzer
+	if analyzer == nil {
+		cfg, err := analysis.LoadConfig(opts.ConfigPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if opts.Timeout > 0 {
+			cfg.LLM.Timeout = opts.Timeout
+		}
+		analyzer = analysis.NewOpenAICompatible(cfg.LLM)
+	}
+	ctx := r.Context()
+	if opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
+		defer cancel()
+	}
+	result, err := analyzer.Analyze(ctx, req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	out := analyzeResponse{Analysis: result, Markdown: analysis.Markdown(result)}
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	_ = encoder.Encode(out)
 }
 
 func handleCompare(w http.ResponseWriter, r *http.Request) {

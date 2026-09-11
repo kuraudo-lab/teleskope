@@ -97,6 +97,7 @@
       </div>
       <div class="toolbar">
         <button id="runCompare" class="primary" type="submit" form="compareForm">Compare</button>
+        <button id="runAI" class="export-button" type="button" disabled>AI Analysis</button>
         <div class="export" id="exportMenu">
           <button type="button" id="exportReport" class="export-button" aria-haspopup="menu" aria-expanded="false" disabled>Export</button>
           <div class="export-menu" role="menu" aria-label="Export format">
@@ -130,13 +131,15 @@
     <section class="section stack" data-section="capabilities"><div class="panel"><h3>Capability differences</h3><div class="scroll"><table id="capabilityTable"></table></div></div></section>
     <section class="section stack" data-section="inventory"><div class="panel"><h3>Inventory differences</h3><div class="body inventory-diffs" id="inventoryDiffs"></div></div></section>
     <section class="section stack" data-section="coverage"><div class="panel"><h3>Coverage warnings</h3><div class="scroll"><table id="coverageTable"></table></div></div></section>
+    <section class="section stack" data-section="ai"><div class="panel"><h3>AI analysis</h3><div class="body" id="aiBody"><p class="muted">Run a comparison, then generate AI analysis.</p></div></div></section>
     <section class="section stack" data-section="markdown"><div class="panel"><h3>Markdown report</h3><div class="body"><pre id="markdownBody">Run a comparison to generate Markdown.</pre></div></div></section>
   </main>
 </div>
 <script>
-const navItems = [['overview','Overview'], ['findings','Findings'], ['capabilities','Capabilities'], ['inventory','Inventory'], ['coverage','Coverage'], ['markdown','Markdown']];
+const navItems = [['overview','Overview'], ['findings','Findings'], ['capabilities','Capabilities'], ['inventory','Inventory'], ['coverage','Coverage'], ['ai','AI Analysis'], ['markdown','Markdown']];
 let activeSection = 'overview';
 let latest = null;
+let latestAI = null;
 const byId = id => document.getElementById(id);
 const esc = value => String(value ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const arr = value => Array.isArray(value) ? value : [];
@@ -206,6 +209,11 @@ function renderNav() {
     document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === activeSection));
   };
 }
+function renderAI(result) {
+  latestAI = result;
+  const analysis = result.analysis || {};
+  byId('aiBody').innerHTML = `<p>${esc(analysis.summary || 'No AI summary returned.')}</p>` + arr(analysis.sections).map(section => `<div class="card"><h3>${esc(section.title)}</h3>${arr(section.items).map(item => `<p><strong>${esc(item.summary)}</strong></p><p class="muted">${esc(item.detail || item.recommendation || '')}</p>`).join('') || '<p class="muted">No items.</p>'}</div>`).join('') + (arr(analysis.limitations).length ? `<h3>Limitations</h3><ul>${arr(analysis.limitations).map(item => `<li>${esc(item)}</li>`).join('')}</ul>` : '');
+}
 function render(result) {
   latest = result;
   const report = result.report || {};
@@ -218,7 +226,25 @@ function render(result) {
   table('coverageTable', ['Role', 'Area', 'Resource', 'Status', 'Reason'], arr(report.coverageWarnings).map(w => [esc(w.role), esc(w.area), esc(w.resource), esc(w.status), esc(w.reason)]));
   byId('markdownBody').textContent = result.markdown || '';
   byId('exportReport').disabled = false;
+  byId('runAI').disabled = false;
 }
+byId('runAI').addEventListener('click', async () => {
+  const formEl = byId('compareForm');
+  if (!formEl.reportValidity()) return;
+  byId('runAI').disabled = true;
+  byId('status').textContent = 'Requesting AI analysis...';
+  try {
+    const response = await fetch('/api/analyze', {method:'POST', body:new FormData(formEl)});
+    if (!response.ok) throw new Error(await response.text());
+    renderAI(await response.json());
+    byId('status').textContent = 'AI analysis ready.';
+    document.querySelector('nav button[data-target="ai"]')?.click();
+  } catch (error) {
+    byId('status').textContent = error.message;
+  } finally {
+    byId('runAI').disabled = false;
+  }
+});
 byId('compareForm').addEventListener('submit', async e => {
   e.preventDefault();
   byId('runCompare').disabled = true;

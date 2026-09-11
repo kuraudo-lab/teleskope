@@ -248,6 +248,56 @@ func TestCompareCommandValidatesInput(t *testing.T) {
 	}
 }
 
+func TestAnalyzeScanContextOutputReadsReportDirectory(t *testing.T) {
+	base := t.TempDir()
+	scanDir := writeCLISnapshot(t, base, "source", "v1.31.0")
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"analyze", "scan", scanDir, "--output", "context"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("Run returned %d, want 0; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), `"useCase": "scan"`) || !strings.Contains(stdout.String(), `"kubernetesVersion": "v1.31.0"`) {
+		t.Fatalf("stdout missing scan context:\n%s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "loading scan result") {
+		t.Fatalf("stderr missing progress: %s", stderr.String())
+	}
+}
+
+func TestAnalyzeCompareContextOutputReadsReportDirectories(t *testing.T) {
+	base := t.TempDir()
+	sourceDir := writeCLISnapshot(t, base, "source", "v1.31.0")
+	targetDir := writeCLISnapshot(t, base, "target", "v1.30.0")
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"analyze", "compare", sourceDir, targetDir, "--output", "context"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("Run returned %d, want 0; stderr=%s", code, stderr.String())
+	}
+	for _, want := range []string{`"useCase": "compare"`, `"compareReport"`, "Kubernetes versions differ"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q:\n%s", want, stdout.String())
+		}
+	}
+}
+
+func TestAnalyzeCompareValidatesInput(t *testing.T) {
+	for _, args := range [][]string{
+		{"analyze", "compare"},
+		{"analyze", "compare", "--source", "one"},
+		{"analyze", "compare", "--source", "one", "--target", "two", "--output", "yaml"},
+		{"analyze", "compare", "one", "two", "three"},
+	} {
+		var stdout, stderr bytes.Buffer
+		if code := Run(args, &stdout, &stderr); code != 1 {
+			t.Fatalf("%v: code=%d stdout=%s stderr=%s", args, code, stdout.String(), stderr.String())
+		}
+	}
+}
+
 func writeCLISnapshot(t *testing.T, base, name, version string) string {
 	t.Helper()
 	dir := filepath.Join(base, name)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kuraudo-lab/teleskope/internal/analysis"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
 
@@ -44,6 +46,42 @@ func podSnapshot(count int, status string) *inventory.Snapshot {
 	}
 	return result
 }
+
+type fakeAnalyzer struct {
+	got   analysis.Request
+	calls int
+}
+
+func (f *fakeAnalyzer) Analyze(ctx context.Context, req analysis.Request) (analysis.Result, error) {
+	f.calls++
+	f.got = req
+	return analysis.Result{
+		UseCase:       req.UseCase,
+		Model:         "fake-model",
+		PromptVersion: "test",
+		Summary:       "web is an application workload",
+		Sections: []analysis.Section{{
+			Title: "Workloads",
+			Items: []analysis.Item{{Summary: "web serves HTTP traffic", Detail: "Deployment-style app workload", Severity: "info"}},
+		}},
+	}, nil
+}
+
+type blockingAnalyzer struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (b blockingAnalyzer) Analyze(ctx context.Context, req analysis.Request) (analysis.Result, error) {
+	close(b.started)
+	select {
+	case <-b.release:
+		return analysis.Result{UseCase: req.UseCase, Model: "blocking", Summary: "done"}, nil
+	case <-ctx.Done():
+		return analysis.Result{}, ctx.Err()
+	}
+}
+
 func TestRetainOnFailureAndCoverageRegressionThenAcceptDeletion(t *testing.T) {
 	s := newTestStore(t, "kubernetes")
 	if got := readView(t, s); got.Snapshot != nil || got.Sources["kubernetes"].State != "loading" {
@@ -168,6 +206,101 @@ func TestHTTPReadOnlyAndConditionalRequests(t *testing.T) {
 	}
 	if len(eventView.Events) != 1 || eventView.Events[0].Source != "kubernetes" || eventView.Events[0].Message != "refresh starting" {
 		t.Fatalf("events = %#v, want recent event in response", eventView.Events)
+	}
+}
+
+func TestHTTPAnalyzeUsesCurrentSnapshot(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	fake := &fakeAnalyzer{}
+	h := s.HandlerWithOptions(HandlerOptions{Analyzer: fake})
+
+	missing := httptest.NewRecorder()
+	h.ServeHTTP(missing, httptest.NewRequest("POST", "/api/analyze", nil))
+	if missing.Code != 503 {
+		t.Fatalf("analyze without snapshot = %d, want 503", missing.Code)
+	}
+
+	s.finish("kubernetes", podSnapshot(1, "complete"), nil, time.Now())
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/api/analyze", nil))
+	if w.Code != 200 {
+		t.Fatalf("analyze = %d: %s", w.Code, w.Body.String())
+	}
+	if fake.got.UseCase != analysis.UseCaseScan || fake.got.Snapshot == nil || len(fake.got.Snapshot.Kubernetes.Pods) != 1 {
+		t.Fatalf("request = %+v", fake.got)
+	}
+	var out AnalyzeResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Analysis.UseCase != analysis.UseCaseScan || out.Analysis.Summary == "" || !strings.Contains(out.Markdown, "# Teleskope LLM analysis") {
+		t.Fatalf("response = %+v", out)
+	}
+	got := readView(t, s)
+	if len(got.Events) < 4 {
+		t.Fatalf("events = %#v, want detailed analysis events", got.Events)
+	}
+	messages := make([]string, 0, len(got.Events))
+	for _, event := range got.Events {
+		if event.Source == "analysis" {
+			messages = append(messages, event.Message)
+		}
+	}
+	joined := strings.Join(messages, "\n")
+	for _, want := range []string{"LLM analysis started", "revision=1", "context ready", "using injected analyzer", "LLM analysis completed"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("analysis events missing %q:\n%s", want, joined)
+		}
+	}
+
+	cached := httptest.NewRecorder()
+	h.ServeHTTP(cached, httptest.NewRequest("POST", "/api/analyze", nil))
+	if cached.Code != http.StatusOK {
+		t.Fatalf("cached analyze = %d: %s", cached.Code, cached.Body.String())
+	}
+	if fake.calls != 1 {
+		t.Fatalf("analyzer calls = %d, want cache to avoid repeat provider call", fake.calls)
+	}
+	got = readView(t, s)
+	var cacheHit bool
+	for _, event := range got.Events {
+		cacheHit = cacheHit || strings.Contains(event.Message, "cache_hit")
+	}
+	if !cacheHit {
+		t.Fatalf("events missing cache hit: %#v", got.Events)
+	}
+}
+
+func TestHTTPAnalyzeRejectsConcurrentRequest(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	s.finish("kubernetes", podSnapshot(1, "complete"), nil, time.Now())
+	analyzer := blockingAnalyzer{started: make(chan struct{}), release: make(chan struct{})}
+	h := s.HandlerWithOptions(HandlerOptions{Analyzer: analyzer})
+
+	done := make(chan int, 1)
+	go func() {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("POST", "/api/analyze", nil))
+		done <- w.Code
+	}()
+	<-analyzer.started
+
+	blocked := httptest.NewRecorder()
+	h.ServeHTTP(blocked, httptest.NewRequest("POST", "/api/analyze", nil))
+	if blocked.Code != http.StatusConflict || !strings.Contains(blocked.Body.String(), "analysis already running") {
+		t.Fatalf("concurrent analyze = %d %q", blocked.Code, blocked.Body.String())
+	}
+	close(analyzer.release)
+	if code := <-done; code != http.StatusOK {
+		t.Fatalf("first analyze = %d, want 200", code)
+	}
+	view := readView(t, s)
+	var rejected bool
+	for _, event := range view.Events {
+		rejected = rejected || strings.Contains(event.Message, "already_running")
+	}
+	if !rejected {
+		t.Fatalf("events missing concurrent rejection: %#v", view.Events)
 	}
 }
 

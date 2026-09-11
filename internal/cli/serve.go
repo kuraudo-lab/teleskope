@@ -21,7 +21,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultKubernetesServeInterval = 5 * time.Minute
+const (
+	defaultKubernetesServeInterval = 5 * time.Minute
+	defaultServeWriteTimeout       = 10 * time.Minute
+)
 
 func newServeCommand(stdout, stderr io.Writer) *cobra.Command {
 	cmd := &cobra.Command{Use: "serve", Short: "Serve a live read-only inventory with periodic collection"}
@@ -122,8 +125,10 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 			done := make(chan struct{})
 			go func() { defer close(done); store.Run(ctx) }()
 			server := &http.Server{
-				Handler: store.Handler(), ReadHeaderTimeout: 5 * time.Second,
-				WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second,
+				Handler:           store.HandlerWithOptions(live.HandlerOptions{Log: log}),
+				ReadHeaderTimeout: 5 * time.Second,
+				WriteTimeout:      defaultServeWriteTimeout,
+				IdleTimeout:       60 * time.Second,
 			}
 			serverDone := make(chan error, 1)
 			go func() { serverDone <- server.Serve(listener) }()

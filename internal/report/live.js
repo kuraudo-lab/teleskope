@@ -1,5 +1,5 @@
 // Same-origin browser updates read the shared snapshot; they never trigger scans.
-let liveRevision = -1, liveETag = '', updatesPaused = false;
+let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1;
 document.querySelectorAll('.section').forEach(section => {
   const progress = document.createElement('div');
   progress.className = 'live-progress';
@@ -9,6 +9,9 @@ document.querySelectorAll('.section').forEach(section => {
   section.prepend(progress);
 });
 document.querySelector('.toolbar').insertAdjacentHTML('beforeend', '<button id="pause-updates" class="export-button" type="button">Pause updates</button>');
+const analyzeButton = byId('analyzeSnapshot');
+analyzeButton.hidden = false;
+syncAnalyzeButtonState();
 document.querySelector('.brand p').textContent = 'live cluster inventory';
 byId('title').textContent = 'Waiting for first snapshot';
 byId('subtitle').textContent = 'Collection runs in the background. This page retries automatically.';
@@ -18,6 +21,46 @@ byId('pause-updates').onclick = () => {
   byId('pause-updates').textContent = updatesPaused ? 'Resume page updates' : 'Pause page updates';
   byId('pause-updates').setAttribute('aria-pressed', String(updatesPaused));
   if (updatesPaused) updateLiveProgress('⏸', 'Page updates paused. Background collection continues.', false);
+};
+function syncAnalyzeButtonState() {
+  if (!analyzeButton) return;
+  if (document.body.classList.contains('live-loading') || liveRevision < 0) {
+    analyzeButton.disabled = true;
+    analyzeButton.innerHTML = '<span>Analyze with AI</span>';
+    analyzeButton.title = 'Analyze is available after the first scan completes.';
+  } else if (analysisInFlight) {
+    analyzeButton.disabled = true;
+    analyzeButton.innerHTML = '<span>Analyzing…</span>';
+    analyzeButton.title = 'Analysis is running.';
+  } else if (lastAnalyzedRevision === liveRevision) {
+    analyzeButton.disabled = true;
+    analyzeButton.innerHTML = '<span>Analyzed</span>';
+    analyzeButton.title = 'The current snapshot has already been analyzed.';
+  } else {
+    analyzeButton.disabled = false;
+    analyzeButton.innerHTML = '<span>Analyze with AI</span>';
+    analyzeButton.title = 'Analyze the current live snapshot.';
+  }
+}
+analyzeButton.onclick = async () => {
+  if (analysisInFlight || lastAnalyzedRevision === liveRevision || liveRevision < 0 || document.body.classList.contains('live-loading')) return;
+  analysisInFlight = true;
+  syncAnalyzeButtonState();
+  setAnalysisMessage('Requesting AI analysis for the current live snapshot…');
+  selectSection('advisor');
+  try {
+    const result = await fetch('/api/analyze', {method:'POST', cache:'no-store'});
+    if (!result.ok) throw new Error((await result.text()).trim() || ('HTTP ' + result.status));
+    const data = await result.json();
+    llmAnalysis = data.analysis || null;
+    lastAnalyzedRevision = liveRevision;
+    renderAnalysis();
+  } catch (error) {
+    setAnalysisMessage('AI analysis failed: ' + error.message, 'error');
+  } finally {
+    analysisInFlight = false;
+    syncAnalyzeButtonState();
+  }
 };
 function detailKey(obj) {
   if (obj.uid) return 'uid:' + obj.uid;
@@ -40,6 +83,7 @@ function applyLiveSnapshot(next) {
   byId('focus').value = nsFilter;
   byId('resourceType').value = resourceFilter;
   document.body.classList.remove('live-loading');
+  syncAnalyzeButtonState();
   renderAll();
   syncResourceFilterState();
   scrolls.forEach(([el, top, left]) => { el.scrollTop = top; el.scrollLeft = left; });
@@ -98,8 +142,8 @@ async function refreshLivePage() {
           advisorReport = data.advisor || {};
           renderAdvisor();
           if (data.snapshot && data.revision !== liveRevision) {
-            applyLiveSnapshot(data.snapshot);
             liveRevision = data.revision;
+            applyLiveSnapshot(data.snapshot);
           }
           renderLiveStatus(data.sources, data.events);
           liveETag = result.headers.get('ETag') || '';

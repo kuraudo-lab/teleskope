@@ -39,10 +39,20 @@
     input, select { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; outline:none; }
     input:focus, select:focus { border-color:rgba(96,165,250,.75); box-shadow:0 0 0 3px rgba(96,165,250,.14); }
     .export-button,
-    .theme-toggle { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; min-width:42px; height:42px; padding:0 12px; cursor:pointer; font-size:16px; }
-    .export-button { font-size:14px; }
+    .theme-toggle { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; min-width:42px; height:42px; padding:0 12px; cursor:pointer; font:inherit; font-size:14px; line-height:1; }
     .export-button:hover,
     .theme-toggle:hover { background:var(--nav-hover); }
+    .export-button:disabled,
+    .theme-toggle:disabled { opacity:.48; cursor:not-allowed; }
+    .export-button:disabled:hover,
+    .theme-toggle:disabled:hover { background:var(--control-bg); }
+    .ai-button { position:relative; overflow:hidden; border-color:rgba(34,211,238,.45); background:linear-gradient(135deg,rgba(37,99,235,.96),rgba(124,58,237,.92) 55%,rgba(8,145,178,.94)); color:white; box-shadow:0 10px 30px rgba(37,99,235,.22),0 0 22px rgba(34,211,238,.22); font-weight:700; }
+    .ai-button::before { content:""; position:absolute; inset:-70% -35%; background:linear-gradient(115deg,transparent 34%,rgba(255,255,255,.58) 48%,transparent 62%); transform:translateX(-70%) rotate(8deg); animation:teleskope-bling 3.2s ease-in-out infinite; }
+    .ai-button span { position:relative; z-index:1; }
+    .ai-button:hover:not(:disabled) { background:linear-gradient(135deg,rgba(59,130,246,1),rgba(139,92,246,.98) 55%,rgba(6,182,212,.96)); box-shadow:0 12px 34px rgba(37,99,235,.30),0 0 30px rgba(34,211,238,.30); }
+    .ai-button:disabled { color:var(--muted); background:var(--control-bg); box-shadow:none; border-color:var(--line); font-weight:500; }
+    .ai-button:disabled::before { display:none; }
+    @keyframes teleskope-bling { 0%, 62% { transform:translateX(-75%) rotate(8deg); } 82%, 100% { transform:translateX(75%) rotate(8deg); } }
     .export-button:focus-visible,
     .theme-toggle:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
     .export { position:relative; }
@@ -64,6 +74,17 @@
     .panel .body { padding:16px 18px; }
     .advisor-body { min-width:0; overflow-wrap:anywhere; }
     .advisor-body > p:first-child { margin-top:0; }
+    .analysis-body { min-width:0; overflow-wrap:anywhere; }
+    .analysis-summary { margin-top:0; font-size:15px; line-height:1.6; }
+    .analysis-meta { margin:10px 0 0; color:var(--muted); font-size:12px; }
+    .analysis-section { border-top:1px solid var(--line); padding-top:14px; margin-top:16px; }
+    .analysis-section:first-of-type { border-top:0; padding-top:0; }
+    .analysis-section h4 { margin:0 0 10px; font-size:15px; }
+    .analysis-item { border:1px solid var(--table-line); border-radius:12px; padding:12px; background:var(--panel-2); margin-top:10px; }
+    .analysis-item p { margin:7px 0 0; line-height:1.5; }
+    .analysis-item strong { display:block; }
+    .analysis-item small { color:var(--muted); }
+    .analysis-evidence { margin:8px 0 0; padding-left:18px; color:var(--muted); }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { padding:10px 12px; border-bottom:1px solid var(--table-line); vertical-align:top; }
     th { color:var(--muted); text-align:left; font-weight:600; position:sticky; top:0; background:var(--table-head-bg); z-index:1; }
@@ -107,17 +128,21 @@
   <main>
     <header>
       <div><div class="eyebrow">Cluster inventory</div><h2 id="title">Loading</h2><p class="sub" id="subtitle"></p></div>
-      <div class="toolbar"><select id="focus" aria-label="Namespace"><option value="all">All namespaces</option></select><select id="resourceType" aria-label="Resource type"><option value="all">All resource types</option></select><div class="export" id="exportMenu"><button type="button" id="exportReport" class="export-button" aria-haspopup="menu" aria-expanded="false">Export</button><div class="export-menu" role="menu" aria-label="Export format"><button type="button" role="menuitem" data-export-format="json">JSON</button><button type="button" role="menuitem" data-export-format="markdown">Markdown</button></div></div><button type="button" id="themeToggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch theme">Theme</button></div>
+      <div class="toolbar"><select id="focus" aria-label="Namespace"><option value="all">All namespaces</option></select><select id="resourceType" aria-label="Resource type"><option value="all">All resource types</option></select><button type="button" id="analyzeSnapshot" class="export-button ai-button" hidden disabled><span>Analyze with AI</span></button><div class="export" id="exportMenu"><button type="button" id="exportReport" class="export-button" aria-haspopup="menu" aria-expanded="false">Export</button><div class="export-menu" role="menu" aria-label="Export format"><button type="button" role="menuitem" data-export-format="json">JSON</button><button type="button" role="menuitem" data-export-format="markdown">Markdown</button></div></div><button type="button" id="themeToggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch theme">Theme</button></div>
     </header>
     <section class="section active" data-section="overview"><div id="cards" class="grid cards"></div><div class="topology-shell"><div class="panel"><h3>Topology</h3><div id="topology" class="topology"></div></div></div></section>
     <section class="section stack" data-section="advisor">
       <div class="panel">
-        <h3>Cluster capabilities</h3>
+        <h3>Advisory</h3>
         <div class="body advisor-body">
           <p>Cluster-wide assessment; namespace and resource filters do not apply.</p>
           <p id="advisor-summary"></p>
           <div id="advisor-capabilities" class="stack"></div>
         </div>
+      </div>
+      <div class="panel">
+        <h3>AI analysis</h3>
+        <div id="analysisBody" class="body analysis-body"><p class="empty">Run AI analysis from the live view after a snapshot is available.</p></div>
       </div>
     </section>
 <section class="section stack" data-section="eks"><div class="panel"><h3>EKS overview</h3><div class="scroll"><table id="eksOverviewTable"></table></div></div><div class="panel"><h3>Upgrade / rollback insights</h3><div class="scroll"><table id="eksInsightsTable"></table></div></div><div class="panel"><h3>Compute capacity and declared usage</h3><div class="scroll"><table id="eksCapacityTable"></table></div></div><div class="panel"><h3>Network</h3><div class="scroll"><table id="eksNetworkTable"></table></div></div><div class="panel"><h3>Security and identity</h3><div class="scroll"><table id="eksSecurityTable"></table></div></div><div class="panel"><h3>Access entries</h3><div class="scroll"><table id="accessEntriesTable"></table></div></div><div class="panel"><h3>Pod Identity associations</h3><div class="scroll"><table id="podIdentityTable"></table></div></div><div class="panel"><h3>Managed add-ons</h3><div class="scroll"><table id="addonsTable"></table></div></div><div class="panel"><h3>Managed nodegroups</h3><div class="scroll"><table id="nodegroupsTable"></table></div></div></section>
@@ -143,8 +168,9 @@ let reportMarkdown = document.getElementById('markdown-data').textContent;
 let k = snapshot.kubernetes || {};
 let eks = snapshot.eks || {};
 let cluster = eks.cluster || {};
-const navItems = [['overview','Overview'], ['advisor','Advisor'], ['eks','EKS'], ['nodes','Nodes'], ['images','Running images'], ['crds','Custom resources'], ['workloads','Workloads'], ['network','Network'], ['security','Security'], ['policies','Policies'], ['storage','Storage']];
+const navItems = [['overview','Overview'], ['advisor','Advisory'], ['eks','EKS'], ['nodes','Nodes'], ['images','Running images'], ['crds','Custom resources'], ['workloads','Workloads'], ['network','Network'], ['security','Security'], ['policies','Policies'], ['storage','Storage']];
 if (document.body.dataset.live === 'true') navItems.push(['events', 'Events']);
+let llmAnalysis = null;
 const byId = id => document.getElementById(id);
 const esc = v => String(v ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ref = r => !r || !r.name ? '-' : `${(r.kind || '').toLowerCase()}${r.namespace ? '/' + r.namespace : ''}/${r.name}`;
@@ -209,7 +235,8 @@ function namespaceMatches(row) { const namespaces = namespacesOf(row); return ns
 function currentTopologyResourceFilter() { return activeSection === 'overview' ? resourceFilter : 'all'; }
 function filtered(rows) { return arr(rows).filter(namespaceMatches); }
 function syncResourceFilterState() { byId('focus').disabled = activeSection === 'advisor' || activeSection === 'events'; byId('resourceType').disabled = activeSection !== 'overview'; }
-function renderNav() { byId('nav').innerHTML = navItems.map(([id,label],i) => `<button class="${i===0?'active':''}" data-target="${id}"><span class="dot"></span>${label}</button>`).join(''); byId('nav').onclick = e => { const btn = e.target.closest('button'); if (!btn) return; activeSection = btn.dataset.target; document.querySelectorAll('nav button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === activeSection)); syncResourceFilterState(); renderAll(); }; }
+function selectSection(id) { activeSection = id; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.target === id)); document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === activeSection)); syncResourceFilterState(); renderAll(); }
+function renderNav() { byId('nav').innerHTML = navItems.map(([id,label],i) => `<button class="${i===0?'active':''}" data-target="${id}"><span class="dot"></span>${label}</button>`).join(''); byId('nav').onclick = e => { const btn = e.target.closest('button'); if (!btn) return; selectSection(btn.dataset.target); }; }
 function renderHeader() { byId('title').textContent = cluster.name || k.context || 'Kubernetes cluster'; byId('subtitle').textContent = `${k.version?.gitVersion || cluster.version || 'unknown k8s'} · collected ${snapshot.collectedAt || '-'} · ${snapshot.source?.mode || '-'}`; const namespaces = [...new Set([...arr(k.namespaces).map(n => n.name), ...arr(k.runningContainers).map(c => c.namespace), ...arr(k.customResourceInstances).map(c => c.namespace), ...arr(k.workloads).map(w => w.namespace), ...arr(k.pods).map(p => p.namespace)].filter(Boolean))].sort(); byId('focus').innerHTML = '<option value="all">All namespaces</option>' + namespaces.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join(''); byId('resourceType').innerHTML = resourceTypes.map(([value,label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join(''); }
 function renderCards() { const cards = [['Nodes', arr(k.nodes).length], ['Workloads', arr(k.workloads).length], ['Pods', arr(k.pods).length], ['Images', arr(k.runningImages).length], ['CRDs', arr(k.customResourceDefinitions).length], ['Routes', arr(k.ingresses).reduce((n,i) => n + arr(i.rules).length, 0) + arr(k.gatewayRoutes).length]]; byId('cards').innerHTML = cards.map(([l,v]) => `<div class="card"><div class="label">${l}</div><div class="value">${v || 0}</div></div>`).join(''); }
 function table(id, headers, rows, type, mapper) { const data = filtered(rows); const body = data.length ? data.map(r => `<tr data-detail="${esc(JSON.stringify(r))}">${mapper(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('') : `<tr><td class="empty" colspan="${headers.length}">No matching data</td></tr>`; byId(id).innerHTML = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody>`; }
@@ -312,7 +339,24 @@ function renderAdvisor() {
     return `<details data-key="${esc(key)}" ${open.has(key) ? 'open' : ''}><summary style="cursor:pointer;padding:12px 0;overflow-wrap:anywhere"><strong>${esc(c.scope)}</strong> · ${esc(c.key)} · ${esc(c.assessment)} / ${esc(c.basis)} · ${esc(c.freshness)}</summary><p>${esc(c.summary)}</p><p>Implementation: ${esc(c.implementation || 'Unknown')} · Coverage: ${esc(c.coverage)}</p><p>${esc(arr(c.constraints).join(' '))}</p><ul>${arr(c.collection).filter(item => item.status !== 'complete').map(item => `<li>${esc(item.resource)}: ${esc(item.status)} — ${esc(item.reason)}</li>`).join('')}</ul><ul>${arr(c.evidence).map(e => `<li style="overflow-wrap:anywhere">${esc(ref(e.resource))} — ${esc(e.field)}: ${esc(e.value)} (collected ${esc(e.collectedAt)})</li>`).join('')}</ul></details>`;
   }).join('');
 }
-function renderAll() { renderAdvisor(); renderCards(); renderTables(); renderTopology(); }
+function setAnalysisMessage(message, kind='empty') {
+  const cls = kind === 'error' ? 'empty bad' : 'empty';
+  byId('analysisBody').innerHTML = `<p class="${cls}">${esc(message)}</p>`;
+}
+function analysisRefs(resources) { return arr(resources).length ? arr(resources).map(r => `<span class="chip">${esc(ref(r))}</span>`).join('') : ''; }
+function analysisItem(item) {
+  const tags = [item.severity, item.basis, item.confidence].filter(Boolean).join(' · ');
+  const evidence = arr(item.evidence).length ? `<ul class="analysis-evidence">${arr(item.evidence).map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : '';
+  return `<div class="analysis-item"><strong>${esc(item.summary || 'Finding')}</strong>${tags ? `<small>${esc(tags)}</small>` : ''}${item.detail ? `<p>${esc(item.detail)}</p>` : ''}${item.recommendation ? `<p><strong>Recommendation</strong>${esc(item.recommendation)}</p>` : ''}${analysisRefs(item.resources)}${evidence}</div>`;
+}
+function renderAnalysis() {
+  if (!llmAnalysis) return;
+  const meta = [llmAnalysis.model ? 'model=' + llmAnalysis.model : '', llmAnalysis.promptVersion ? 'prompt=' + llmAnalysis.promptVersion : '', llmAnalysis.generatedAt ? 'generated=' + new Date(llmAnalysis.generatedAt).toLocaleString() : ''].filter(Boolean).join(' · ');
+  const sections = arr(llmAnalysis.sections).map(section => `<div class="analysis-section"><h4>${esc(section.title || 'Findings')}</h4>${arr(section.items).map(analysisItem).join('') || '<p class="muted">No items.</p>'}</div>`).join('');
+  const limitations = arr(llmAnalysis.limitations).length ? `<div class="analysis-section"><h4>Limitations</h4><ul>${arr(llmAnalysis.limitations).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
+  byId('analysisBody').innerHTML = `<p class="analysis-summary">${esc(llmAnalysis.summary || 'No summary returned.')}</p>${meta ? `<p class="analysis-meta">${esc(meta)}</p>` : ''}${sections}${limitations}`;
+}
+function renderAll() { renderAdvisor(); renderAnalysis(); renderCards(); renderTables(); renderTopology(); }
 document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
 byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); }, {passive:false});
 byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, detail:e.target.closest('[data-detail]')?.dataset.detail}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });

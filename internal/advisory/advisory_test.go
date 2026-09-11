@@ -2,6 +2,7 @@ package advisory
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kuraudo-lab/teleskope/internal/analysis"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
 
@@ -28,6 +30,9 @@ func TestHandlerServesPageAndComparesUploads(t *testing.T) {
 		`class="toolbar"`,
 		`id="exportMenu"`,
 		`id="exportReport"`,
+		`id="runAI"`,
+		`data-section="ai"`,
+		"/api/analyze",
 		`data-export-format="json"`,
 		`data-export-format="markdown"`,
 		`id="themeToggle"`,
@@ -63,6 +68,27 @@ func TestHandlerServesPageAndComparesUploads(t *testing.T) {
 	}
 }
 
+func TestHandlerAnalyzesUploadsWithInjectedAnalyzer(t *testing.T) {
+	h := HandlerWithOptions(Options{Analyzer: fakeAnalyzer{}})
+	body, contentType := multipartSnapshots(t, advisorySnapshot("source", "v1.31.0"), advisorySnapshot("target", "v1.30.0"))
+	req := httptest.NewRequest(http.MethodPost, "/api/analyze", body)
+	req.Header.Set("Content-Type", contentType)
+	response := httptest.NewRecorder()
+
+	h.ServeHTTP(response, req)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("analyze status = %d body=%s", response.Code, response.Body.String())
+	}
+	var out analyzePayload
+	if err := json.Unmarshal(response.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Analysis.UseCase != string(analysis.UseCaseAdvisory) || !strings.Contains(out.Markdown, "# Teleskope LLM analysis") {
+		t.Fatalf("unexpected analysis response: %+v markdown=%s", out.Analysis, out.Markdown)
+	}
+}
+
 func TestHandlerRejectsInvalidCompareRequests(t *testing.T) {
 	h := Handler()
 	for _, item := range []struct {
@@ -72,7 +98,9 @@ func TestHandlerRejectsInvalidCompareRequests(t *testing.T) {
 	}{
 		{http.MethodPost, "/", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/api/compare", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/api/analyze", http.StatusMethodNotAllowed},
 		{http.MethodPost, "/api/compare", http.StatusBadRequest},
+		{http.MethodPost, "/api/analyze", http.StatusBadRequest},
 		{http.MethodGet, "/missing", http.StatusNotFound},
 	} {
 		w := httptest.NewRecorder()
@@ -81,6 +109,25 @@ func TestHandlerRejectsInvalidCompareRequests(t *testing.T) {
 			t.Fatalf("%s %s = %d, want %d", item.method, item.path, w.Code, item.code)
 		}
 	}
+}
+
+type fakeAnalyzer struct{}
+
+func (fakeAnalyzer) Analyze(_ context.Context, req analysis.Request) (analysis.Result, error) {
+	return analysis.Result{
+		SchemaVersion: analysis.SchemaVersion,
+		UseCase:       req.UseCase,
+		PromptVersion: analysis.PromptVersion,
+		Summary:       "advisory ready",
+		Sections:      []analysis.Section{{Title: "Plan", Items: []analysis.Item{{Summary: "move safely", Basis: "inferred"}}}},
+	}, nil
+}
+
+type analyzePayload struct {
+	Analysis struct {
+		UseCase string `json:"useCase"`
+	} `json:"analysis"`
+	Markdown string `json:"markdown"`
 }
 
 type comparePayload struct {

@@ -119,6 +119,43 @@ or changed API resources, CRDs, networking classes, storage classes, CSI drivers
 runtime classes, node platforms, workload references, and incomplete collection
 coverage. Supported outputs are `human`, `markdown`, and `json`.
 
+## Optional LLM analysis
+
+LLM-backed analysis is opt-in and runs as a post-processing step against existing
+scan results. It uses an OpenAI-compatible `/v1/chat/completions` endpoint and
+keeps `scan`, `compare`, `advisory`, `serve`, and exports deterministic when the
+LLM is not used.
+
+Create `$HOME/.teleskope/config.yaml`:
+
+```yaml
+llm:
+  provider: openai-compatible
+  base_url: https://api.openai.com/v1
+  api_key_env: OPENAI_API_KEY
+  model: <model-name>
+  timeout: 5m
+```
+
+`api_key` can be used instead of `api_key_env` for local-only setups. Analyze a
+single scan or a migration comparison with:
+
+```sh
+teleskope analyze scan ./scan-report --output markdown
+teleskope analyze compare --source ./source-scan --target ./target-scan --output markdown
+```
+
+Use `--output context` to inspect the trimmed model context without calling the
+provider. Use `--config` to point at a different config file. `--web-search`
+records that web-search-backed conclusions are allowed in the prompt, but the
+OpenAI-compatible adapter does not expose a provider-specific search tool in the
+first implementation.
+
+In `teleskope serve`, the live web UI shows an **Analyze** button after the first
+snapshot is available. Clicking it runs the same scan analysis from the local
+server process using `$HOME/.teleskope/config.yaml`; browser refreshes never call
+the provider automatically and the browser never receives the provider API key.
+
 For a local web workflow, start the advisory UI and choose the two
 `snapshot.json` files in the browser:
 

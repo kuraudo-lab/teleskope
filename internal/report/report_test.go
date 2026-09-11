@@ -315,6 +315,23 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		"updateLiveProgress",
 		"background:var(--live-event-bg)",
 		"renderLiveStatus(data.sources, data.events)",
+		`id="analyzeSnapshot"`,
+		"Analyze with AI",
+		"ai-button",
+		"teleskope-bling",
+		"Advisory",
+		"AI analysis",
+		"/api/analyze",
+		"function renderAnalysis",
+		"analysisInFlight",
+		"analysisInFlight || lastAnalyzedRevision === liveRevision || liveRevision < 0",
+		"Analyze is available after the first scan completes.",
+		"cursor:not-allowed",
+		"font:inherit; font-size:14px",
+		"lastAnalyzedRevision",
+		"function syncAnalyzeButtonState",
+		"lastAnalyzedRevision === liveRevision",
+		"selectSection('advisor')",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("live HTML missing %q", want)

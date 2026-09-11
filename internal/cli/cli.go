@@ -57,6 +57,7 @@ func NewRootCommand(stdout, stderr io.Writer) *cobra.Command {
 
 	cmd.AddCommand(newScanCommand(stdout, stderr))
 	cmd.AddCommand(newCompareCommand(stdout, stderr))
+	cmd.AddCommand(newAnalyzeCommand(stdout, stderr))
 	cmd.AddCommand(newAdvisoryCommand(stdout, stderr))
 	cmd.AddCommand(newServeCommand(stdout, stderr))
 	return cmd
