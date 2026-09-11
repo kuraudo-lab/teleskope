@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
@@ -147,6 +148,10 @@ func (c *Collector) Collect(ctx context.Context) (inventory.Kubernetes, []invent
 	progress(opts.Progress, "collecting policy objects")
 	collectPolicies(ctx, client, &kubernetes, &coverage, now)
 	progress(opts.Progress, "policies hpa=%d pdb=%d networkPolicies=%d resourceQuotas=%d limitRanges=%d", len(kubernetes.Policies.HorizontalPodAutoscalers), len(kubernetes.Policies.PodDisruptionBudgets), len(kubernetes.Policies.NetworkPolicies), len(kubernetes.Policies.ResourceQuotas), len(kubernetes.Policies.LimitRanges))
+
+	progress(opts.Progress, "collecting admission webhooks")
+	collectAdmission(ctx, client, &kubernetes, &coverage, now)
+	progress(opts.Progress, "admission webhooks=%d", len(kubernetes.AdmissionWebhooks))
 
 	progress(opts.Progress, "indexing running containers and images")
 	kubernetes.RunningContainers = runningContainers(kubernetes)
@@ -667,34 +672,46 @@ func collectRuntime(ctx context.Context, client *kubernetes.Clientset, out *inve
 	}
 }
 
-func collectRBAC(ctx context.Context, client *kubernetes.Clientset, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
+func collectRBAC(ctx context.Context, client kubernetes.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
 	if roles, err := client.RbacV1().Roles("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "Roles", err, now))
 	} else {
 		out.RBAC.Roles = roleRefs(roles.Items)
+		for _, item := range roles.Items {
+			out.RBAC.RoleDetails = append(out.RBAC.RoleDetails, mapRole(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "Roles", len(out.RBAC.Roles), now))
 	}
 	if bindings, err := client.RbacV1().RoleBindings("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "RoleBindings", err, now))
 	} else {
 		out.RBAC.RoleBindings = roleBindingRefs(bindings.Items)
+		for _, item := range bindings.Items {
+			out.RBAC.RoleBindingDetails = append(out.RBAC.RoleBindingDetails, mapRoleBinding(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "RoleBindings", len(out.RBAC.RoleBindings), now))
 	}
 	if roles, err := client.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "ClusterRoles", err, now))
 	} else {
 		out.RBAC.ClusterRoles = clusterRoleRefs(roles.Items)
+		for _, item := range roles.Items {
+			out.RBAC.ClusterRoleDetails = append(out.RBAC.ClusterRoleDetails, mapClusterRole(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "ClusterRoles", len(out.RBAC.ClusterRoles), now))
 	}
 	if bindings, err := client.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "ClusterRoleBindings", err, now))
 	} else {
 		out.RBAC.ClusterRoleBindings = clusterRoleBindingRefs(bindings.Items)
+		for _, item := range bindings.Items {
+			out.RBAC.ClusterRoleBindingDetails = append(out.RBAC.ClusterRoleBindingDetails, mapClusterRoleBinding(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "ClusterRoleBindings", len(out.RBAC.ClusterRoleBindings), now))
 	}
 }
 
-func collectPolicies(ctx context.Context, client *kubernetes.Clientset, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
+func collectPolicies(ctx context.Context, client kubernetes.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
 	if hpas, err := client.AutoscalingV2().HorizontalPodAutoscalers("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "HorizontalPodAutoscalers", err, now))
 	} else {
@@ -705,25 +722,56 @@ func collectPolicies(ctx context.Context, client *kubernetes.Clientset, out *inv
 		*coverage = append(*coverage, denied("kubernetes", "PodDisruptionBudgets", err, now))
 	} else {
 		out.Policies.PodDisruptionBudgets = pdbRefs(pdbs.Items)
+		for _, item := range pdbs.Items {
+			out.Policies.PodDisruptionBudgetDetails = append(out.Policies.PodDisruptionBudgetDetails, mapPodDisruptionBudget(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "PodDisruptionBudgets", len(out.Policies.PodDisruptionBudgets), now))
 	}
 	if policies, err := client.NetworkingV1().NetworkPolicies("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "NetworkPolicies", err, now))
 	} else {
 		out.Policies.NetworkPolicies = networkPolicyRefs(policies.Items)
+		for _, item := range policies.Items {
+			out.Policies.NetworkPolicyDetails = append(out.Policies.NetworkPolicyDetails, mapNetworkPolicy(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "NetworkPolicies", len(out.Policies.NetworkPolicies), now))
 	}
 	if quotas, err := client.CoreV1().ResourceQuotas("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "ResourceQuotas", err, now))
 	} else {
 		out.Policies.ResourceQuotas = resourceQuotaRefs(quotas.Items)
+		for _, item := range quotas.Items {
+			out.Policies.ResourceQuotaDetails = append(out.Policies.ResourceQuotaDetails, mapResourceQuota(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "ResourceQuotas", len(out.Policies.ResourceQuotas), now))
 	}
 	if limits, err := client.CoreV1().LimitRanges("").List(ctx, metav1.ListOptions{}); err != nil {
 		*coverage = append(*coverage, denied("kubernetes", "LimitRanges", err, now))
 	} else {
 		out.Policies.LimitRanges = limitRangeRefs(limits.Items)
+		for _, item := range limits.Items {
+			out.Policies.LimitRangeDetails = append(out.Policies.LimitRangeDetails, mapLimitRange(item))
+		}
 		*coverage = append(*coverage, complete("kubernetes", "LimitRanges", len(out.Policies.LimitRanges), now))
+	}
+}
+
+func collectAdmission(ctx context.Context, client kubernetes.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
+	if configs, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, metav1.ListOptions{}); err != nil {
+		*coverage = append(*coverage, denied("kubernetes", "MutatingWebhookConfigurations", err, now))
+	} else {
+		for _, item := range configs.Items {
+			out.AdmissionWebhooks = append(out.AdmissionWebhooks, mapMutatingWebhookConfiguration(item))
+		}
+		*coverage = append(*coverage, complete("kubernetes", "MutatingWebhookConfigurations", len(configs.Items), now))
+	}
+	if configs, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, metav1.ListOptions{}); err != nil {
+		*coverage = append(*coverage, denied("kubernetes", "ValidatingWebhookConfigurations", err, now))
+	} else {
+		for _, item := range configs.Items {
+			out.AdmissionWebhooks = append(out.AdmissionWebhooks, mapValidatingWebhookConfiguration(item))
+		}
+		*coverage = append(*coverage, complete("kubernetes", "ValidatingWebhookConfigurations", len(configs.Items), now))
 	}
 }
 
@@ -958,6 +1006,9 @@ func mapDeployment(deployment appsv1.Deployment) inventory.Workload {
 	out.Replicas = deployment.Spec.Replicas
 	out.ReadyReplicas = deployment.Status.ReadyReplicas
 	out.AvailableReplicas = deployment.Status.AvailableReplicas
+	out.UpdatedReplicas = deployment.Status.UpdatedReplicas
+	out.UnavailableReplicas = deployment.Status.UnavailableReplicas
+	out.Strategy = string(deployment.Spec.Strategy.Type)
 	out.Selector = selectorMap(deployment.Spec.Selector)
 	return out
 }
@@ -966,6 +1017,12 @@ func mapDaemonSet(daemonSet appsv1.DaemonSet) inventory.Workload {
 	out := workloadFromTemplate("apps/v1", "DaemonSet", daemonSet.Namespace, daemonSet.Name, daemonSet.UID, daemonSet.OwnerReferences, daemonSet.Spec.Template)
 	out.ReadyReplicas = daemonSet.Status.NumberReady
 	out.AvailableReplicas = daemonSet.Status.NumberAvailable
+	out.UpdatedReplicas = daemonSet.Status.UpdatedNumberScheduled
+	out.UnavailableReplicas = daemonSet.Status.NumberUnavailable
+	out.DesiredScheduled = daemonSet.Status.DesiredNumberScheduled
+	out.CurrentScheduled = daemonSet.Status.CurrentNumberScheduled
+	out.Misscheduled = daemonSet.Status.NumberMisscheduled
+	out.UpdateStrategy = string(daemonSet.Spec.UpdateStrategy.Type)
 	out.Selector = selectorMap(daemonSet.Spec.Selector)
 	return out
 }
@@ -975,6 +1032,8 @@ func mapStatefulSet(statefulSet appsv1.StatefulSet) inventory.Workload {
 	out.Replicas = statefulSet.Spec.Replicas
 	out.ReadyReplicas = statefulSet.Status.ReadyReplicas
 	out.AvailableReplicas = statefulSet.Status.AvailableReplicas
+	out.UpdatedReplicas = statefulSet.Status.UpdatedReplicas
+	out.UpdateStrategy = string(statefulSet.Spec.UpdateStrategy.Type)
 	out.Selector = selectorMap(statefulSet.Spec.Selector)
 	for _, claim := range statefulSet.Spec.VolumeClaimTemplates {
 		out.VolumeClaimTemplates = append(out.VolumeClaimTemplates, objectRef("v1", "PersistentVolumeClaim", statefulSet.Namespace, claim.Name, claim.UID))
@@ -987,12 +1046,18 @@ func mapReplicaSet(replicaSet appsv1.ReplicaSet) inventory.Workload {
 	out.Replicas = replicaSet.Spec.Replicas
 	out.ReadyReplicas = replicaSet.Status.ReadyReplicas
 	out.AvailableReplicas = replicaSet.Status.AvailableReplicas
+	out.FullyLabeledReplicas = replicaSet.Status.FullyLabeledReplicas
 	out.Selector = selectorMap(replicaSet.Spec.Selector)
 	return out
 }
 
 func mapJob(job batchv1.Job) inventory.Workload {
 	out := workloadFromTemplate("batch/v1", "Job", job.Namespace, job.Name, job.UID, job.OwnerReferences, job.Spec.Template)
+	out.Completions = job.Spec.Completions
+	out.Parallelism = job.Spec.Parallelism
+	out.Active = job.Status.Active
+	out.Succeeded = job.Status.Succeeded
+	out.Failed = job.Status.Failed
 	if job.Status.Ready != nil {
 		out.ReadyReplicas = *job.Status.Ready
 	}
@@ -1001,6 +1066,219 @@ func mapJob(job batchv1.Job) inventory.Workload {
 
 func mapCronJob(cronJob batchv1.CronJob) inventory.Workload {
 	out := workloadFromTemplate("batch/v1", "CronJob", cronJob.Namespace, cronJob.Name, cronJob.UID, cronJob.OwnerReferences, cronJob.Spec.JobTemplate.Spec.Template)
+	out.Schedule = cronJob.Spec.Schedule
+	out.Suspend = cronJob.Spec.Suspend
+	out.Completions = cronJob.Spec.JobTemplate.Spec.Completions
+	out.Parallelism = cronJob.Spec.JobTemplate.Spec.Parallelism
+	out.Active = int32(len(cronJob.Status.Active))
+	return out
+}
+
+func mapRole(role rbacv1.Role) inventory.Role {
+	return inventory.Role{
+		ObjectRef: objectRef("rbac.authorization.k8s.io/v1", "Role", role.Namespace, role.Name, role.UID),
+		Rules:     mapRBACRules(role.Rules),
+	}
+}
+
+func mapClusterRole(role rbacv1.ClusterRole) inventory.Role {
+	return inventory.Role{
+		ObjectRef: objectRef("rbac.authorization.k8s.io/v1", "ClusterRole", "", role.Name, role.UID),
+		Rules:     mapRBACRules(role.Rules),
+	}
+}
+
+func mapRoleBinding(binding rbacv1.RoleBinding) inventory.RoleBinding {
+	return inventory.RoleBinding{
+		ObjectRef: objectRef("rbac.authorization.k8s.io/v1", "RoleBinding", binding.Namespace, binding.Name, binding.UID),
+		RoleRef:   rbacRoleRef(binding.RoleRef, binding.Namespace),
+		Subjects:  rbacSubjects(binding.Subjects),
+	}
+}
+
+func mapClusterRoleBinding(binding rbacv1.ClusterRoleBinding) inventory.RoleBinding {
+	return inventory.RoleBinding{
+		ObjectRef: objectRef("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "", binding.Name, binding.UID),
+		RoleRef:   rbacRoleRef(binding.RoleRef, ""),
+		Subjects:  rbacSubjects(binding.Subjects),
+	}
+}
+
+func mapRBACRules(rules []rbacv1.PolicyRule) []inventory.RBACRule {
+	out := make([]inventory.RBACRule, 0, len(rules))
+	for _, rule := range rules {
+		out = append(out, inventory.RBACRule{
+			APIGroups:       append([]string(nil), rule.APIGroups...),
+			Resources:       append([]string(nil), rule.Resources...),
+			ResourceNames:   append([]string(nil), rule.ResourceNames...),
+			Verbs:           append([]string(nil), rule.Verbs...),
+			NonResourceURLs: append([]string(nil), rule.NonResourceURLs...),
+		})
+	}
+	return out
+}
+
+func rbacRoleRef(ref rbacv1.RoleRef, namespace string) inventory.ObjectRef {
+	apiVersion := ref.APIGroup
+	if apiVersion != "" {
+		apiVersion += "/v1"
+	}
+	if ref.Kind == "ClusterRole" {
+		namespace = ""
+	}
+	return objectRef(apiVersion, ref.Kind, namespace, ref.Name, "")
+}
+
+func rbacSubjects(subjects []rbacv1.Subject) []inventory.RBACSubject {
+	out := make([]inventory.RBACSubject, 0, len(subjects))
+	for _, subject := range subjects {
+		out = append(out, inventory.RBACSubject{
+			Kind:      subject.Kind,
+			APIGroup:  subject.APIGroup,
+			Namespace: subject.Namespace,
+			Name:      subject.Name,
+		})
+	}
+	return out
+}
+
+func mapPodDisruptionBudget(pdb policyv1.PodDisruptionBudget) inventory.PodDisruptionBudget {
+	out := inventory.PodDisruptionBudget{
+		ObjectRef:          objectRef("policy/v1", "PodDisruptionBudget", pdb.Namespace, pdb.Name, pdb.UID),
+		Selector:           selectorMap(pdb.Spec.Selector),
+		CurrentHealthy:     pdb.Status.CurrentHealthy,
+		DesiredHealthy:     pdb.Status.DesiredHealthy,
+		ExpectedPods:       pdb.Status.ExpectedPods,
+		DisruptionsAllowed: pdb.Status.DisruptionsAllowed,
+	}
+	if pdb.Spec.MinAvailable != nil {
+		out.MinAvailable = intOrString(*pdb.Spec.MinAvailable)
+	}
+	if pdb.Spec.MaxUnavailable != nil {
+		out.MaxUnavailable = intOrString(*pdb.Spec.MaxUnavailable)
+	}
+	return out
+}
+
+func mapNetworkPolicy(policy networkingv1.NetworkPolicy) inventory.NetworkPolicy {
+	out := inventory.NetworkPolicy{
+		ObjectRef:   objectRef("networking.k8s.io/v1", "NetworkPolicy", policy.Namespace, policy.Name, policy.UID),
+		PodSelector: policy.Spec.PodSelector.MatchLabels,
+	}
+	for _, policyType := range policy.Spec.PolicyTypes {
+		out.PolicyTypes = append(out.PolicyTypes, string(policyType))
+	}
+	out.IngressRules = len(policy.Spec.Ingress)
+	out.EgressRules = len(policy.Spec.Egress)
+	for _, rule := range policy.Spec.Ingress {
+		out.IngressPeers += len(rule.From)
+	}
+	for _, rule := range policy.Spec.Egress {
+		out.EgressPeers += len(rule.To)
+	}
+	return out
+}
+
+func mapResourceQuota(quota corev1.ResourceQuota) inventory.ResourceQuota {
+	return inventory.ResourceQuota{
+		ObjectRef: objectRef("v1", "ResourceQuota", quota.Namespace, quota.Name, quota.UID),
+		Hard:      resourceList(quota.Spec.Hard),
+		Used:      resourceList(quota.Status.Used),
+	}
+}
+
+func mapLimitRange(limit corev1.LimitRange) inventory.LimitRange {
+	out := inventory.LimitRange{
+		ObjectRef: objectRef("v1", "LimitRange", limit.Namespace, limit.Name, limit.UID),
+	}
+	for _, item := range limit.Spec.Limits {
+		out.Items = append(out.Items, inventory.LimitRangeItem{
+			Type:                 string(item.Type),
+			Max:                  resourceList(item.Max),
+			Min:                  resourceList(item.Min),
+			Default:              resourceList(item.Default),
+			DefaultRequest:       resourceList(item.DefaultRequest),
+			MaxLimitRequestRatio: resourceList(item.MaxLimitRequestRatio),
+		})
+	}
+	return out
+}
+
+func mapMutatingWebhookConfiguration(config admissionv1.MutatingWebhookConfiguration) inventory.AdmissionWebhookConfig {
+	out := inventory.AdmissionWebhookConfig{
+		ObjectRef: objectRef("admissionregistration.k8s.io/v1", "MutatingWebhookConfiguration", "", config.Name, config.UID),
+	}
+	for _, webhook := range config.Webhooks {
+		out.Webhooks = append(out.Webhooks, mapMutatingWebhook(webhook))
+	}
+	return out
+}
+
+func mapValidatingWebhookConfiguration(config admissionv1.ValidatingWebhookConfiguration) inventory.AdmissionWebhookConfig {
+	out := inventory.AdmissionWebhookConfig{
+		ObjectRef: objectRef("admissionregistration.k8s.io/v1", "ValidatingWebhookConfiguration", "", config.Name, config.UID),
+	}
+	for _, webhook := range config.Webhooks {
+		out.Webhooks = append(out.Webhooks, mapValidatingWebhook(webhook))
+	}
+	return out
+}
+
+func mapMutatingWebhook(webhook admissionv1.MutatingWebhook) inventory.AdmissionWebhook {
+	out := admissionWebhookBase(webhook.Name, webhook.ClientConfig, webhook.Rules, webhook.TimeoutSeconds)
+	if webhook.FailurePolicy != nil {
+		out.FailurePolicy = string(*webhook.FailurePolicy)
+	}
+	if webhook.MatchPolicy != nil {
+		out.MatchPolicy = string(*webhook.MatchPolicy)
+	}
+	if webhook.SideEffects != nil {
+		out.SideEffects = string(*webhook.SideEffects)
+	}
+	out.AdmissionReviewVersions = append([]string(nil), webhook.AdmissionReviewVersions...)
+	return out
+}
+
+func mapValidatingWebhook(webhook admissionv1.ValidatingWebhook) inventory.AdmissionWebhook {
+	out := admissionWebhookBase(webhook.Name, webhook.ClientConfig, webhook.Rules, webhook.TimeoutSeconds)
+	if webhook.FailurePolicy != nil {
+		out.FailurePolicy = string(*webhook.FailurePolicy)
+	}
+	if webhook.MatchPolicy != nil {
+		out.MatchPolicy = string(*webhook.MatchPolicy)
+	}
+	if webhook.SideEffects != nil {
+		out.SideEffects = string(*webhook.SideEffects)
+	}
+	out.AdmissionReviewVersions = append([]string(nil), webhook.AdmissionReviewVersions...)
+	return out
+}
+
+func admissionWebhookBase(name string, client admissionv1.WebhookClientConfig, rules []admissionv1.RuleWithOperations, timeout *int32) inventory.AdmissionWebhook {
+	out := inventory.AdmissionWebhook{
+		Name:           name,
+		Rules:          len(rules),
+		TimeoutSeconds: timeout,
+	}
+	if client.URL != nil {
+		out.ClientURL = *client.URL
+	}
+	if client.Service != nil {
+		out.ClientService = objectRef("v1", "Service", client.Service.Namespace, client.Service.Name, "")
+	}
+	for _, rule := range rules {
+		for _, operation := range rule.Operations {
+			out.Operations = append(out.Operations, string(operation))
+		}
+		for _, resource := range rule.Resources {
+			out.Resources = append(out.Resources, resource)
+		}
+		if rule.Scope != nil && out.Scope == "" {
+			out.Scope = string(*rule.Scope)
+		}
+	}
+	out.Operations = sortedUnique(out.Operations)
+	out.Resources = sortedUnique(out.Resources)
 	return out
 }
 
@@ -1814,6 +2092,17 @@ func sortedSet(values map[string]struct{}) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func sortedUnique(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		seen[value] = struct{}{}
+	}
+	return sortedSet(seen)
 }
 
 func sortedObjectRefs(values map[string]inventory.ObjectRef) []inventory.ObjectRef {

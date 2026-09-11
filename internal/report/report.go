@@ -333,14 +333,22 @@ func writeKubernetes(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	fmt.Fprintf(b, "| GatewayClasses | %d |\n", len(kubernetes.GatewayClasses))
 	fmt.Fprintf(b, "| Gateways | %d |\n", len(kubernetes.Gateways))
 	fmt.Fprintf(b, "| Gateway routes | %d |\n", len(kubernetes.GatewayRoutes))
+	fmt.Fprintf(b, "| Admission webhooks | %d |\n", len(kubernetes.AdmissionWebhooks))
 	fmt.Fprintf(b, "| StorageClasses | %d |\n", len(kubernetes.StorageClasses))
 	fmt.Fprintf(b, "| PVCs | %d |\n", len(kubernetes.PersistentVolumeClaims))
 	fmt.Fprintf(b, "| PVs | %d |\n", len(kubernetes.PersistentVolumes))
 	fmt.Fprintf(b, "| CSIDrivers | %d |\n", len(kubernetes.CSIDrivers))
+	fmt.Fprintf(b, "| RBAC role details | %d |\n", len(kubernetes.RBAC.RoleDetails)+len(kubernetes.RBAC.ClusterRoleDetails))
+	fmt.Fprintf(b, "| RBAC binding details | %d |\n", len(kubernetes.RBAC.RoleBindingDetails)+len(kubernetes.RBAC.ClusterRoleBindingDetails))
+	fmt.Fprintf(b, "| NetworkPolicy details | %d |\n", len(kubernetes.Policies.NetworkPolicyDetails))
+	fmt.Fprintf(b, "| ResourceQuota details | %d |\n", len(kubernetes.Policies.ResourceQuotaDetails))
+	fmt.Fprintf(b, "| LimitRange details | %d |\n", len(kubernetes.Policies.LimitRangeDetails))
+	fmt.Fprintf(b, "| PDB details | %d |\n", len(kubernetes.Policies.PodDisruptionBudgetDetails))
 	fmt.Fprintf(b, "| RuntimeClasses | %d |\n\n", len(kubernetes.RuntimeClasses))
 
 	writeNodes(b, kubernetes)
 	writeRouting(b, kubernetes)
+	writeSecurityAndPolicy(b, kubernetes)
 	writeStorage(b, kubernetes)
 	writeRuntime(b, kubernetes)
 	writeCustomResources(b, kubernetes)
@@ -485,6 +493,54 @@ func writeRouting(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	fmt.Fprintln(b)
 }
 
+func writeSecurityAndPolicy(b *strings.Builder, kubernetes inventory.Kubernetes) {
+	hasRBAC := len(kubernetes.RBAC.RoleDetails) > 0 || len(kubernetes.RBAC.ClusterRoleDetails) > 0 || len(kubernetes.RBAC.RoleBindingDetails) > 0 || len(kubernetes.RBAC.ClusterRoleBindingDetails) > 0
+	hasPolicies := len(kubernetes.Policies.PodDisruptionBudgetDetails) > 0 || len(kubernetes.Policies.NetworkPolicyDetails) > 0 || len(kubernetes.Policies.ResourceQuotaDetails) > 0 || len(kubernetes.Policies.LimitRangeDetails) > 0
+	if !hasRBAC && !hasPolicies && len(kubernetes.AdmissionWebhooks) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "### Security and policy objects\n\n")
+	if hasRBAC {
+		fmt.Fprintf(b, "| Kind | Name | Rules/Role | Subjects |\n| --- | --- | --- | --- |\n")
+		for _, role := range sortedRoles(append(append([]inventory.Role{}, kubernetes.RBAC.RoleDetails...), kubernetes.RBAC.ClusterRoleDetails...)) {
+			fmt.Fprintf(b, "| %s | %s | %s | - |\n", mdCell(role.Kind), mdCell(ref(role.ObjectRef)), mdCell(rbacRulesValue(role.Rules)))
+		}
+		for _, binding := range sortedRoleBindings(append(append([]inventory.RoleBinding{}, kubernetes.RBAC.RoleBindingDetails...), kubernetes.RBAC.ClusterRoleBindingDetails...)) {
+			fmt.Fprintf(b, "| %s | %s | %s | %s |\n", mdCell(binding.Kind), mdCell(ref(binding.ObjectRef)), mdCell(ref(binding.RoleRef)), mdCell(rbacSubjectsValue(binding.Subjects)))
+		}
+		fmt.Fprintln(b)
+	}
+	if hasPolicies {
+		fmt.Fprintf(b, "| Kind | Name | Selector/Type | Rules/Budget | Values |\n| --- | --- | --- | --- | --- |\n")
+		for _, pdb := range sortedPDBDetails(kubernetes.Policies.PodDisruptionBudgetDetails) {
+			fmt.Fprintf(b, "| PodDisruptionBudget | %s | %s | min=%s max=%s allowed=%d | healthy=%d/%d expected=%d |\n", mdCell(ref(pdb.ObjectRef)), mdCell(mapValue(pdb.Selector)), mdCell(pdb.MinAvailable), mdCell(pdb.MaxUnavailable), pdb.DisruptionsAllowed, pdb.CurrentHealthy, pdb.DesiredHealthy, pdb.ExpectedPods)
+		}
+		for _, policy := range sortedNetworkPolicyDetails(kubernetes.Policies.NetworkPolicyDetails) {
+			fmt.Fprintf(b, "| NetworkPolicy | %s | %s types=%s | ingress=%d egress=%d | peers=%d/%d |\n", mdCell(ref(policy.ObjectRef)), mdCell(mapValue(policy.PodSelector)), mdCell(strings.Join(policy.PolicyTypes, ",")), policy.IngressRules, policy.EgressRules, policy.IngressPeers, policy.EgressPeers)
+		}
+		for _, quota := range sortedResourceQuotaDetails(kubernetes.Policies.ResourceQuotaDetails) {
+			fmt.Fprintf(b, "| ResourceQuota | %s | - | - | hard=%s used=%s |\n", mdCell(ref(quota.ObjectRef)), mdCell(mapValue(quota.Hard)), mdCell(mapValue(quota.Used)))
+		}
+		for _, limit := range sortedLimitRangeDetails(kubernetes.Policies.LimitRangeDetails) {
+			fmt.Fprintf(b, "| LimitRange | %s | - | items=%d | %s |\n", mdCell(ref(limit.ObjectRef)), len(limit.Items), mdCell(limitRangeItemsValue(limit.Items)))
+		}
+		fmt.Fprintln(b)
+	}
+	if len(kubernetes.AdmissionWebhooks) > 0 {
+		fmt.Fprintf(b, "| Kind | Name | Webhook | Client | Rules |\n| --- | --- | --- | --- | --- |\n")
+		for _, config := range sortedAdmissionWebhooks(kubernetes.AdmissionWebhooks) {
+			for _, webhook := range config.Webhooks {
+				client := ref(webhook.ClientService)
+				if webhook.ClientURL != "" {
+					client = webhook.ClientURL
+				}
+				fmt.Fprintf(b, "| %s | %s | %s | %s | ops=%s resources=%s failure=%s timeout=%s |\n", mdCell(config.Kind), mdCell(ref(config.ObjectRef)), mdCell(webhook.Name), mdCell(client), mdCell(strings.Join(webhook.Operations, ",")), mdCell(strings.Join(webhook.Resources, ",")), mdCell(webhook.FailurePolicy), mdCell(int32Ptr(webhook.TimeoutSeconds)))
+			}
+		}
+		fmt.Fprintln(b)
+	}
+}
+
 func writeStorage(b *strings.Builder, kubernetes inventory.Kubernetes) {
 	if len(kubernetes.StorageClasses) == 0 && len(kubernetes.PersistentVolumeClaims) == 0 && len(kubernetes.PersistentVolumes) == 0 && len(kubernetes.CSIDrivers) == 0 {
 		return
@@ -590,7 +646,16 @@ func hasKubernetes(snapshot *inventory.Snapshot) bool {
 		len(kubernetes.CustomResourceInstances) > 0 ||
 		len(kubernetes.Nodes) > 0 ||
 		len(kubernetes.Workloads) > 0 ||
-		len(kubernetes.Pods) > 0 {
+		len(kubernetes.Pods) > 0 ||
+		len(kubernetes.AdmissionWebhooks) > 0 ||
+		len(kubernetes.RBAC.RoleDetails) > 0 ||
+		len(kubernetes.RBAC.RoleBindingDetails) > 0 ||
+		len(kubernetes.RBAC.ClusterRoleDetails) > 0 ||
+		len(kubernetes.RBAC.ClusterRoleBindingDetails) > 0 ||
+		len(kubernetes.Policies.PodDisruptionBudgetDetails) > 0 ||
+		len(kubernetes.Policies.NetworkPolicyDetails) > 0 ||
+		len(kubernetes.Policies.ResourceQuotaDetails) > 0 ||
+		len(kubernetes.Policies.LimitRangeDetails) > 0 {
 		return true
 	}
 	for _, item := range snapshot.Coverage {
@@ -648,6 +713,48 @@ func sortedGatewayPolicies(items []inventory.GatewayPolicy) []inventory.GatewayP
 		right := strings.Join([]string{out[j].Kind, out[j].Namespace, out[j].Name}, "\x00")
 		return left < right
 	})
+	return out
+}
+
+func sortedRoles(items []inventory.Role) []inventory.Role {
+	out := append([]inventory.Role(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedRoleBindings(items []inventory.RoleBinding) []inventory.RoleBinding {
+	out := append([]inventory.RoleBinding(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedPDBDetails(items []inventory.PodDisruptionBudget) []inventory.PodDisruptionBudget {
+	out := append([]inventory.PodDisruptionBudget(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedNetworkPolicyDetails(items []inventory.NetworkPolicy) []inventory.NetworkPolicy {
+	out := append([]inventory.NetworkPolicy(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedResourceQuotaDetails(items []inventory.ResourceQuota) []inventory.ResourceQuota {
+	out := append([]inventory.ResourceQuota(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedLimitRangeDetails(items []inventory.LimitRange) []inventory.LimitRange {
+	out := append([]inventory.LimitRange(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func sortedAdmissionWebhooks(items []inventory.AdmissionWebhookConfig) []inventory.AdmissionWebhookConfig {
+	out := append([]inventory.AdmissionWebhookConfig(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
 	return out
 }
 
@@ -929,6 +1036,51 @@ func routeBackends(rules []inventory.GatewayRouteRule) string {
 		refs = append(refs, rule.BackendRefs...)
 	}
 	return refsValue(dedupeObjectRefs(refs))
+}
+
+func rbacRulesValue(rules []inventory.RBACRule) string {
+	if len(rules) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		scope := strings.Join(rule.Resources, ",")
+		if scope == "" {
+			scope = strings.Join(rule.NonResourceURLs, ",")
+		}
+		parts = append(parts, fmt.Sprintf("%s:%s", strings.Join(rule.Verbs, ","), scope))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ";")
+}
+
+func rbacSubjectsValue(subjects []inventory.RBACSubject) string {
+	if len(subjects) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(subjects))
+	for _, subject := range subjects {
+		value := subject.Kind
+		if subject.Namespace != "" {
+			value += "/" + subject.Namespace
+		}
+		value += "/" + subject.Name
+		parts = append(parts, value)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+func limitRangeItemsValue(items []inventory.LimitRangeItem) string {
+	if len(items) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(items))
+	for _, item := range items {
+		parts = append(parts, fmt.Sprintf("%s default=%s request=%s min=%s max=%s ratio=%s", item.Type, mapValue(item.Default), mapValue(item.DefaultRequest), mapValue(item.Min), mapValue(item.Max), mapValue(item.MaxLimitRequestRatio)))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ";")
 }
 
 func dedupeObjectRefs(refs []inventory.ObjectRef) []inventory.ObjectRef {

@@ -98,6 +98,7 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 func writeKubernetesDetails(w io.Writer, snapshot *inventory.Snapshot) {
 	kubernetes := snapshot.Kubernetes
 	writeRouting(w, kubernetes)
+	writeSecurityAndPolicy(w, kubernetes)
 	writeStorage(w, kubernetes)
 	writeRuntime(w, kubernetes)
 	writeCustomResources(w, kubernetes)
@@ -105,6 +106,46 @@ func writeKubernetesDetails(w io.Writer, snapshot *inventory.Snapshot) {
 	writeRunningContainers(w, kubernetes)
 	writePlatformComponents(w, kubernetes)
 	writeWorkloadRelations(w, kubernetes)
+}
+
+func writeSecurityAndPolicy(w io.Writer, kubernetes inventory.Kubernetes) {
+	hasRBAC := len(kubernetes.RBAC.RoleDetails) > 0 || len(kubernetes.RBAC.ClusterRoleDetails) > 0 || len(kubernetes.RBAC.RoleBindingDetails) > 0 || len(kubernetes.RBAC.ClusterRoleBindingDetails) > 0
+	hasPolicies := len(kubernetes.Policies.PodDisruptionBudgetDetails) > 0 || len(kubernetes.Policies.NetworkPolicyDetails) > 0 || len(kubernetes.Policies.ResourceQuotaDetails) > 0 || len(kubernetes.Policies.LimitRangeDetails) > 0
+	if !hasRBAC && !hasPolicies && len(kubernetes.AdmissionWebhooks) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "security-policy")
+	table := newTable(w)
+	fmt.Fprintln(table, "KIND\tNAME\tDETAILS\tTARGETS")
+	for _, role := range sortedRoles(append(append([]inventory.Role{}, kubernetes.RBAC.RoleDetails...), kubernetes.RBAC.ClusterRoleDetails...)) {
+		fmt.Fprintf(table, "%s\t%s\trules=%s\t-\n", strings.ToLower(role.Kind), namespaced(role.ObjectRef), rbacRulesValue(role.Rules))
+	}
+	for _, binding := range sortedRoleBindings(append(append([]inventory.RoleBinding{}, kubernetes.RBAC.RoleBindingDetails...), kubernetes.RBAC.ClusterRoleBindingDetails...)) {
+		fmt.Fprintf(table, "%s\t%s\trole=%s\tsubjects=%s\n", strings.ToLower(binding.Kind), namespaced(binding.ObjectRef), refValue(binding.RoleRef), rbacSubjectsValue(binding.Subjects))
+	}
+	for _, pdb := range sortedPDBDetails(kubernetes.Policies.PodDisruptionBudgetDetails) {
+		fmt.Fprintf(table, "pdb\t%s\tmin=%s max=%s allowed=%d healthy=%d/%d\tselector=%s\n", namespaced(pdb.ObjectRef), value(pdb.MinAvailable), value(pdb.MaxUnavailable), pdb.DisruptionsAllowed, pdb.CurrentHealthy, pdb.DesiredHealthy, mapValue(pdb.Selector))
+	}
+	for _, policy := range sortedNetworkPolicyDetails(kubernetes.Policies.NetworkPolicyDetails) {
+		fmt.Fprintf(table, "networkpolicy\t%s\ttypes=%s rules=%d/%d\tselector=%s peers=%d/%d\n", namespaced(policy.ObjectRef), stringList(policy.PolicyTypes), policy.IngressRules, policy.EgressRules, mapValue(policy.PodSelector), policy.IngressPeers, policy.EgressPeers)
+	}
+	for _, quota := range sortedResourceQuotaDetails(kubernetes.Policies.ResourceQuotaDetails) {
+		fmt.Fprintf(table, "resourcequota\t%s\thard=%s\tused=%s\n", namespaced(quota.ObjectRef), mapValue(quota.Hard), mapValue(quota.Used))
+	}
+	for _, limit := range sortedLimitRangeDetails(kubernetes.Policies.LimitRangeDetails) {
+		fmt.Fprintf(table, "limitrange\t%s\titems=%d\t%s\n", namespaced(limit.ObjectRef), len(limit.Items), limitRangeItemsValue(limit.Items))
+	}
+	for _, config := range sortedAdmissionWebhooks(kubernetes.AdmissionWebhooks) {
+		for _, webhook := range config.Webhooks {
+			client := refValue(webhook.ClientService)
+			if webhook.ClientURL != "" {
+				client = webhook.ClientURL
+			}
+			fmt.Fprintf(table, "%s\t%s/%s\tops=%s resources=%s failure=%s timeout=%s\tclient=%s\n", strings.ToLower(config.Kind), namespaced(config.ObjectRef), webhook.Name, stringList(webhook.Operations), stringList(webhook.Resources), value(webhook.FailurePolicy), int32PtrValue(webhook.TimeoutSeconds), client)
+		}
+	}
+	table.Flush()
+	fmt.Fprintln(w)
 }
 
 func writeCustomResources(w io.Writer, kubernetes inventory.Kubernetes) {
@@ -457,7 +498,16 @@ func hasKubernetes(snapshot *inventory.Snapshot) bool {
 		len(kubernetes.APIResources) > 0 ||
 		len(kubernetes.Nodes) > 0 ||
 		len(kubernetes.Workloads) > 0 ||
-		len(kubernetes.Pods) > 0
+		len(kubernetes.Pods) > 0 ||
+		len(kubernetes.AdmissionWebhooks) > 0 ||
+		len(kubernetes.RBAC.RoleDetails) > 0 ||
+		len(kubernetes.RBAC.RoleBindingDetails) > 0 ||
+		len(kubernetes.RBAC.ClusterRoleDetails) > 0 ||
+		len(kubernetes.RBAC.ClusterRoleBindingDetails) > 0 ||
+		len(kubernetes.Policies.PodDisruptionBudgetDetails) > 0 ||
+		len(kubernetes.Policies.NetworkPolicyDetails) > 0 ||
+		len(kubernetes.Policies.ResourceQuotaDetails) > 0 ||
+		len(kubernetes.Policies.LimitRangeDetails) > 0
 }
 
 func imageCount(snapshot *inventory.Snapshot) int {
@@ -536,6 +586,48 @@ func sortedGatewayPolicies(items []inventory.GatewayPolicy) []inventory.GatewayP
 		right := strings.Join([]string{out[j].Kind, out[j].Namespace, out[j].Name}, "\x00")
 		return left < right
 	})
+	return out
+}
+
+func sortedRoles(items []inventory.Role) []inventory.Role {
+	out := append([]inventory.Role(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedRoleBindings(items []inventory.RoleBinding) []inventory.RoleBinding {
+	out := append([]inventory.RoleBinding(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedPDBDetails(items []inventory.PodDisruptionBudget) []inventory.PodDisruptionBudget {
+	out := append([]inventory.PodDisruptionBudget(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedNetworkPolicyDetails(items []inventory.NetworkPolicy) []inventory.NetworkPolicy {
+	out := append([]inventory.NetworkPolicy(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedResourceQuotaDetails(items []inventory.ResourceQuota) []inventory.ResourceQuota {
+	out := append([]inventory.ResourceQuota(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedLimitRangeDetails(items []inventory.LimitRange) []inventory.LimitRange {
+	out := append([]inventory.LimitRange(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
+	return out
+}
+
+func sortedAdmissionWebhooks(items []inventory.AdmissionWebhookConfig) []inventory.AdmissionWebhookConfig {
+	out := append([]inventory.AdmissionWebhookConfig(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return namespaced(out[i].ObjectRef) < namespaced(out[j].ObjectRef) })
 	return out
 }
 
@@ -873,6 +965,51 @@ func routeBackends(rules []inventory.GatewayRouteRule) string {
 		refs = append(refs, rule.BackendRefs...)
 	}
 	return refsValue(dedupeObjectRefs(refs))
+}
+
+func rbacRulesValue(rules []inventory.RBACRule) string {
+	if len(rules) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		scope := strings.Join(rule.Resources, ",")
+		if scope == "" {
+			scope = strings.Join(rule.NonResourceURLs, ",")
+		}
+		parts = append(parts, strings.Join(rule.Verbs, ",")+":"+scope)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ";")
+}
+
+func rbacSubjectsValue(subjects []inventory.RBACSubject) string {
+	if len(subjects) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(subjects))
+	for _, subject := range subjects {
+		value := subject.Kind
+		if subject.Namespace != "" {
+			value += "/" + subject.Namespace
+		}
+		value += "/" + subject.Name
+		parts = append(parts, value)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+func limitRangeItemsValue(items []inventory.LimitRangeItem) string {
+	if len(items) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(items))
+	for _, item := range items {
+		parts = append(parts, fmt.Sprintf("%s default=%s request=%s min=%s max=%s", item.Type, mapValue(item.Default), mapValue(item.DefaultRequest), mapValue(item.Min), mapValue(item.Max)))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ";")
 }
 
 func dedupeObjectRefs(refs []inventory.ObjectRef) []inventory.ObjectRef {

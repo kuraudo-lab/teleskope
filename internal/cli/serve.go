@@ -183,6 +183,7 @@ func hasLiveKubernetesData(data inventory.Kubernetes, coverage []inventory.Cover
 		len(data.ServiceAccounts) > 0 ||
 		len(data.Workloads) > 0 ||
 		len(data.Pods) > 0 ||
+		len(data.AdmissionWebhooks) > 0 ||
 		len(data.RunningImages) > 0 ||
 		len(data.RunningContainers) > 0 ||
 		len(data.Services) > 0 ||
@@ -207,11 +208,19 @@ func hasLiveKubernetesData(data inventory.Kubernetes, coverage []inventory.Cover
 		len(data.RBAC.RoleBindings) > 0 ||
 		len(data.RBAC.ClusterRoles) > 0 ||
 		len(data.RBAC.ClusterRoleBindings) > 0 ||
+		len(data.RBAC.RoleDetails) > 0 ||
+		len(data.RBAC.RoleBindingDetails) > 0 ||
+		len(data.RBAC.ClusterRoleDetails) > 0 ||
+		len(data.RBAC.ClusterRoleBindingDetails) > 0 ||
 		len(data.Policies.HorizontalPodAutoscalers) > 0 ||
 		len(data.Policies.PodDisruptionBudgets) > 0 ||
 		len(data.Policies.NetworkPolicies) > 0 ||
 		len(data.Policies.ResourceQuotas) > 0 ||
-		len(data.Policies.LimitRanges) > 0
+		len(data.Policies.LimitRanges) > 0 ||
+		len(data.Policies.PodDisruptionBudgetDetails) > 0 ||
+		len(data.Policies.NetworkPolicyDetails) > 0 ||
+		len(data.Policies.ResourceQuotaDetails) > 0 ||
+		len(data.Policies.LimitRangeDetails) > 0
 }
 
 func sourceNames(sources []live.Source) string {

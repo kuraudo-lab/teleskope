@@ -238,6 +238,7 @@ type Kubernetes struct {
 	ServiceAccounts           []ServiceAccount           `json:"serviceAccounts,omitempty"`
 	Workloads                 []Workload                 `json:"workloads,omitempty"`
 	Pods                      []Pod                      `json:"pods,omitempty"`
+	AdmissionWebhooks         []AdmissionWebhookConfig   `json:"admissionWebhooks,omitempty"`
 	RunningImages             []RunningImage             `json:"runningImages,omitempty"`
 	RunningContainers         []RunningContainer         `json:"runningContainers,omitempty"`
 	Services                  []Service                  `json:"services,omitempty"`
@@ -382,6 +383,21 @@ type Workload struct {
 	Replicas             *int32            `json:"replicas,omitempty"`
 	ReadyReplicas        int32             `json:"readyReplicas,omitempty"`
 	AvailableReplicas    int32             `json:"availableReplicas,omitempty"`
+	FullyLabeledReplicas int32             `json:"fullyLabeledReplicas,omitempty"`
+	UpdatedReplicas      int32             `json:"updatedReplicas,omitempty"`
+	UnavailableReplicas  int32             `json:"unavailableReplicas,omitempty"`
+	DesiredScheduled     int32             `json:"desiredScheduled,omitempty"`
+	CurrentScheduled     int32             `json:"currentScheduled,omitempty"`
+	Misscheduled         int32             `json:"misscheduled,omitempty"`
+	Active               int32             `json:"active,omitempty"`
+	Succeeded            int32             `json:"succeeded,omitempty"`
+	Failed               int32             `json:"failed,omitempty"`
+	Schedule             string            `json:"schedule,omitempty"`
+	Suspend              *bool             `json:"suspend,omitempty"`
+	Completions          *int32            `json:"completions,omitempty"`
+	Parallelism          *int32            `json:"parallelism,omitempty"`
+	Strategy             string            `json:"strategy,omitempty"`
+	UpdateStrategy       string            `json:"updateStrategy,omitempty"`
 	Selector             map[string]string `json:"selector,omitempty"`
 	ServiceAccountName   string            `json:"serviceAccountName,omitempty"`
 	RuntimeClassName     string            `json:"runtimeClassName,omitempty"`
@@ -702,19 +718,125 @@ type Secret struct {
 
 // RBAC records role and binding counts with object names.
 type RBAC struct {
-	Roles               []ObjectRef `json:"roles,omitempty"`
-	RoleBindings        []ObjectRef `json:"roleBindings,omitempty"`
-	ClusterRoles        []ObjectRef `json:"clusterRoles,omitempty"`
-	ClusterRoleBindings []ObjectRef `json:"clusterRoleBindings,omitempty"`
+	Roles                     []ObjectRef   `json:"roles,omitempty"`
+	RoleBindings              []ObjectRef   `json:"roleBindings,omitempty"`
+	ClusterRoles              []ObjectRef   `json:"clusterRoles,omitempty"`
+	ClusterRoleBindings       []ObjectRef   `json:"clusterRoleBindings,omitempty"`
+	RoleDetails               []Role        `json:"roleDetails,omitempty"`
+	RoleBindingDetails        []RoleBinding `json:"roleBindingDetails,omitempty"`
+	ClusterRoleDetails        []Role        `json:"clusterRoleDetails,omitempty"`
+	ClusterRoleBindingDetails []RoleBinding `json:"clusterRoleBindingDetails,omitempty"`
 }
 
 // Policies records policy-like Kubernetes resources.
 type Policies struct {
-	HorizontalPodAutoscalers []ObjectRef `json:"horizontalPodAutoscalers,omitempty"`
-	PodDisruptionBudgets     []ObjectRef `json:"podDisruptionBudgets,omitempty"`
-	NetworkPolicies          []ObjectRef `json:"networkPolicies,omitempty"`
-	ResourceQuotas           []ObjectRef `json:"resourceQuotas,omitempty"`
-	LimitRanges              []ObjectRef `json:"limitRanges,omitempty"`
+	HorizontalPodAutoscalers   []ObjectRef           `json:"horizontalPodAutoscalers,omitempty"`
+	PodDisruptionBudgets       []ObjectRef           `json:"podDisruptionBudgets,omitempty"`
+	NetworkPolicies            []ObjectRef           `json:"networkPolicies,omitempty"`
+	ResourceQuotas             []ObjectRef           `json:"resourceQuotas,omitempty"`
+	LimitRanges                []ObjectRef           `json:"limitRanges,omitempty"`
+	PodDisruptionBudgetDetails []PodDisruptionBudget `json:"podDisruptionBudgetDetails,omitempty"`
+	NetworkPolicyDetails       []NetworkPolicy       `json:"networkPolicyDetails,omitempty"`
+	ResourceQuotaDetails       []ResourceQuota       `json:"resourceQuotaDetails,omitempty"`
+	LimitRangeDetails          []LimitRange          `json:"limitRangeDetails,omitempty"`
+}
+
+// Role records RBAC rule details.
+type Role struct {
+	ObjectRef
+	Rules []RBACRule `json:"rules,omitempty"`
+}
+
+// RBACRule records one PolicyRule.
+type RBACRule struct {
+	APIGroups       []string `json:"apiGroups,omitempty"`
+	Resources       []string `json:"resources,omitempty"`
+	ResourceNames   []string `json:"resourceNames,omitempty"`
+	Verbs           []string `json:"verbs,omitempty"`
+	NonResourceURLs []string `json:"nonResourceUrls,omitempty"`
+}
+
+// RoleBinding records RBAC binding details.
+type RoleBinding struct {
+	ObjectRef
+	RoleRef  ObjectRef     `json:"roleRef,omitempty"`
+	Subjects []RBACSubject `json:"subjects,omitempty"`
+}
+
+// RBACSubject records one RoleBinding subject.
+type RBACSubject struct {
+	Kind      string `json:"kind,omitempty"`
+	APIGroup  string `json:"apiGroup,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
+}
+
+// PodDisruptionBudget records PDB selector and health budget details.
+type PodDisruptionBudget struct {
+	ObjectRef
+	MinAvailable       string            `json:"minAvailable,omitempty"`
+	MaxUnavailable     string            `json:"maxUnavailable,omitempty"`
+	Selector           map[string]string `json:"selector,omitempty"`
+	CurrentHealthy     int32             `json:"currentHealthy,omitempty"`
+	DesiredHealthy     int32             `json:"desiredHealthy,omitempty"`
+	ExpectedPods       int32             `json:"expectedPods,omitempty"`
+	DisruptionsAllowed int32             `json:"disruptionsAllowed,omitempty"`
+}
+
+// NetworkPolicy records NetworkPolicy selectors and rule counts.
+type NetworkPolicy struct {
+	ObjectRef
+	PodSelector  map[string]string `json:"podSelector,omitempty"`
+	PolicyTypes  []string          `json:"policyTypes,omitempty"`
+	IngressRules int               `json:"ingressRules,omitempty"`
+	EgressRules  int               `json:"egressRules,omitempty"`
+	IngressPeers int               `json:"ingressPeers,omitempty"`
+	EgressPeers  int               `json:"egressPeers,omitempty"`
+}
+
+// ResourceQuota records ResourceQuota hard and used values.
+type ResourceQuota struct {
+	ObjectRef
+	Hard map[string]string `json:"hard,omitempty"`
+	Used map[string]string `json:"used,omitempty"`
+}
+
+// LimitRange records LimitRange item summaries.
+type LimitRange struct {
+	ObjectRef
+	Items []LimitRangeItem `json:"items,omitempty"`
+}
+
+// LimitRangeItem records limits for one resource type.
+type LimitRangeItem struct {
+	Type                 string            `json:"type,omitempty"`
+	Max                  map[string]string `json:"max,omitempty"`
+	Min                  map[string]string `json:"min,omitempty"`
+	Default              map[string]string `json:"default,omitempty"`
+	DefaultRequest       map[string]string `json:"defaultRequest,omitempty"`
+	MaxLimitRequestRatio map[string]string `json:"maxLimitRequestRatio,omitempty"`
+}
+
+// AdmissionWebhookConfig records admission webhook configuration details.
+type AdmissionWebhookConfig struct {
+	ObjectRef
+	Webhooks []AdmissionWebhook `json:"webhooks,omitempty"`
+}
+
+// AdmissionWebhook records one mutating or validating webhook.
+type AdmissionWebhook struct {
+	Name                    string    `json:"name,omitempty"`
+	ClientService           ObjectRef `json:"clientService,omitempty"`
+	ClientURL               string    `json:"clientUrl,omitempty"`
+	Rules                   int       `json:"rules,omitempty"`
+	Operations              []string  `json:"operations,omitempty"`
+	Resources               []string  `json:"resources,omitempty"`
+	Scope                   string    `json:"scope,omitempty"`
+	FailurePolicy           string    `json:"failurePolicy,omitempty"`
+	MatchPolicy             string    `json:"matchPolicy,omitempty"`
+	TimeoutSeconds          *int32    `json:"timeoutSeconds,omitempty"`
+	SideEffects             string    `json:"sideEffects,omitempty"`
+	AdmissionReviewVersions []string  `json:"admissionReviewVersions,omitempty"`
 }
 
 // HealthIssue records health issues surfaced by EKS.

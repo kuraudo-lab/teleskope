@@ -5,18 +5,30 @@ import (
 	"testing"
 	"time"
 
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
+
+func resourceMustParse(value string) resource.Quantity {
+	return resource.MustParse(value)
+}
 
 func gatewayAPIListKinds() map[schema.GroupVersionResource]string {
 	return map[schema.GroupVersionResource]string{
@@ -282,6 +294,197 @@ func TestWorkloadFromTemplateRecordsAppContainerImages(t *testing.T) {
 
 	if len(workload.Containers) != 1 || workload.Containers[0].Image != "repo/web:v1" {
 		t.Fatalf("workload containers = %#v, want repo/web:v1", workload.Containers)
+	}
+}
+
+func TestWorkloadMappersRecordTypeSpecificStatus(t *testing.T) {
+	replicas := int32(3)
+	parallelism := int32(2)
+	completions := int32(5)
+	suspend := true
+
+	daemonSet := mapDaemonSet(appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ops", Name: "agent"},
+		Spec: appsv1.DaemonSetSpec{
+			UpdateStrategy: appsv1.DaemonSetUpdateStrategy{Type: appsv1.RollingUpdateDaemonSetStrategyType},
+			Template:       corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "agent", Image: "agent:v1"}}}},
+		},
+		Status: appsv1.DaemonSetStatus{DesiredNumberScheduled: 3, CurrentNumberScheduled: 2, NumberReady: 2, UpdatedNumberScheduled: 1, NumberUnavailable: 1, NumberMisscheduled: 1},
+	})
+	if daemonSet.DesiredScheduled != 3 || daemonSet.CurrentScheduled != 2 || daemonSet.UpdatedReplicas != 1 || daemonSet.Misscheduled != 1 || daemonSet.UpdateStrategy != "RollingUpdate" {
+		t.Fatalf("daemonset workload = %#v, want scheduling and update strategy details", daemonSet)
+	}
+
+	statefulSet := mapStatefulSet(appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "db", Name: "postgres"},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:       &replicas,
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
+			Template:       corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "db", Image: "postgres:v1"}}}},
+		},
+		Status: appsv1.StatefulSetStatus{ReadyReplicas: 2, AvailableReplicas: 2, UpdatedReplicas: 1},
+	})
+	if statefulSet.Replicas == nil || *statefulSet.Replicas != 3 || statefulSet.UpdatedReplicas != 1 || statefulSet.UpdateStrategy != "RollingUpdate" {
+		t.Fatalf("statefulset workload = %#v, want replica and update details", statefulSet)
+	}
+
+	job := mapJob(batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "jobs", Name: "migrate"},
+		Spec: batchv1.JobSpec{
+			Parallelism: &parallelism,
+			Completions: &completions,
+			Template:    corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "migrate", Image: "job:v1"}}}},
+		},
+		Status: batchv1.JobStatus{Active: 1, Succeeded: 3, Failed: 1},
+	})
+	if job.Parallelism == nil || *job.Parallelism != 2 || job.Completions == nil || *job.Completions != 5 || job.Active != 1 || job.Succeeded != 3 || job.Failed != 1 {
+		t.Fatalf("job workload = %#v, want batch status details", job)
+	}
+
+	cronJob := mapCronJob(batchv1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "jobs", Name: "backup"},
+		Spec: batchv1.CronJobSpec{
+			Schedule: "*/5 * * * *",
+			Suspend:  &suspend,
+			JobTemplate: batchv1.JobTemplateSpec{Spec: batchv1.JobSpec{
+				Parallelism: &parallelism,
+				Completions: &completions,
+				Template:    corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "backup", Image: "backup:v1"}}}},
+			}},
+		},
+		Status: batchv1.CronJobStatus{Active: []corev1.ObjectReference{{Name: "backup-1"}}},
+	})
+	if cronJob.Schedule != "*/5 * * * *" || cronJob.Suspend == nil || !*cronJob.Suspend || cronJob.Active != 1 {
+		t.Fatalf("cronjob workload = %#v, want schedule and active job details", cronJob)
+	}
+}
+
+func TestCollectRBACRecordsRuleAndSubjectDetails(t *testing.T) {
+	client := kubernetesfake.NewSimpleClientset(
+		&rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "app", Name: "reader"},
+			Rules:      []rbacv1.PolicyRule{{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"get", "list"}}},
+		},
+		&rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "app", Name: "readers"},
+			RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "Role", Name: "reader"},
+			Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Namespace: "app", Name: "web"}},
+		},
+		&rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{Name: "view-nodes"},
+			Rules:      []rbacv1.PolicyRule{{APIGroups: []string{""}, Resources: []string{"nodes"}, Verbs: []string{"get"}}},
+		},
+		&rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "node-viewers"},
+			RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: "view-nodes"},
+			Subjects:   []rbacv1.Subject{{Kind: "Group", APIGroup: "rbac.authorization.k8s.io", Name: "ops"}},
+		},
+	)
+	kubernetes := inventory.Kubernetes{}
+	var coverage []inventory.CoverageItem
+
+	collectRBAC(context.Background(), client, &kubernetes, &coverage, time.Now().UTC())
+
+	if len(kubernetes.RBAC.RoleDetails) != 1 || len(kubernetes.RBAC.RoleDetails[0].Rules) != 1 || kubernetes.RBAC.RoleDetails[0].Rules[0].Resources[0] != "pods" {
+		t.Fatalf("role details = %#v, want rule details", kubernetes.RBAC.RoleDetails)
+	}
+	if len(kubernetes.RBAC.RoleBindingDetails) != 1 || kubernetes.RBAC.RoleBindingDetails[0].RoleRef.Kind != "Role" || kubernetes.RBAC.RoleBindingDetails[0].Subjects[0].Name != "web" {
+		t.Fatalf("role binding details = %#v, want roleRef and subjects", kubernetes.RBAC.RoleBindingDetails)
+	}
+	if len(kubernetes.RBAC.ClusterRoleDetails) != 1 || len(kubernetes.RBAC.ClusterRoleBindingDetails) != 1 {
+		t.Fatalf("cluster RBAC details = %#v %#v, want cluster role and binding details", kubernetes.RBAC.ClusterRoleDetails, kubernetes.RBAC.ClusterRoleBindingDetails)
+	}
+}
+
+func TestCollectPoliciesRecordsPolicyDetails(t *testing.T) {
+	minAvailable := intstr.FromInt32(1)
+	maxUnavailable := intstr.FromString("25%")
+	client := kubernetesfake.NewSimpleClientset(
+		&policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "app", Name: "web"},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				MinAvailable:   &minAvailable,
+				MaxUnavailable: &maxUnavailable,
+				Selector:       &metav1.LabelSelector{MatchLabels: map[string]string{"app": "web"}},
+			},
+			Status: policyv1.PodDisruptionBudgetStatus{CurrentHealthy: 2, DesiredHealthy: 1, ExpectedPods: 3, DisruptionsAllowed: 1},
+		},
+		&networkingv1.NetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "app", Name: "default-deny"},
+			Spec: networkingv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "web"}},
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+				Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"role": "api"}}}}}},
+				Egress:      []networkingv1.NetworkPolicyEgressRule{{To: []networkingv1.NetworkPolicyPeer{{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "platform"}}}}}},
+			},
+		},
+		&corev1.ResourceQuota{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "app", Name: "quota"},
+			Spec:       corev1.ResourceQuotaSpec{Hard: corev1.ResourceList{corev1.ResourcePods: resourceMustParse("10")}},
+			Status: corev1.ResourceQuotaStatus{
+				Used: corev1.ResourceList{corev1.ResourcePods: resourceMustParse("3")},
+			},
+		},
+		&corev1.LimitRange{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "app", Name: "limits"},
+			Spec: corev1.LimitRangeSpec{Limits: []corev1.LimitRangeItem{{
+				Type:           corev1.LimitTypeContainer,
+				DefaultRequest: corev1.ResourceList{corev1.ResourceCPU: resourceMustParse("100m")},
+			}}},
+		},
+	)
+	kubernetes := inventory.Kubernetes{}
+	var coverage []inventory.CoverageItem
+
+	collectPolicies(context.Background(), client, &kubernetes, &coverage, time.Now().UTC())
+
+	if len(kubernetes.Policies.PodDisruptionBudgetDetails) != 1 || kubernetes.Policies.PodDisruptionBudgetDetails[0].MinAvailable != "1" || kubernetes.Policies.PodDisruptionBudgetDetails[0].MaxUnavailable != "25%" {
+		t.Fatalf("pdb details = %#v, want budget details", kubernetes.Policies.PodDisruptionBudgetDetails)
+	}
+	if len(kubernetes.Policies.NetworkPolicyDetails) != 1 || kubernetes.Policies.NetworkPolicyDetails[0].IngressPeers != 1 || kubernetes.Policies.NetworkPolicyDetails[0].EgressPeers != 1 {
+		t.Fatalf("network policy details = %#v, want rule and peer counts", kubernetes.Policies.NetworkPolicyDetails)
+	}
+	if len(kubernetes.Policies.ResourceQuotaDetails) != 1 || kubernetes.Policies.ResourceQuotaDetails[0].Hard["pods"] != "10" || kubernetes.Policies.ResourceQuotaDetails[0].Used["pods"] != "3" {
+		t.Fatalf("resource quota details = %#v, want hard and used values", kubernetes.Policies.ResourceQuotaDetails)
+	}
+	if len(kubernetes.Policies.LimitRangeDetails) != 1 || kubernetes.Policies.LimitRangeDetails[0].Items[0].DefaultRequest["cpu"] != "100m" {
+		t.Fatalf("limit range details = %#v, want limit item details", kubernetes.Policies.LimitRangeDetails)
+	}
+}
+
+func TestCollectAdmissionRecordsWebhookDetails(t *testing.T) {
+	timeout := int32(7)
+	fail := admissionv1.Fail
+	sideEffects := admissionv1.SideEffectClassNone
+	scope := admissionv1.NamespacedScope
+	client := kubernetesfake.NewSimpleClientset(
+		&admissionv1.MutatingWebhookConfiguration{
+			ObjectMeta: metav1.ObjectMeta{Name: "injector"},
+			Webhooks: []admissionv1.MutatingWebhook{{
+				Name:         "injector.example.com",
+				ClientConfig: admissionv1.WebhookClientConfig{Service: &admissionv1.ServiceReference{Namespace: "system", Name: "webhook"}},
+				Rules: []admissionv1.RuleWithOperations{{
+					Operations: []admissionv1.OperationType{admissionv1.Create},
+					Rule:       admissionv1.Rule{APIGroups: []string{""}, APIVersions: []string{"v1"}, Resources: []string{"pods"}, Scope: &scope},
+				}},
+				FailurePolicy:           &fail,
+				SideEffects:             &sideEffects,
+				TimeoutSeconds:          &timeout,
+				AdmissionReviewVersions: []string{"v1"},
+			}},
+		},
+	)
+	kubernetes := inventory.Kubernetes{}
+	var coverage []inventory.CoverageItem
+
+	collectAdmission(context.Background(), client, &kubernetes, &coverage, time.Now().UTC())
+
+	if len(kubernetes.AdmissionWebhooks) != 1 || kubernetes.AdmissionWebhooks[0].Kind != "MutatingWebhookConfiguration" || len(kubernetes.AdmissionWebhooks[0].Webhooks) != 1 {
+		t.Fatalf("admission webhooks = %#v, want mutating webhook config", kubernetes.AdmissionWebhooks)
+	}
+	webhook := kubernetes.AdmissionWebhooks[0].Webhooks[0]
+	if webhook.ClientService.Name != "webhook" || webhook.FailurePolicy != "Fail" || webhook.TimeoutSeconds == nil || *webhook.TimeoutSeconds != 7 || webhook.Resources[0] != "pods" {
+		t.Fatalf("webhook = %#v, want service client and rule details", webhook)
 	}
 }
 
