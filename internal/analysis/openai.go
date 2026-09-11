@@ -95,6 +95,9 @@ func (a *OpenAICompatible) Analyze(ctx context.Context, req Request) (Result, er
 	var result Result
 	content := extractJSONContent(chatResp.Choices[0].Message.Content)
 	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		if !a.JSONMode {
+			return normalizeResult(textResult(chatResp.Choices[0].Message.Content), req, "openai-compatible", a.Model, PromptVersion), nil
+		}
 		return Result{}, fmt.Errorf("decode llm analysis JSON: %w", err)
 	}
 	return normalizeResult(result, req, "openai-compatible", a.Model, PromptVersion), nil
@@ -123,6 +126,26 @@ type chatCompletionResponse struct {
 }
 
 func ptrFloat64(v float64) *float64 { return &v }
+
+func textResult(content string) Result {
+	content = strings.TrimSpace(stripJSONFence(content))
+	if content == "" {
+		content = "LLM returned an empty text response."
+	}
+	return Result{
+		Summary: content,
+		Sections: []Section{{
+			Title: "Text response",
+			Items: []Item{{
+				Severity:   "info",
+				Summary:    content,
+				Basis:      "provider text response",
+				Confidence: "unknown",
+			}},
+		}},
+		Limitations: []string{"Provider response was not valid JSON; json_mode is disabled, so Teleskope preserved it as plain text."},
+	}
+}
 
 func looksLikeJSONModeError(message string) bool {
 	message = strings.ToLower(message)

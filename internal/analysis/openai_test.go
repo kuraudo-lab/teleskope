@@ -89,3 +89,41 @@ func TestOpenAICompatibleJSONModeBadRequestHint(t *testing.T) {
 		t.Fatalf("error = %v, want json mode hint", err)
 	}
 }
+
+func TestOpenAICompatibleTreatsNonJSONAsTextWhenJSONModeDisabled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"This cluster appears to run ingress and telemetry workloads."}}]}`))
+	}))
+	defer server.Close()
+
+	jsonMode := false
+	analyzer := NewOpenAICompatible(LLMConfig{BaseURL: server.URL + "/v1", APIKey: "secret", Model: "gpt-oss-120b", Timeout: time.Second, JSONMode: &jsonMode})
+	result, err := analyzer.Analyze(context.Background(), Request{UseCase: UseCaseScan, Snapshot: &inventory.Snapshot{}})
+	if err != nil {
+		t.Fatalf("Analyze returned error: %v", err)
+	}
+	if result.Summary != "This cluster appears to run ingress and telemetry workloads." {
+		t.Fatalf("summary = %q", result.Summary)
+	}
+	if len(result.Sections) != 1 || result.Sections[0].Title != "Text response" {
+		t.Fatalf("sections = %+v", result.Sections)
+	}
+	if len(result.Limitations) == 0 || !strings.Contains(result.Limitations[0], "not valid JSON") {
+		t.Fatalf("limitations = %+v", result.Limitations)
+	}
+}
+
+func TestOpenAICompatibleRequiresJSONWhenJSONModeEnabled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"plain text"}}]}`))
+	}))
+	defer server.Close()
+
+	analyzer := NewOpenAICompatible(LLMConfig{BaseURL: server.URL + "/v1", APIKey: "secret", Model: "test-model", Timeout: time.Second})
+	_, err := analyzer.Analyze(context.Background(), Request{UseCase: UseCaseScan, Snapshot: &inventory.Snapshot{}})
+	if err == nil || !strings.Contains(err.Error(), "decode llm analysis JSON") {
+		t.Fatalf("error = %v, want JSON decode failure", err)
+	}
+}
