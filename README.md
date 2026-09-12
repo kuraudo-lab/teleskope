@@ -140,9 +140,11 @@ llm:
 ```
 
 `api_key` can be used instead of `api_key_env` for local-only setups. Set
-`json_mode: false` when an OpenAI-compatible provider rejects `response_format`
-or returns plain text instead of JSON; Teleskope will preserve that response as
-plain text analysis. Analyze a single scan or a migration comparison with:
+`json_mode: false` when an OpenAI-compatible provider rejects `response_format`.
+Teleskope will then omit provider-side JSON mode, still parse structured JSON
+when the model returns it in ordinary text, and fall back to preserved plain text
+only when the response cannot be parsed as JSON. Analyze a single scan or a
+migration comparison with:
 
 ```sh
 teleskope analyze scan ./scan-report --output markdown

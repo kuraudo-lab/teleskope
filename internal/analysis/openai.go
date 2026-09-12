@@ -92,9 +92,8 @@ func (a *OpenAICompatible) Analyze(ctx context.Context, req Request) (Result, er
 	if len(chatResp.Choices) == 0 || strings.TrimSpace(chatResp.Choices[0].Message.Content) == "" {
 		return Result{}, fmt.Errorf("llm response did not include message content")
 	}
-	var result Result
-	content := extractJSONContent(chatResp.Choices[0].Message.Content)
-	if err := json.Unmarshal([]byte(content), &result); err != nil {
+	result, err := parseAnalysisResult(chatResp.Choices[0].Message.Content)
+	if err != nil {
 		if !a.JSONMode {
 			return normalizeResult(textResult(chatResp.Choices[0].Message.Content), req, "openai-compatible", a.Model, PromptVersion), nil
 		}
@@ -152,20 +151,132 @@ func looksLikeJSONModeError(message string) bool {
 	return strings.Contains(message, "response_format") || strings.Contains(message, "json") || strings.Contains(message, "missing field name")
 }
 
-func extractJSONContent(value string) string {
-	value = stripJSONFence(value)
-	if json.Valid([]byte(value)) {
-		return value
+func parseAnalysisResult(value string) (Result, error) {
+	candidates := jsonContentCandidates(value)
+	var lastErr error
+	for _, candidate := range candidates {
+		result, err := parseAnalysisResultCandidate(candidate, 0)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
 	}
-	start := strings.Index(value, "{")
-	end := strings.LastIndex(value, "}")
-	if start >= 0 && end > start {
-		candidate := strings.TrimSpace(value[start : end+1])
-		if json.Valid([]byte(candidate)) {
-			return candidate
+	if lastErr == nil {
+		lastErr = fmt.Errorf("empty response")
+	}
+	return Result{}, lastErr
+}
+
+func parseAnalysisResultCandidate(value string, depth int) (Result, error) {
+	value = strings.TrimSpace(stripJSONFence(value))
+	if value == "" {
+		return Result{}, fmt.Errorf("empty response")
+	}
+	var result Result
+	if err := json.Unmarshal([]byte(value), &result); err == nil {
+		return result, nil
+	} else if depth >= 3 {
+		return Result{}, err
+	}
+	var nested string
+	if err := json.Unmarshal([]byte(value), &nested); err == nil {
+		return parseAnalysisResultCandidate(nested, depth+1)
+	}
+	return Result{}, fmt.Errorf("invalid JSON analysis response")
+}
+
+func jsonContentCandidates(value string) []string {
+	var candidates []string
+	seen := map[string]struct{}{}
+	add := func(candidate string) {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			return
+		}
+		if _, ok := seen[candidate]; ok {
+			return
+		}
+		seen[candidate] = struct{}{}
+		candidates = append(candidates, candidate)
+	}
+	add(value)
+	add(stripJSONFence(value))
+	for _, candidate := range fencedJSONContents(value) {
+		add(candidate)
+	}
+	for _, candidate := range jsonObjectContents(value) {
+		add(candidate)
+	}
+	return candidates
+}
+
+func fencedJSONContents(value string) []string {
+	var candidates []string
+	rest := value
+	for {
+		start := strings.Index(rest, "```")
+		if start < 0 {
+			break
+		}
+		rest = rest[start+3:]
+		end := strings.Index(rest, "```")
+		if end < 0 {
+			break
+		}
+		candidate := rest[:end]
+		candidate = strings.TrimSpace(candidate)
+		if strings.HasPrefix(strings.ToLower(candidate), "json") {
+			candidate = strings.TrimSpace(candidate[len("json"):])
+		}
+		candidates = append(candidates, candidate)
+		rest = rest[end+3:]
+	}
+	return candidates
+}
+
+func jsonObjectContents(value string) []string {
+	var candidates []string
+	start := -1
+	depth := 0
+	inString := false
+	escaped := false
+	for i, r := range value {
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			switch r {
+			case '\\':
+				escaped = true
+			case '"':
+				inString = false
+			}
+			continue
+		}
+		switch r {
+		case '"':
+			inString = true
+		case '{':
+			if depth == 0 {
+				start = i
+			}
+			depth++
+		case '}':
+			if depth == 0 {
+				continue
+			}
+			depth--
+			if depth == 0 && start >= 0 {
+				candidate := strings.TrimSpace(value[start : i+1])
+				if json.Valid([]byte(candidate)) {
+					candidates = append(candidates, candidate)
+				}
+				start = -1
+			}
 		}
 	}
-	return value
+	return candidates
 }
 
 func stripJSONFence(value string) string {

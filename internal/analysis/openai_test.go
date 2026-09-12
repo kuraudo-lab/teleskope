@@ -77,6 +77,62 @@ func TestOpenAICompatibleCanDisableJSONMode(t *testing.T) {
 	}
 }
 
+func TestOpenAICompatibleParsesJSONStringContentWhenJSONModeDisabled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": `"{\"summary\":\"quoted ok\",\"sections\":[{\"title\":\"Workloads\",\"items\":[{\"severity\":\"info\",\"summary\":\"parsed as JSON\",\"basis\":\"provider JSON text\",\"confidence\":\"medium\"}]}]}"`,
+				},
+			}},
+		})
+	}))
+	defer server.Close()
+
+	jsonMode := false
+	analyzer := NewOpenAICompatible(LLMConfig{BaseURL: server.URL + "/v1", APIKey: "secret", Model: "gpt-oss-120b", Timeout: time.Second, JSONMode: &jsonMode})
+	result, err := analyzer.Analyze(context.Background(), Request{UseCase: UseCaseScan, Snapshot: &inventory.Snapshot{}})
+	if err != nil {
+		t.Fatalf("Analyze returned error: %v", err)
+	}
+	if result.Summary != "quoted ok" {
+		t.Fatalf("summary = %q, want quoted ok", result.Summary)
+	}
+	if len(result.Sections) != 1 || result.Sections[0].Title != "Workloads" {
+		t.Fatalf("sections = %+v", result.Sections)
+	}
+	if len(result.Limitations) != 0 {
+		t.Fatalf("limitations = %+v, want structured JSON result without text fallback limitation", result.Limitations)
+	}
+}
+
+func TestOpenAICompatibleParsesFencedJSONWhenJSONModeDisabled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": "Here is the analysis:\n```json\n{\"summary\":\"fenced ok\"}\n```",
+				},
+			}},
+		})
+	}))
+	defer server.Close()
+
+	jsonMode := false
+	analyzer := NewOpenAICompatible(LLMConfig{BaseURL: server.URL + "/v1", APIKey: "secret", Model: "gpt-oss-120b", Timeout: time.Second, JSONMode: &jsonMode})
+	result, err := analyzer.Analyze(context.Background(), Request{UseCase: UseCaseScan, Snapshot: &inventory.Snapshot{}})
+	if err != nil {
+		t.Fatalf("Analyze returned error: %v", err)
+	}
+	if result.Summary != "fenced ok" {
+		t.Fatalf("summary = %q, want fenced ok", result.Summary)
+	}
+}
+
 func TestOpenAICompatibleJSONModeBadRequestHint(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `missing field name`, http.StatusBadRequest)
