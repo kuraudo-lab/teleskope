@@ -75,7 +75,7 @@ func (s *Store) Handler(opts HandlerOptions) http.Handler {
 			if !allow(w, r, http.MethodGet, http.MethodHead) {
 				return
 			}
-			s.writeClusterSnapshot(w, r, r.URL.Query().Get("id"))
+			s.writeClusterSnapshot(w, r, r.URL.Query().Get("id"), opts)
 		case r.URL.Path == "/api/cluster/analyze":
 			if !allow(w, r, http.MethodPost) {
 				return
@@ -86,12 +86,12 @@ func (s *Store) Handler(opts HandlerOptions) http.Handler {
 				return
 			}
 			id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/clusters/"), "/")
-			s.writeClusterHTML(w, r, id)
+			s.writeClusterHTML(w, r, id, opts)
 		case r.URL.Path == "/cluster":
 			if !allow(w, r, http.MethodGet, http.MethodHead) {
 				return
 			}
-			s.writeClusterHTML(w, r, r.URL.Query().Get("id"))
+			s.writeClusterHTML(w, r, r.URL.Query().Get("id"), opts)
 		case r.URL.Path == "/api/export/fleet.json":
 			if !allow(w, r, http.MethodGet, http.MethodHead) {
 				return
@@ -118,6 +118,7 @@ func (s *Store) Handler(opts HandlerOptions) http.Handler {
 			}
 			env, ok := s.Get(r.URL.Query().Get("id"))
 			if !ok || env.Snapshot == nil {
+				s.logf(opts, "[hub] cluster snapshot export failed cluster=%s error=not_found", r.URL.Query().Get("id"))
 				http.NotFound(w, r)
 				return
 			}
@@ -137,6 +138,7 @@ func (s *Store) Handler(opts HandlerOptions) http.Handler {
 			}
 			env, ok := s.Get(r.URL.Query().Get("id"))
 			if !ok || env.Snapshot == nil {
+				s.logf(opts, "[hub] cluster summary export failed cluster=%s error=not_found", r.URL.Query().Get("id"))
 				http.NotFound(w, r)
 				return
 			}
@@ -165,9 +167,10 @@ func (s *Store) writeEnvelope(w http.ResponseWriter, r *http.Request, id string)
 	}
 }
 
-func (s *Store) writeClusterHTML(w http.ResponseWriter, r *http.Request, id string) {
+func (s *Store) writeClusterHTML(w http.ResponseWriter, r *http.Request, id string, opts HandlerOptions) {
 	env, ok := s.Get(id)
 	if !ok || env.Snapshot == nil {
+		s.logf(opts, "[hub] cluster page failed cluster=%s path=%s error=not_found", id, r.URL.Path)
 		http.NotFound(w, r)
 		return
 	}
@@ -184,9 +187,10 @@ func (s *Store) writeClusterHTML(w http.ResponseWriter, r *http.Request, id stri
 	}
 }
 
-func (s *Store) writeClusterSnapshot(w http.ResponseWriter, r *http.Request, id string) {
+func (s *Store) writeClusterSnapshot(w http.ResponseWriter, r *http.Request, id string, opts HandlerOptions) {
 	env, ok := s.Get(id)
 	if !ok || env.Snapshot == nil {
+		s.logf(opts, "[hub] cluster snapshot failed cluster=%s error=not_found", id)
 		http.NotFound(w, r)
 		return
 	}
@@ -208,6 +212,7 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, id string,
 	requestID := fmt.Sprintf("%x", started.UnixNano())
 	env, ok := s.Get(id)
 	if !ok || env.Snapshot == nil {
+		s.logf(opts, "[analysis] hub cluster analysis failed id=%s cluster=%s phase=snapshot error=not_found", requestID, id)
 		http.NotFound(w, r)
 		return
 	}
@@ -222,8 +227,11 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, id string,
 		return
 	}
 	defer s.running.Store(false)
+	s.logf(opts, "[analysis] hub cluster analysis started id=%s cluster=%s revision=%d", requestID, id, env.Revision)
 	req := analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: env.Snapshot}
-	if contextBytes, err := analysis.BuildContext(req); err == nil {
+	if contextBytes, err := analysis.BuildContext(req); err != nil {
+		s.logf(opts, "[analysis] hub cluster analysis context failed id=%s cluster=%s revision=%d error=%s", requestID, id, env.Revision, err)
+	} else {
 		s.logf(opts, "[analysis] hub cluster analysis context ready id=%s cluster=%s revision=%d bytes=%d", requestID, id, env.Revision, len(contextBytes))
 	}
 	analyzer := opts.Analyzer
@@ -237,7 +245,10 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, id string,
 		if opts.Timeout > 0 {
 			cfg.LLM.Timeout = opts.Timeout
 		}
+		s.logf(opts, "[analysis] hub cluster analysis config loaded id=%s cluster=%s provider=%s model=%s timeout=%s", requestID, id, cfg.LLM.Provider, cfg.LLM.Model, cfg.LLM.Timeout)
 		analyzer = analysis.NewOpenAICompatible(cfg.LLM)
+	} else {
+		s.logf(opts, "[analysis] hub cluster analysis using injected analyzer id=%s cluster=%s revision=%d", requestID, id, env.Revision)
 	}
 	ctx := r.Context()
 	if opts.Timeout > 0 {
@@ -295,6 +306,7 @@ func urlQueryEscape(value string) string {
 
 func (s *Store) handlePostEnvelope(w http.ResponseWriter, r *http.Request, opts HandlerOptions) {
 	if opts.Token != "" && r.Header.Get("Authorization") != "Bearer "+opts.Token {
+		s.logf(opts, "[hub] remote write unauthorized remote=%s", r.RemoteAddr)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -302,13 +314,23 @@ func (s *Store) handlePostEnvelope(w http.ResponseWriter, r *http.Request, opts 
 	var env Envelope
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 128<<20))
 	if err := decoder.Decode(&env); err != nil {
+		s.logf(opts, "[hub] remote write rejected remote=%s phase=decode error=%s", r.RemoteAddr, err)
 		http.Error(w, fmt.Sprintf("decode envelope: %v", err), http.StatusBadRequest)
 		return
 	}
+	incomingRevision := env.Revision
 	accepted, stored, err := s.Put(env)
 	if err != nil {
+		s.logf(opts, "[hub] remote write rejected cluster=%s revision=%d phase=validate error=%s", env.Cluster.ID, incomingRevision, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	if accepted {
+		s.logf(opts, "[hub] remote write accepted cluster=%s name=%s provider=%s revision=%d collected_at=%s sources=%d events=%d",
+			stored.Cluster.ID, stored.Cluster.Name, stored.Cluster.Provider, stored.Revision, stored.CollectedAt.Format(time.RFC3339), len(stored.Sources), len(stored.Events))
+	} else {
+		s.logf(opts, "[hub] remote write ignored cluster=%s revision=%d stored_revision=%d reason=stale_or_duplicate",
+			stored.Cluster.ID, incomingRevision, stored.Revision)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if accepted {

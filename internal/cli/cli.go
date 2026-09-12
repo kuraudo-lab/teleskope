@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -83,9 +84,16 @@ func newServeHubCommand(stdout, stderr io.Writer) *cobra.Command {
 				return fmt.Errorf("listen: %w", err)
 			}
 			defer listener.Close()
+			var logMu sync.Mutex
+			log := func(format string, args ...any) {
+				logMu.Lock()
+				defer logMu.Unlock()
+				fmt.Fprintf(stderr, format+"\n", args...)
+			}
+			tokenValue := firstNonEmpty(token, os.Getenv("TELESKOPE_HUB_TOKEN"))
 			store := &hub.Store{}
 			server := &http.Server{
-				Handler:           store.Handler(hub.HandlerOptions{Token: firstNonEmpty(token, os.Getenv("TELESKOPE_HUB_TOKEN"))}),
+				Handler:           store.Handler(hub.HandlerOptions{Token: tokenValue, Log: log}),
 				ReadHeaderTimeout: 5 * time.Second,
 				WriteTimeout:      defaultServeWriteTimeout,
 				IdleTimeout:       60 * time.Second,
@@ -94,10 +102,12 @@ func newServeHubCommand(stdout, stderr io.Writer) *cobra.Command {
 			defer stop()
 			serverDone := make(chan error, 1)
 			go func() { serverDone <- server.Serve(listener) }()
+			log("hub serve starting listen=%s token_required=%t", listener.Addr(), tokenValue != "")
 			fmt.Fprintf(stdout, "Teleskope hub: http://%s\n", listener.Addr())
 			select {
 			case err = <-serverDone:
 			case <-ctx.Done():
+				log("hub serve shutting down")
 				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
 					_ = server.Close()

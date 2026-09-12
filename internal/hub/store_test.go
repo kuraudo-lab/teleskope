@@ -3,6 +3,7 @@ package hub
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -136,6 +137,51 @@ func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 	}
 }
 
+func TestHTTPRemoteWriteLogsOperationalEvents(t *testing.T) {
+	store := &Store{}
+	var logs []string
+	handler := store.Handler(HandlerOptions{
+		Token: "secret",
+		Log: func(format string, args ...any) {
+			logs = append(logs, formatLog(format, args...))
+		},
+	})
+
+	unauthorized := httptest.NewRecorder()
+	handler.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, "/api/clusters", strings.NewReader(`{}`)))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized = %d", unauthorized.Code)
+	}
+
+	body, _ := json.Marshal(testEnvelope("prod-a", 2))
+	req := httptest.NewRequest(http.MethodPost, "/api/clusters", strings.NewReader(string(body)))
+	req.Header.Set("Authorization", "Bearer secret")
+	created := httptest.NewRecorder()
+	handler.ServeHTTP(created, req)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("post = %d: %s", created.Code, created.Body.String())
+	}
+
+	staleBody, _ := json.Marshal(testEnvelope("prod-a", 1))
+	staleReq := httptest.NewRequest(http.MethodPost, "/api/clusters", strings.NewReader(string(staleBody)))
+	staleReq.Header.Set("Authorization", "Bearer secret")
+	stale := httptest.NewRecorder()
+	handler.ServeHTTP(stale, staleReq)
+	if stale.Code != http.StatusOK {
+		t.Fatalf("stale = %d: %s", stale.Code, stale.Body.String())
+	}
+
+	for _, want := range []string{
+		"remote write unauthorized",
+		"remote write accepted cluster=prod-a",
+		"remote write ignored cluster=prod-a revision=1 stored_revision=2",
+	} {
+		if !containsLog(logs, want) {
+			t.Fatalf("logs missing %q in %#v", want, logs)
+		}
+	}
+}
+
 func TestHTTPClusterScopedSnapshotAndAnalyze(t *testing.T) {
 	store := &Store{}
 	if accepted, _, err := store.Put(testEnvelope("prod-a", 3)); err != nil || !accepted {
@@ -180,6 +226,19 @@ func TestHTTPDrilldownAcceptsARNClusterID(t *testing.T) {
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Teleskope cluster report") {
 		t.Fatalf("drilldown = %d: %s", w.Code, w.Body.String())
 	}
+}
+
+func formatLog(format string, args ...any) string {
+	return strings.TrimSpace(fmt.Sprintf(format, args...))
+}
+
+func containsLog(logs []string, want string) bool {
+	for _, log := range logs {
+		if strings.Contains(log, want) {
+			return true
+		}
+	}
+	return false
 }
 
 func testEnvelope(id string, revision uint64) Envelope {
