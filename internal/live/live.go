@@ -68,9 +68,11 @@ type Store struct {
 	etag            string
 	analysisCache   *analysisCache
 	analysisRunning atomic.Bool
+	publishHook     func(Response)
 }
 
-type response struct {
+// Response is the immutable live view served to browsers and remote hub writers.
+type Response struct {
 	Advisor  *advisor.Report     `json:"advisor,omitempty"`
 	Revision uint64              `json:"revision"`
 	Snapshot *inventory.Snapshot `json:"snapshot"`
@@ -147,6 +149,9 @@ func (s *Store) Run(ctx context.Context) {
 				level, message := refreshResultEvent(status, time.Since(started).Round(time.Millisecond))
 				s.AddEvent(source.Name, level, "%s", message)
 				logRefreshResult(source.Log, source.Name, status, time.Since(started).Round(time.Millisecond))
+				if status.State == "ready" || status.State == "partial" {
+					s.publishLatest()
+				}
 				timer := time.NewTimer(delay)
 				select {
 				case <-ctx.Done():
@@ -164,6 +169,39 @@ func logf(fn func(format string, args ...any), format string, args ...any) {
 	if fn != nil {
 		fn(format, args...)
 	}
+}
+
+// SetPublishHook installs a non-blocking callback for newly published ready or partial data.
+func (s *Store) SetPublishHook(fn func(Response)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.publishHook = fn
+}
+
+// View returns a copy of the current live response.
+func (s *Store) View() (Response, error) {
+	s.mu.RLock()
+	body := append([]byte(nil), s.body...)
+	s.mu.RUnlock()
+	var out Response
+	if err := json.Unmarshal(body, &out); err != nil {
+		return Response{}, err
+	}
+	return out, nil
+}
+
+func (s *Store) publishLatest() {
+	s.mu.RLock()
+	hook := s.publishHook
+	s.mu.RUnlock()
+	if hook == nil {
+		return
+	}
+	view, err := s.View()
+	if err != nil || view.Snapshot == nil {
+		return
+	}
+	go hook(view)
 }
 
 // AddEvent appends a bounded operational event and republishes the response.
@@ -323,7 +361,7 @@ func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, nex
 
 // encode runs under the writer lock, or during construction.
 func (s *Store) encode() {
-	out := response{Revision: s.revision, Sources: map[string]Status{}}
+	out := Response{Revision: s.revision, Sources: map[string]Status{}}
 	for _, name := range s.order {
 		e := s.entries[name]
 		out.Sources[name] = e.status
@@ -552,7 +590,7 @@ func (s *Store) exportSnapshotView() (*inventory.Snapshot, uint64, error) {
 	body := append([]byte(nil), s.body...)
 	s.mu.RUnlock()
 
-	var out response
+	var out Response
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, 0, err
 	}

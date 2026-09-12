@@ -115,7 +115,7 @@ func (s *Store) writeEnvelope(w http.ResponseWriter, r *http.Request, id string)
 }
 
 func (s *Store) writeClusterHTML(w http.ResponseWriter, r *http.Request, id string) {
-			env, ok := s.Get(id)
+	env, ok := s.Get(id)
 	if !ok || env.Snapshot == nil {
 		http.NotFound(w, r)
 		return

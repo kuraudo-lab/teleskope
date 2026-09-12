@@ -15,6 +15,7 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/awseks"
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
+	"github.com/kuraudo-lab/teleskope/internal/hub"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/k8s"
 	"github.com/kuraudo-lab/teleskope/internal/live"
@@ -36,6 +37,10 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 	var kubeOpts k8s.Options
 	var awsOpts awseks.Options
 	var listen string
+	var hubURL string
+	var hubToken string
+	var clusterID string
+	var clusterName string
 	var interval, awsInterval, timeout time.Duration
 	var skipKubernetes bool
 	cmd := &cobra.Command{
@@ -111,6 +116,21 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			hubURL = firstNonEmpty(hubURL, os.Getenv("TELESKOPE_HUB_URL"))
+			hubToken = firstNonEmpty(hubToken, os.Getenv("TELESKOPE_HUB_TOKEN"))
+			var writer *hub.RemoteWriter
+			if hubURL != "" {
+				writer, err = hub.NewRemoteWriter(hub.RemoteWriterOptions{
+					URL:   hubURL,
+					Token: hubToken,
+					Log: func(format string, args ...any) {
+						log("[hub] "+format, args...)
+					},
+				})
+				if err != nil {
+					return err
+				}
+			}
 			listener, err := net.Listen("tcp", listen)
 			if err != nil {
 				return fmt.Errorf("listen: %w", err)
@@ -122,6 +142,27 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 			defer stop()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
+			if writer != nil {
+				writer.Start(ctx)
+				provider := "kubernetes"
+				if target == "eks" {
+					provider = "eks"
+				}
+				name := firstNonEmpty(clusterName, awsOpts.ClusterName)
+				store.SetPublishHook(func(view live.Response) {
+					writer.Publish(hub.Envelope{
+						Cluster:     hub.DeriveCluster(view.Snapshot, clusterID, name, provider),
+						Revision:    view.Revision,
+						CollectedAt: view.Snapshot.CollectedAt,
+						Snapshot:    view.Snapshot,
+						Advisor:     view.Advisor,
+						Sources:     view.Sources,
+						Events:      view.Events,
+					})
+				})
+				log("hub remote-write enabled url=%s cluster_id=%s cluster_name=%s", hubURL, firstNonEmpty(clusterID, "auto"), firstNonEmpty(name, "auto"))
+				store.AddEvent("hub", "info", "remote-write enabled url=%s cluster_id=%s cluster_name=%s", hubURL, firstNonEmpty(clusterID, "auto"), firstNonEmpty(name, "auto"))
+			}
 			done := make(chan struct{})
 			go func() { defer close(done); store.Run(ctx) }()
 			server := &http.Server{
@@ -154,6 +195,10 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&listen, "listen", "127.0.0.1:8080", "HTTP listen address (no built-in authentication)")
+	cmd.Flags().StringVar(&hubURL, "hub-url", "", "hub URL for asynchronous remote write; defaults to TELESKOPE_HUB_URL")
+	cmd.Flags().StringVar(&hubToken, "hub-token", "", "optional bearer token for hub writes; defaults to TELESKOPE_HUB_TOKEN")
+	cmd.Flags().StringVar(&clusterID, "cluster-id", "", "stable cluster ID for hub remote write")
+	cmd.Flags().StringVar(&clusterName, "cluster-name", "", "display cluster name for hub remote write")
 	cmd.Flags().DurationVar(&interval, "interval", defaultKubernetesServeInterval, "delay between completed Kubernetes scans (plus up to 10% jitter)")
 	cmd.Flags().DurationVar(&timeout, "timeout", defaultCollectionTimeout, "timeout for each collection attempt")
 	cmd.Flags().StringVar(&kubeOpts.Kubeconfig, "kubeconfig", "", "path to kubeconfig")

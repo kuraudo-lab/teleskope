@@ -156,6 +156,7 @@ func TestServeValidation(t *testing.T) {
 		{"serve", "eks", "--cluster", "demo", "--aws-interval", "0s"},
 		{"serve", "k8s", "unexpected"},
 		{"serve", "k8s", "--listen", "invalid-address"},
+		{"serve", "k8s", "--hub-url", "ftp://hub.example"},
 		{"serve-hub", "--listen", "invalid-address"},
 	} {
 		var stdout, stderr bytes.Buffer

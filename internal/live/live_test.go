@@ -29,11 +29,11 @@ func newTestStore(t *testing.T, names ...string) *Store {
 	}
 	return s
 }
-func readView(t *testing.T, s *Store) response {
+func readView(t *testing.T, s *Store) Response {
 	t.Helper()
 	w := httptest.NewRecorder()
 	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/api/snapshot", nil))
-	var out response
+	var out Response
 	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestHTTPReadOnlyAndConditionalRequests(t *testing.T) {
 	if eventChanged.Code != 200 {
 		t.Fatal("event change did not invalidate ETag")
 	}
-	var eventView response
+	var eventView Response
 	if err := json.Unmarshal(eventChanged.Body.Bytes(), &eventView); err != nil {
 		t.Fatal(err)
 	}
@@ -505,5 +505,36 @@ func TestAdvisorFreshnessChangesWithoutDataRevision(t *testing.T) {
 		if c.Freshness != "stale" {
 			t.Fatalf("stale capability labeled %s", c.Freshness)
 		}
+	}
+}
+
+func TestPublishHookRunsForReadyAndPartialSnapshots(t *testing.T) {
+	events := make(chan Response, 2)
+	source := Source{Name: "kubernetes", Interval: time.Hour, Timeout: time.Second, Collect: func(context.Context) (*inventory.Snapshot, error) {
+		return podSnapshot(1, "complete"), nil
+	}}
+	s, err := New([]Source{source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetPublishHook(func(view Response) {
+		events <- view
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { s.Run(ctx); close(done) }()
+	defer func() {
+		cancel()
+		<-done
+	}()
+
+	select {
+	case got := <-events:
+		if got.Revision != 1 || got.Snapshot == nil || got.Sources["kubernetes"].State != "ready" {
+			t.Fatalf("publish hook view = %+v", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("publish hook was not called")
 	}
 }
