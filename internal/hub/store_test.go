@@ -105,6 +105,18 @@ func TestFleetIncludesClusterEventsAndMarkdown(t *testing.T) {
 	}
 }
 
+func TestHubHTMLUsesEmbeddedTeleskopeIcon(t *testing.T) {
+	html := HubHTML()
+	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("hub html missing %q", want)
+		}
+	}
+	if strings.Contains(html, "__TELESKOPE_ICON__") {
+		t.Fatal("hub html still contains icon placeholder")
+	}
+}
+
 func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 	store := &Store{}
 	handler := store.Handler(HandlerOptions{Token: "secret"})

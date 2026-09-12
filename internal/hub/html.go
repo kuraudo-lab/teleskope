@@ -1,8 +1,19 @@
 package hub
 
+import (
+	"encoding/base64"
+	"strings"
+
+	_ "embed"
+)
+
+//go:embed teleskope-icon-128.png
+var hubIconPNG []byte
+
 // HubHTML renders the embedded multi-cluster fleet page.
 func HubHTML() string {
-	return `<!doctype html>
+	icon := "data:image/png;base64," + base64.StdEncoding.EncodeToString(hubIconPNG)
+	page := `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -16,7 +27,7 @@ func HubHTML() string {
     .app { min-height:100vh; display:grid; grid-template-columns:280px 1fr; }
     aside { border-right:1px solid var(--line); background:var(--aside-bg); backdrop-filter:blur(16px); padding:24px 18px; position:sticky; top:0; height:100vh; }
     .brand { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
-    .logo { width:42px; height:42px; border-radius:14px; background:linear-gradient(135deg,var(--cyan),var(--blue) 50%,var(--purple)); box-shadow:0 0 30px rgba(34,211,238,.35); flex:none; }
+    .logo { width:42px; height:42px; border-radius:14px; box-shadow:0 0 30px rgba(34,211,238,.35); flex:none; display:block; object-fit:cover; background:var(--panel-2); }
     .brand h1 { font-size:18px; line-height:1.1; margin:0; }
     .brand p { color:var(--muted); margin:2px 0 0; font-size:12px; }
     nav button { width:100%; display:flex; align-items:center; gap:10px; background:transparent; color:var(--muted); border:0; text-align:left; padding:11px 12px; border-radius:12px; cursor:pointer; font-size:14px; }
@@ -56,7 +67,7 @@ func HubHTML() string {
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><div class="logo" aria-hidden="true"></div><div><h1>Teleskope</h1><p>multi-cluster hub</p></div></div>
+    <div class="brand"><img class="logo" src="__TELESKOPE_ICON__" alt="" aria-hidden="true" /><div><h1>Teleskope</h1><p>multi-cluster hub</p></div></div>
     <nav id="nav"></nav>
   </aside>
   <main>
@@ -126,4 +137,5 @@ renderNav(); render(); refresh();
 </script>
 </body>
 </html>`
+	return strings.Replace(page, "__TELESKOPE_ICON__", icon, 1)
 }
