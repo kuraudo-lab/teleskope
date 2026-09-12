@@ -5,12 +5,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/kuraudo-lab/teleskope/internal/awseks"
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
 	"github.com/kuraudo-lab/teleskope/internal/compare"
+	"github.com/kuraudo-lab/teleskope/internal/hub"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/k8s"
 	"github.com/kuraudo-lab/teleskope/internal/render"
@@ -60,6 +66,53 @@ func NewRootCommand(stdout, stderr io.Writer) *cobra.Command {
 	cmd.AddCommand(newAnalyzeCommand(stdout, stderr))
 	cmd.AddCommand(newAdvisoryCommand(stdout, stderr))
 	cmd.AddCommand(newServeCommand(stdout, stderr))
+	cmd.AddCommand(newServeHubCommand(stdout, stderr))
+	return cmd
+}
+
+func newServeHubCommand(stdout, stderr io.Writer) *cobra.Command {
+	var listen string
+	var token string
+	cmd := &cobra.Command{
+		Use:   "serve-hub",
+		Short: "Serve a multi-cluster hub for remote live collectors",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			listener, err := net.Listen("tcp", listen)
+			if err != nil {
+				return fmt.Errorf("listen: %w", err)
+			}
+			defer listener.Close()
+			store := &hub.Store{}
+			server := &http.Server{
+				Handler:           store.Handler(hub.HandlerOptions{Token: firstNonEmpty(token, os.Getenv("TELESKOPE_HUB_TOKEN"))}),
+				ReadHeaderTimeout: 5 * time.Second,
+				WriteTimeout:      defaultServeWriteTimeout,
+				IdleTimeout:       60 * time.Second,
+			}
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			serverDone := make(chan error, 1)
+			go func() { serverDone <- server.Serve(listener) }()
+			fmt.Fprintf(stdout, "Teleskope hub: http://%s\n", listener.Addr())
+			select {
+			case err = <-serverDone:
+			case <-ctx.Done():
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
+					_ = server.Close()
+				}
+				cancel()
+				err = <-serverDone
+			}
+			if err == http.ErrServerClosed {
+				return nil
+			}
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&listen, "listen", "127.0.0.1:8080", "HTTP listen address for the hub")
+	cmd.Flags().StringVar(&token, "hub-token", "", "optional bearer token required for collector writes; defaults to TELESKOPE_HUB_TOKEN")
 	return cmd
 }
 
