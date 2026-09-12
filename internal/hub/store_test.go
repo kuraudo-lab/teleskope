@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,9 +9,27 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kuraudo-lab/teleskope/internal/analysis"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/live"
 )
+
+type fakeAnalyzer struct {
+	calls int
+	got   analysis.Request
+}
+
+func (f *fakeAnalyzer) Analyze(ctx context.Context, req analysis.Request) (analysis.Result, error) {
+	f.calls++
+	f.got = req
+	return analysis.Result{
+		UseCase:       req.UseCase,
+		Model:         "fake-model",
+		PromptVersion: "test",
+		Summary:       "hub cluster analysis",
+		Sections:      []analysis.Section{{Title: "Inventory", Items: []analysis.Item{{Summary: "web workload", Severity: "info"}}}},
+	}, nil
+}
 
 func TestDeriveClusterUsesEKSARNBeforeKubeContext(t *testing.T) {
 	snapshot := &inventory.Snapshot{
@@ -112,8 +131,38 @@ func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 
 	drilldown := httptest.NewRecorder()
 	handler.ServeHTTP(drilldown, httptest.NewRequest(http.MethodGet, "/cluster?id=prod-a", nil))
-	if drilldown.Code != http.StatusOK || !strings.Contains(drilldown.Body.String(), "Teleskope cluster report") {
+	if drilldown.Code != http.StatusOK || !strings.Contains(drilldown.Body.String(), "Analyze with AI") || !strings.Contains(drilldown.Body.String(), "/api/cluster/analyze?id=prod-a") {
 		t.Fatalf("drilldown = %d: %s", drilldown.Code, drilldown.Body.String())
+	}
+}
+
+func TestHTTPClusterScopedSnapshotAndAnalyze(t *testing.T) {
+	store := &Store{}
+	if accepted, _, err := store.Put(testEnvelope("prod-a", 3)); err != nil || !accepted {
+		t.Fatalf("put accepted=%v err=%v", accepted, err)
+	}
+	analyzer := &fakeAnalyzer{}
+	handler := store.Handler(HandlerOptions{Analyzer: analyzer})
+
+	snapshot := httptest.NewRecorder()
+	handler.ServeHTTP(snapshot, httptest.NewRequest(http.MethodGet, "/api/cluster/snapshot?id=prod-a", nil))
+	if snapshot.Code != http.StatusOK || !strings.Contains(snapshot.Body.String(), `"revision":3`) {
+		t.Fatalf("snapshot = %d: %s", snapshot.Code, snapshot.Body.String())
+	}
+
+	analysisResponse := httptest.NewRecorder()
+	handler.ServeHTTP(analysisResponse, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", nil))
+	if analysisResponse.Code != http.StatusOK || !strings.Contains(analysisResponse.Body.String(), "hub cluster analysis") {
+		t.Fatalf("analyze = %d: %s", analysisResponse.Code, analysisResponse.Body.String())
+	}
+	if analyzer.calls != 1 || analyzer.got.UseCase != analysis.UseCaseScan || analyzer.got.Snapshot == nil {
+		t.Fatalf("analyzer calls=%d request=%+v", analyzer.calls, analyzer.got)
+	}
+
+	cached := httptest.NewRecorder()
+	handler.ServeHTTP(cached, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", nil))
+	if cached.Code != http.StatusOK || analyzer.calls != 1 {
+		t.Fatalf("cached analyze = %d calls=%d", cached.Code, analyzer.calls)
 	}
 }
 

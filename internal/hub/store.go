@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
+
+	"github.com/kuraudo-lab/teleskope/internal/analysis"
 )
 
 // Store keeps the latest accepted envelope for every cluster.
@@ -15,6 +18,19 @@ type Store struct {
 	latest   map[string]Envelope
 	body     []byte
 	etag     string
+	analysis map[string]analysisEntry
+	running  atomic.Bool
+}
+
+type analysisEntry struct {
+	revision uint64
+	response AnalyzeResponse
+}
+
+// AnalyzeResponse is returned by cluster-scoped hub LLM analysis.
+type AnalyzeResponse struct {
+	Analysis analysis.Result `json:"analysis"`
+	Markdown string          `json:"markdown"`
 }
 
 // FleetResponse is the hub API response used by the fleet UI.
