@@ -67,6 +67,24 @@ func TestStoreAcceptsOnlyNewerClusterRevisions(t *testing.T) {
 	}
 }
 
+func TestFleetIncludesClusterEventsAndMarkdown(t *testing.T) {
+	store := &Store{}
+	if accepted, _, err := store.Put(testEnvelope("prod-a", 1)); err != nil || !accepted {
+		t.Fatalf("put accepted=%v err=%v", accepted, err)
+	}
+
+	fleet := store.Fleet()
+	if len(fleet.Events) != 1 || fleet.Clusters[0].Events != 1 {
+		t.Fatalf("fleet events = %+v", fleet)
+	}
+	markdown := Markdown(fleet)
+	for _, want := range []string{"# Teleskope fleet summary", "## Recent events", "refresh published"} {
+		if !strings.Contains(markdown, want) {
+			t.Fatalf("markdown missing %q:\n%s", want, markdown)
+		}
+	}
+}
+
 func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 	store := &Store{}
 	handler := store.Handler(HandlerOptions{Token: "secret"})
@@ -134,5 +152,6 @@ func testEnvelope(id string, revision uint64) Envelope {
 			},
 		},
 		Sources: map[string]live.Status{"kubernetes": {State: "ready"}},
+		Events:  []live.Event{{Sequence: revision, At: now, Source: "kubernetes", Level: "info", Message: "refresh published"}},
 	}
 }

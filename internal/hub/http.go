@@ -195,6 +195,20 @@ func Markdown(fleet FleetResponse) string {
 			cluster.Images,
 		)
 	}
+	if len(fleet.Events) > 0 {
+		fmt.Fprintf(&b, "\n## Recent events\n\n")
+		fmt.Fprintf(&b, "| Time | Cluster | Source | Level | Message |\n")
+		fmt.Fprintf(&b, "| --- | --- | --- | --- | --- |\n")
+		for _, event := range fleet.Events {
+			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n",
+				mdCell(event.Event.At.Format(time.RFC3339)),
+				mdCell(event.Cluster.Name),
+				mdCell(event.Event.Source),
+				mdCell(event.Event.Level),
+				mdCell(event.Event.Message),
+			)
+		}
+	}
 	return b.String()
 }
 

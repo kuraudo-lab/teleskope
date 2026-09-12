@@ -19,8 +19,9 @@ type Store struct {
 
 // FleetResponse is the hub API response used by the fleet UI.
 type FleetResponse struct {
-	Revision uint64    `json:"revision"`
-	Clusters []Summary `json:"clusters"`
+	Revision uint64       `json:"revision"`
+	Clusters []Summary    `json:"clusters"`
+	Events   []FleetEvent `json:"events,omitempty"`
 }
 
 // Put validates and stores an envelope. Duplicate and older revisions are ignored.
@@ -62,13 +63,26 @@ func (s *Store) Fleet() FleetResponse {
 
 func (s *Store) fleetLocked() FleetResponse {
 	summaries := make([]Summary, 0, len(s.latest))
+	events := make([]FleetEvent, 0)
 	for _, env := range s.latest {
 		summaries = append(summaries, summarize(env))
+		for _, event := range env.Events {
+			events = append(events, FleetEvent{Cluster: env.Cluster, Event: event})
+		}
 	}
 	sort.Slice(summaries, func(i, j int) bool {
 		return summaries[i].Cluster.Name < summaries[j].Cluster.Name
 	})
-	return FleetResponse{Revision: s.revision, Clusters: summaries}
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].Event.At.Equal(events[j].Event.At) {
+			return events[i].Event.Sequence > events[j].Event.Sequence
+		}
+		return events[i].Event.At.After(events[j].Event.At)
+	})
+	if len(events) > 200 {
+		events = events[:200]
+	}
+	return FleetResponse{Revision: s.revision, Clusters: summaries, Events: events}
 }
 
 func (s *Store) encodedFleet() ([]byte, string) {

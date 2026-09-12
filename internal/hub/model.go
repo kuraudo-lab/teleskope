@@ -43,8 +43,15 @@ type Summary struct {
 	Workloads   int                    `json:"workloads"`
 	Pods        int                    `json:"pods"`
 	Images      int                    `json:"images"`
+	Events      int                    `json:"events"`
 	Advisor     string                 `json:"advisor,omitempty"`
 	Sources     map[string]live.Status `json:"sources,omitempty"`
+}
+
+// FleetEvent records one recent event annotated with the cluster that reported it.
+type FleetEvent struct {
+	Cluster Cluster    `json:"cluster"`
+	Event   live.Event `json:"event"`
 }
 
 // DeriveCluster creates stable cluster metadata from explicit input and snapshot evidence.
@@ -173,6 +180,7 @@ func summarize(env Envelope) Summary {
 		Revision:    env.Revision,
 		CollectedAt: env.CollectedAt,
 		State:       sourceFreshness(env.Sources),
+		Events:      len(env.Events),
 		Sources:     env.Sources,
 	}
 	if summary.State == "" {

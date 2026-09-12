@@ -23,7 +23,7 @@ func HubHTML() string {
     button, select { height:40px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--text); padding:0 12px; font:inherit; }
     button { cursor:pointer; }
     button:hover { border-color:var(--blue); }
-    .cards { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+    .cards { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
     .card, .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; }
     .card { padding:14px; }
     .label { color:var(--muted); font-size:12px; }
@@ -34,6 +34,9 @@ func HubHTML() string {
     th { color:var(--muted); background:var(--panel-2); font-weight:600; }
     tr:hover td { background:var(--panel-2); }
     .badge { display:inline-flex; border-radius:999px; padding:3px 8px; font-size:12px; font-weight:700; }
+    .stack { display:grid; gap:16px; }
+    .sources { display:flex; gap:6px; flex-wrap:wrap; }
+    .event-list { max-height:320px; overflow:auto; }
     .ready { color:#052e22; background:var(--green); }
     .partial, .stale { color:#422006; background:var(--amber); }
     .error { color:#450a0a; background:var(--red); }
@@ -56,10 +59,16 @@ func HubHTML() string {
     </div>
   </header>
   <section class="cards" id="cards"></section>
+  <section class="panel" style="margin-bottom:16px">
+    <table>
+      <thead><tr><th>Cluster</th><th>Provider</th><th>Region</th><th>State</th><th>Sources</th><th>Revision</th><th>Collected</th><th>Inventory</th><th>Advisor</th></tr></thead>
+      <tbody id="clusters"><tr><td colspan="9" class="muted">No clusters have reported yet.</td></tr></tbody>
+    </table>
+  </section>
   <section class="panel">
     <table>
-      <thead><tr><th>Cluster</th><th>Provider</th><th>Region</th><th>State</th><th>Revision</th><th>Collected</th><th>Inventory</th><th>Advisor</th></tr></thead>
-      <tbody id="clusters"><tr><td colspan="8" class="muted">No clusters have reported yet.</td></tr></tbody>
+      <thead><tr><th>Time</th><th>Cluster</th><th>Source</th><th>Level</th><th>Message</th></tr></thead>
+      <tbody id="events"><tr><td colspan="5" class="muted">No events have reported yet.</td></tr></tbody>
     </table>
   </section>
 </main>
@@ -70,16 +79,21 @@ const esc = v => String(v ?? "-").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 const stateClass = s => ['ready','partial','stale','error'].includes(s) ? s : 'partial';
 function filtered() { const want = byId('stateFilter').value; return fleet.clusters.filter(c => want === 'all' || c.state === want); }
 function totals(rows) { return rows.reduce((out, c) => { out.nodes += c.nodes || 0; out.workloads += c.workloads || 0; out.pods += c.pods || 0; out.images += c.images || 0; return out; }, {nodes:0, workloads:0, pods:0, images:0}); }
+function sourceBadges(sources) { const entries = Object.entries(sources || {}); return entries.length ? '<div class="sources">' + entries.map(([name, status]) => '<span class="badge ' + stateClass(status.state) + '">' + esc(name) + ':' + esc(status.state || '-') + '</span>').join('') + '</div>' : '<span class="muted">-</span>'; }
 function render() {
   const rows = filtered(), total = totals(fleet.clusters);
   byId('subtitle').textContent = fleet.clusters.length + ' clusters - hub revision ' + (fleet.revision || 0);
-  byId('cards').innerHTML = [['Clusters', fleet.clusters.length], ['Ready', fleet.clusters.filter(c => c.state === 'ready').length], ['Nodes', total.nodes], ['Workloads', total.workloads], ['Pods', total.pods]].map(([label, value]) => '<div class="card"><div class="label">' + esc(label) + '</div><div class="value">' + esc(value) + '</div></div>').join('');
+  byId('cards').innerHTML = [['Clusters', fleet.clusters.length], ['Ready', fleet.clusters.filter(c => c.state === 'ready').length], ['Needs attention', fleet.clusters.filter(c => c.state !== 'ready').length], ['Nodes', total.nodes], ['Workloads', total.workloads], ['Pods', total.pods]].map(([label, value]) => '<div class="card"><div class="label">' + esc(label) + '</div><div class="value">' + esc(value) + '</div></div>').join('');
   byId('clusters').innerHTML = rows.length ? rows.map(c => {
     const cluster = c.cluster || {};
     const link = '/cluster?id=' + encodeURIComponent(cluster.id);
     const inventory = 'nodes=' + (c.nodes || 0) + ' workloads=' + (c.workloads || 0) + ' pods=' + (c.pods || 0) + ' images=' + (c.images || 0);
-    return '<tr><td><a href="' + link + '"><strong>' + esc(cluster.name || cluster.id) + '</strong></a><div class="muted">' + esc(cluster.id) + '</div></td><td>' + esc(cluster.provider) + '</td><td>' + esc(cluster.region) + '</td><td><span class="badge ' + stateClass(c.state) + '">' + esc(c.state) + '</span></td><td>' + esc(c.revision) + '</td><td>' + esc(c.collectedAt) + '</td><td>' + esc(inventory) + '</td><td>' + esc(c.advisor || '-') + '</td></tr>';
-  }).join('') : '<tr><td colspan="8" class="muted">No clusters match the current filter.</td></tr>';
+    return '<tr><td><a href="' + link + '"><strong>' + esc(cluster.name || cluster.id) + '</strong></a><div class="muted">' + esc(cluster.id) + '</div></td><td>' + esc(cluster.provider) + '</td><td>' + esc(cluster.region) + '</td><td><span class="badge ' + stateClass(c.state) + '">' + esc(c.state) + '</span></td><td>' + sourceBadges(c.sources) + '</td><td>' + esc(c.revision) + '</td><td>' + esc(c.collectedAt) + '</td><td>' + esc(inventory) + '</td><td>' + esc(c.advisor || '-') + '</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="muted">No clusters match the current filter.</td></tr>';
+  byId('events').innerHTML = (fleet.events || []).length ? fleet.events.map(item => {
+    const cluster = item.cluster || {}, event = item.event || {};
+    return '<tr><td>' + esc(event.at) + '</td><td>' + esc(cluster.name || cluster.id) + '</td><td>' + esc(event.source) + '</td><td><span class="badge ' + stateClass(event.level === 'error' ? 'error' : event.level === 'warn' ? 'partial' : 'ready') + '">' + esc(event.level) + '</span></td><td>' + esc(event.message) + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="muted">No events have reported yet.</td></tr>';
 }
 async function refresh() {
   try {

@@ -220,6 +220,48 @@ restart. Existing `scan` commands and offline artifacts remain available.
 This first live version supports polling. Watch/informer mode and packaged
 in-cluster deployment are subsequent steps.
 
+## Multi-cluster hub
+
+Run a hub process when several live collectors should report into one fleet
+view:
+
+```sh
+teleskope serve-hub
+```
+
+The hub listens on `127.0.0.1:8080` by default. It stores only the latest
+reported envelope for each cluster in memory; restarting the hub clears the
+fleet view. The hub does not require Kubernetes or AWS credentials and does not
+connect to cluster APIs. It serves a fleet table, recent cross-cluster events,
+JSON/Markdown exports, and single-cluster drilldown pages that reuse the normal
+cluster report UI.
+
+Point each collector at the hub with `--hub-url` or `TELESKOPE_HUB_URL`:
+
+```sh
+teleskope serve k8s --kube-context prod-a --cluster-id prod-a --hub-url http://hub.example:8080
+teleskope serve eks --cluster prod-a --kube-context prod-a --hub-url http://hub.example:8080
+```
+
+Collectors keep serving their local live UI if the hub is unavailable. Hub
+writes are best-effort and retried asynchronously with only the newest pending
+envelope retained. EKS collectors derive the hub cluster ID from the EKS cluster
+ARN when available. Kubernetes-only collectors should set `--cluster-id` for a
+stable fleet key; otherwise Teleskope derives a deterministic fallback from the
+kubeconfig server or context.
+
+For simple private deployments, protect writes with a shared bearer token:
+
+```sh
+TELESKOPE_HUB_TOKEN=shared-secret teleskope serve-hub
+teleskope serve k8s --kube-context prod-a --cluster-id prod-a --hub-url http://hub.example:8080 --hub-token shared-secret
+```
+
+`--hub-token` also defaults to `TELESKOPE_HUB_TOKEN`. The first hub release does
+not provide durable history, user accounts, TLS termination, or browser
+authentication; put it behind the network and access boundary appropriate for
+the inventory data it receives.
+
 ## Releasing
 
 After merging the desired changes into `main`, create and push a stable tag:
