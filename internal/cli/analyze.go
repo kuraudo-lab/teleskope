@@ -142,35 +142,25 @@ func runLLMAnalysis(ctx context.Context, stdout, _ io.Writer, progress *progress
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	progress.Step("loading LLM configuration")
-	cfg, err := analysis.LoadConfig(configPath)
-	if err != nil {
-		return err
-	}
-	if timeout > 0 {
-		cfg.LLM.Timeout = timeout
-	}
-	if cfg.LLM.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, cfg.LLM.Timeout)
-		defer cancel()
-	}
-	if modelContext, err := analysis.BuildContext(req); err == nil {
-		progress.Detail("model context=%d bytes model=%s timeout=%s", len(modelContext), cfg.LLM.Model, cfg.LLM.Timeout)
-	}
 	progress.Step("requesting LLM analysis")
-	result, err := analysis.NewOpenAICompatible(cfg.LLM).Analyze(ctx, req)
+	out, err := analysis.Runner{
+		ConfigPath: configPath,
+		Timeout:    timeout,
+		EventSink: func(event analysis.RunEvent) {
+			progress.Detail("%s", event.Message)
+		},
+	}.Run(ctx, analysis.Job{Request: req})
 	if err != nil {
 		return err
 	}
 	switch strings.ToLower(output) {
 	case "json":
-		return analysis.WriteJSON(stdout, result)
+		return analysis.WriteJSON(stdout, out.Analysis)
 	case "markdown":
-		_, err = fmt.Fprint(stdout, analysis.Markdown(result))
+		_, err = fmt.Fprint(stdout, out.Markdown)
 		return err
 	default:
-		return analysis.WriteHuman(stdout, result)
+		return analysis.WriteHuman(stdout, out.Analysis)
 	}
 }
 

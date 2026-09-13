@@ -1,8 +1,8 @@
 package hub
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -208,90 +208,58 @@ func (s *Store) writeClusterSnapshot(w http.ResponseWriter, r *http.Request, id 
 }
 
 func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, id string, opts HandlerOptions) {
-	started := time.Now()
-	requestID := fmt.Sprintf("%x", started.UnixNano())
+	requestID := fmt.Sprintf("%x", time.Now().UnixNano())
 	env, ok := s.Get(id)
 	if !ok || env.Snapshot == nil {
 		s.logf(opts, "[analysis] hub cluster analysis failed id=%s cluster=%s phase=snapshot error=not_found", requestID, id)
 		http.NotFound(w, r)
 		return
 	}
-	if cached, ok := s.cachedAnalysis(id, env.Revision); ok {
-		s.logf(opts, "[analysis] hub cluster analysis cache_hit id=%s cluster=%s revision=%d model=%s", requestID, id, env.Revision, cached.Analysis.Model)
-		s.writeAnalyzeResponse(w, cached)
-		return
-	}
-	if !s.running.CompareAndSwap(false, true) {
-		s.logf(opts, "[analysis] hub cluster analysis rejected id=%s cluster=%s revision=%d reason=already_running", requestID, id, env.Revision)
-		http.Error(w, "analysis already running", http.StatusConflict)
-		return
-	}
-	defer s.running.Store(false)
-	s.logf(opts, "[analysis] hub cluster analysis started id=%s cluster=%s revision=%d", requestID, id, env.Revision)
-	req := analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: env.Snapshot}
-	if contextBytes, err := analysis.BuildContext(req); err != nil {
-		s.logf(opts, "[analysis] hub cluster analysis context failed id=%s cluster=%s revision=%d error=%s", requestID, id, env.Revision, err)
-	} else {
-		s.logf(opts, "[analysis] hub cluster analysis context ready id=%s cluster=%s revision=%d bytes=%d", requestID, id, env.Revision, len(contextBytes))
-	}
-	analyzer := opts.Analyzer
-	if analyzer == nil {
-		cfg, err := analysis.LoadConfig(opts.ConfigPath)
-		if err != nil {
-			s.logf(opts, "[analysis] hub cluster analysis failed id=%s cluster=%s phase=config error=%s", requestID, id, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if opts.Timeout > 0 {
-			cfg.LLM.Timeout = opts.Timeout
-		}
-		s.logf(opts, "[analysis] hub cluster analysis config loaded id=%s cluster=%s provider=%s model=%s timeout=%s", requestID, id, cfg.LLM.Provider, cfg.LLM.Model, cfg.LLM.Timeout)
-		analyzer = analysis.NewOpenAICompatible(cfg.LLM)
-	} else {
-		s.logf(opts, "[analysis] hub cluster analysis using injected analyzer id=%s cluster=%s revision=%d", requestID, id, env.Revision)
-	}
-	ctx := r.Context()
-	if opts.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
-		defer cancel()
-	}
-	result, err := analyzer.Analyze(ctx, req)
+	s.mu.Lock()
+	s.ensure()
+	cache := s.analysis
+	s.mu.Unlock()
+	out, err := analysis.Runner{
+		Analyzer:   opts.Analyzer,
+		ConfigPath: opts.ConfigPath,
+		Timeout:    opts.Timeout,
+		Cache:      cache,
+		EventSink: func(event analysis.RunEvent) {
+			s.logf(opts, "[analysis] %s", event.Message)
+		},
+	}.Run(r.Context(), analysis.Job{
+		Request:   analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: env.Snapshot},
+		Key:       analysis.CacheKey{Subject: id, Revision: env.Revision},
+		RequestID: requestID,
+		Operation: "hub cluster analysis",
+	})
 	if err != nil {
-		s.logf(opts, "[analysis] hub cluster analysis failed id=%s cluster=%s phase=request duration=%s error=%s", requestID, id, time.Since(started).Round(time.Millisecond), err)
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), analysisHTTPStatus(err))
 		return
 	}
-	out := AnalyzeResponse{Analysis: result, Markdown: analysis.Markdown(result)}
-	s.storeAnalysis(id, env.Revision, out)
-	s.logf(opts, "[analysis] hub cluster analysis completed id=%s cluster=%s revision=%d model=%s duration=%s", requestID, id, env.Revision, result.Model, time.Since(started).Round(time.Millisecond))
 	s.writeAnalyzeResponse(w, out)
 }
 
-func (s *Store) cachedAnalysis(id string, revision uint64) (AnalyzeResponse, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	cached, ok := s.analysis[id]
-	if !ok || cached.revision != revision {
-		return AnalyzeResponse{}, false
-	}
-	return cached.response, true
-}
-
-func (s *Store) storeAnalysis(id string, revision uint64, out AnalyzeResponse) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.analysis == nil {
-		s.analysis = map[string]analysisEntry{}
-	}
-	s.analysis[id] = analysisEntry{revision: revision, response: out}
-}
-
-func (s *Store) writeAnalyzeResponse(w http.ResponseWriter, out AnalyzeResponse) {
+func (s *Store) writeAnalyzeResponse(w http.ResponseWriter, out analysis.RunResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	_ = encoder.Encode(out)
+}
+
+func analysisHTTPStatus(err error) int {
+	var runErr *analysis.RunError
+	if !errors.As(err, &runErr) {
+		return http.StatusBadGateway
+	}
+	switch runErr.Phase {
+	case "running":
+		return http.StatusConflict
+	case "config":
+		return http.StatusInternalServerError
+	default:
+		return http.StatusBadGateway
+	}
 }
 
 func (s *Store) logf(opts HandlerOptions, format string, args ...any) {

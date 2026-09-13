@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"sync"
-	"sync/atomic"
 
 	"github.com/kuraudo-lab/teleskope/internal/analysis"
 )
@@ -18,20 +17,11 @@ type Store struct {
 	latest   map[string]Envelope
 	body     []byte
 	etag     string
-	analysis map[string]analysisEntry
-	running  atomic.Bool
-}
-
-type analysisEntry struct {
-	revision uint64
-	response AnalyzeResponse
+	analysis *analysis.RunCache
 }
 
 // AnalyzeResponse is returned by cluster-scoped hub LLM analysis.
-type AnalyzeResponse struct {
-	Analysis analysis.Result `json:"analysis"`
-	Markdown string          `json:"markdown"`
-}
+type AnalyzeResponse = analysis.RunResponse
 
 // FleetResponse is the hub API response used by the fleet UI.
 type FleetResponse struct {
@@ -111,6 +101,9 @@ func (s *Store) ensure() {
 	if s.latest == nil {
 		s.latest = map[string]Envelope{}
 		s.encodeLocked()
+	}
+	if s.analysis == nil {
+		s.analysis = &analysis.RunCache{}
 	}
 }
 

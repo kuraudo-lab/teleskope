@@ -5,12 +5,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/kuraudo-lab/teleskope/internal/advisor"
@@ -57,18 +57,17 @@ const maxEvents = 200
 
 // Store owns all mutable state; handlers receive pre-encoded immutable responses.
 type Store struct {
-	mu              sync.RWMutex
-	order           []string
-	sources         []Source
-	entries         map[string]*entry
-	events          []Event
-	eventSeq        uint64
-	revision        uint64
-	body            []byte
-	etag            string
-	analysisCache   *analysisCache
-	analysisRunning atomic.Bool
-	publishHook     func(Response)
+	mu            sync.RWMutex
+	order         []string
+	sources       []Source
+	entries       map[string]*entry
+	events        []Event
+	eventSeq      uint64
+	revision      uint64
+	body          []byte
+	etag          string
+	analysisCache *analysis.RunCache
+	publishHook   func(Response)
 }
 
 // Response is the immutable live view served to browsers and remote hub writers.
@@ -80,15 +79,7 @@ type Response struct {
 	Events   []Event             `json:"events,omitempty"`
 }
 
-type AnalyzeResponse struct {
-	Analysis analysis.Result `json:"analysis"`
-	Markdown string          `json:"markdown"`
-}
-
-type analysisCache struct {
-	revision uint64
-	response AnalyzeResponse
-}
+type AnalyzeResponse = analysis.RunResponse
 
 // HandlerOptions configures optional live HTTP actions.
 type HandlerOptions struct {
@@ -103,7 +94,7 @@ func New(sources []Source) (*Store, error) {
 	if len(sources) == 0 {
 		return nil, fmt.Errorf("at least one source is required")
 	}
-	s := &Store{entries: make(map[string]*entry), sources: append([]Source(nil), sources...)}
+	s := &Store{entries: make(map[string]*entry), sources: append([]Source(nil), sources...), analysisCache: &analysis.RunCache{}}
 	for _, source := range sources {
 		if source.Name != "kubernetes" && source.Name != "eks" {
 			return nil, fmt.Errorf("unknown source %q", source.Name)
@@ -491,63 +482,31 @@ func (s *Store) HandlerWithOptions(opts HandlerOptions) http.Handler {
 }
 
 func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, opts HandlerOptions) {
-	started := time.Now()
-	requestID := fmt.Sprintf("%x", started.UnixNano())
+	requestID := fmt.Sprintf("%x", time.Now().UnixNano())
 	snapshot, revision, err := s.exportSnapshotView()
 	if err != nil {
 		s.addAnalysisEvent(opts, "error", "LLM analysis failed id=%s phase=snapshot error=%s", requestID, err)
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	if cached, ok := s.cachedAnalysis(revision); ok {
-		s.addAnalysisEvent(opts, "info", "LLM analysis cache_hit id=%s revision=%d model=%s", requestID, revision, cached.Analysis.Model)
-		s.writeAnalyzeResponse(w, cached)
-		return
-	}
-	if !s.analysisRunning.CompareAndSwap(false, true) {
-		s.addAnalysisEvent(opts, "warn", "LLM analysis rejected id=%s revision=%d reason=already_running", requestID, revision)
-		http.Error(w, "analysis already running", http.StatusConflict)
-		return
-	}
-	defer s.analysisRunning.Store(false)
-	s.addAnalysisEvent(opts, "info", "LLM analysis started id=%s revision=%d", requestID, revision)
-	req := analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: snapshot}
-	if contextBytes, err := analysis.BuildContext(req); err != nil {
-		s.addAnalysisEvent(opts, "warn", "LLM analysis context sizing failed id=%s error=%s", requestID, err)
-	} else {
-		s.addAnalysisEvent(opts, "debug", "LLM analysis context ready id=%s revision=%d bytes=%d collectedAt=%s", requestID, revision, len(contextBytes), snapshot.CollectedAt.Format(time.RFC3339))
-	}
-	analyzer := opts.Analyzer
-	if analyzer == nil {
-		cfg, err := analysis.LoadConfig(opts.ConfigPath)
-		if err != nil {
-			s.addAnalysisEvent(opts, "error", "LLM analysis failed id=%s phase=config error=%s", requestID, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if opts.Timeout > 0 {
-			cfg.LLM.Timeout = opts.Timeout
-		}
-		s.addAnalysisEvent(opts, "info", "LLM analysis config loaded id=%s provider=%s model=%s timeout=%s", requestID, cfg.LLM.Provider, cfg.LLM.Model, cfg.LLM.Timeout)
-		analyzer = analysis.NewOpenAICompatible(cfg.LLM)
-	} else {
-		s.addAnalysisEvent(opts, "debug", "LLM analysis using injected analyzer id=%s", requestID)
-	}
-	ctx := r.Context()
-	if opts.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
-		defer cancel()
-	}
-	result, err := analyzer.Analyze(ctx, req)
+	out, err := analysis.Runner{
+		Analyzer:   opts.Analyzer,
+		ConfigPath: opts.ConfigPath,
+		Timeout:    opts.Timeout,
+		Cache:      s.analysisCache,
+		EventSink: func(event analysis.RunEvent) {
+			s.addAnalysisEvent(opts, event.Level, "%s", event.Message)
+		},
+	}.Run(r.Context(), analysis.Job{
+		Request:   analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: snapshot},
+		Key:       analysis.CacheKey{Subject: "live", Revision: revision},
+		RequestID: requestID,
+		Operation: "LLM analysis",
+	})
 	if err != nil {
-		s.addAnalysisEvent(opts, "error", "LLM analysis failed id=%s phase=request duration=%s error=%s", requestID, time.Since(started).Round(time.Millisecond), err)
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), analysisHTTPStatus(err))
 		return
 	}
-	s.addAnalysisEvent(opts, "info", "LLM analysis completed id=%s revision=%d model=%s duration=%s", requestID, revision, result.Model, time.Since(started).Round(time.Millisecond))
-	out := AnalyzeResponse{Analysis: result, Markdown: analysis.Markdown(result)}
-	s.storeAnalysis(revision, out)
 	s.writeAnalyzeResponse(w, out)
 }
 
@@ -558,26 +517,26 @@ func (s *Store) addAnalysisEvent(opts HandlerOptions, level, format string, args
 	}
 }
 
-func (s *Store) cachedAnalysis(revision uint64) (AnalyzeResponse, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.analysisCache == nil || s.analysisCache.revision != revision {
-		return AnalyzeResponse{}, false
-	}
-	return s.analysisCache.response, true
-}
-
-func (s *Store) storeAnalysis(revision uint64, out AnalyzeResponse) {
-	s.mu.Lock()
-	s.analysisCache = &analysisCache{revision: revision, response: out}
-	s.mu.Unlock()
-}
-
-func (s *Store) writeAnalyzeResponse(w http.ResponseWriter, out AnalyzeResponse) {
+func (s *Store) writeAnalyzeResponse(w http.ResponseWriter, out analysis.RunResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	_ = encoder.Encode(out)
+}
+
+func analysisHTTPStatus(err error) int {
+	var runErr *analysis.RunError
+	if !errors.As(err, &runErr) {
+		return http.StatusBadGateway
+	}
+	switch runErr.Phase {
+	case "running":
+		return http.StatusConflict
+	case "config":
+		return http.StatusInternalServerError
+	default:
+		return http.StatusBadGateway
+	}
 }
 
 func (s *Store) exportSnapshot() (*inventory.Snapshot, error) {

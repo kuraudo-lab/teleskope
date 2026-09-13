@@ -2,8 +2,8 @@
 package advisory
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -25,11 +25,6 @@ var page string
 type compareResponse struct {
 	Report   compare.Report `json:"report"`
 	Markdown string         `json:"markdown"`
-}
-
-type analyzeResponse struct {
-	Analysis analysis.Result `json:"analysis"`
-	Markdown string          `json:"markdown"`
 }
 
 // Options configures the advisory HTTP handler.
@@ -100,34 +95,34 @@ func handleAnalyze(w http.ResponseWriter, r *http.Request, opts Options) {
 	}
 	report := compare.Analyze(source, target)
 	req := analysis.Request{UseCase: analysis.UseCaseAdvisory, Source: source, Target: target, CompareReport: &report}
-	analyzer := opts.Analyzer
-	if analyzer == nil {
-		cfg, err := analysis.LoadConfig(opts.ConfigPath)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if opts.Timeout > 0 {
-			cfg.LLM.Timeout = opts.Timeout
-		}
-		analyzer = analysis.NewOpenAICompatible(cfg.LLM)
-	}
-	ctx := r.Context()
-	if opts.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
-		defer cancel()
-	}
-	result, err := analyzer.Analyze(ctx, req)
+	out, err := analysis.Runner{
+		Analyzer:   opts.Analyzer,
+		ConfigPath: opts.ConfigPath,
+		Timeout:    opts.Timeout,
+	}.Run(r.Context(), analysis.Job{Request: req, Operation: "advisory analysis"})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), analysisHTTPStatus(err))
 		return
 	}
-	out := analyzeResponse{Analysis: result, Markdown: analysis.Markdown(result)}
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	_ = encoder.Encode(out)
+}
+
+func analysisHTTPStatus(err error) int {
+	var runErr *analysis.RunError
+	if !errors.As(err, &runErr) {
+		return http.StatusBadGateway
+	}
+	switch runErr.Phase {
+	case "config":
+		return http.StatusInternalServerError
+	case "running":
+		return http.StatusConflict
+	default:
+		return http.StatusBadGateway
+	}
 }
 
 func handleCompare(w http.ResponseWriter, r *http.Request) {
