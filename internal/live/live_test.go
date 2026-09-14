@@ -142,6 +142,81 @@ func TestPartialInitialDataAndIndependentSources(t *testing.T) {
 	}
 }
 
+func TestPublishSourceMergesWatchAndPollingWithoutCollection(t *testing.T) {
+	var kubernetesCalls, eksCalls atomic.Int32
+	sources := []Source{
+		{Name: "kubernetes", Interval: time.Second, Timeout: time.Second, Collect: func(context.Context) (*inventory.Snapshot, error) {
+			kubernetesCalls.Add(1)
+			return nil, nil
+		}},
+		{Name: "eks", Interval: time.Second, Timeout: time.Second, Collect: func(context.Context) (*inventory.Snapshot, error) {
+			eksCalls.Add(1)
+			return nil, nil
+		}},
+	}
+	s, err := New(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Snapshot: podSnapshot(1, "complete")})
+	if kubernetesCalls.Load() != 0 || eksCalls.Load() != 0 {
+		t.Fatal("publication should not trigger source collection")
+	}
+
+	eks := &inventory.Snapshot{CollectedAt: time.Now().UTC(), Source: inventory.Source{Mode: "live/poll"}, EKS: inventory.EKSInventory{Cluster: inventory.Cluster{Name: "prod"}}}
+	s.PublishSource(SourcePublication{Source: "eks", Mode: SourceModePoll, Snapshot: eks})
+	got := readView(t, s)
+	if got.Revision != 2 || len(got.Snapshot.Kubernetes.Pods) != 1 || got.Snapshot.EKS.Cluster.Name != "prod" {
+		t.Fatalf("mixed publication did not merge sources: %+v", got)
+	}
+	if got.Snapshot.Source.Mode != "live/mixed" {
+		t.Fatalf("source mode = %q, want live/mixed", got.Snapshot.Source.Mode)
+	}
+	if got.Sources["kubernetes"].Mode != SourceModeWatch || got.Sources["eks"].Mode != SourceModePoll {
+		t.Fatalf("source modes = %+v", got.Sources)
+	}
+}
+
+func TestPublishSourceRetainsEvidenceOnStaleWatchUpdate(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Snapshot: podSnapshot(1, "complete")})
+	before := readView(t, s)
+
+	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Err: errors.New("watch disconnected")})
+	got := readView(t, s)
+	if got.Revision != before.Revision || len(got.Snapshot.Kubernetes.Pods) != 1 || got.Sources["kubernetes"].State != "stale" {
+		t.Fatalf("stale watch update did not retain evidence: %+v", got)
+	}
+	if len(got.Sources["kubernetes"].Coverage) != 1 || got.Sources["kubernetes"].Coverage[0].Resource != "Pods" {
+		t.Fatalf("stale source coverage = %+v, want retained Pods coverage", got.Sources["kubernetes"].Coverage)
+	}
+}
+
+func TestPublishHookSeesMonotonicMixedRevisions(t *testing.T) {
+	events := make(chan Response, 2)
+	s := newTestStore(t, "kubernetes", "eks")
+	s.SetPublishHook(func(view Response) {
+		events <- view
+	})
+
+	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Snapshot: podSnapshot(1, "complete")})
+	s.PublishSource(SourcePublication{Source: "eks", Mode: SourceModePoll, Snapshot: &inventory.Snapshot{CollectedAt: time.Now().UTC(), EKS: inventory.EKSInventory{Cluster: inventory.Cluster{Name: "prod"}}}})
+
+	seen := map[uint64]bool{}
+	for range 2 {
+		select {
+		case got := <-events:
+			seen[got.Revision] = true
+		case <-time.After(time.Second):
+			t.Fatal("publish hook did not receive both updates")
+		}
+	}
+	if !seen[1] || !seen[2] {
+		t.Fatalf("publish hook revisions = %+v, want 1 and 2", seen)
+	}
+}
+
 func TestPartialSnapshotWithErrorIsPublished(t *testing.T) {
 	s := newTestStore(t, "kubernetes")
 

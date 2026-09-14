@@ -31,12 +31,27 @@ type Source struct {
 // Status describes the latest attempt independently of the retained data.
 type Status struct {
 	State       string                   `json:"state"`
+	Mode        string                   `json:"mode,omitempty"`
 	Refreshing  bool                     `json:"refreshing"`
 	LastAttempt *time.Time               `json:"lastAttempt,omitempty"`
 	LastSuccess *time.Time               `json:"lastSuccess,omitempty"`
 	NextAttempt *time.Time               `json:"nextAttempt,omitempty"`
 	Error       string                   `json:"error,omitempty"`
 	Coverage    []inventory.CoverageItem `json:"coverage,omitempty"`
+}
+
+const (
+	SourceModePoll  = "poll"
+	SourceModeWatch = "watch"
+)
+
+// SourcePublication is one immutable source update ready for live publication.
+type SourcePublication struct {
+	Source      string
+	Mode        string
+	Snapshot    *inventory.Snapshot
+	Err         error
+	NextAttempt *time.Time
 }
 
 // Event records a recent live-server operation for display in the web UI.
@@ -141,9 +156,6 @@ func (s *Store) Run(ctx context.Context) {
 				level, message := refreshResultEvent(status, time.Since(started).Round(time.Millisecond))
 				s.AddEvent(source.Name, level, "%s", message)
 				logRefreshResult(source.Log, source.Name, status, time.Since(started).Round(time.Millisecond))
-				if status.State == "ready" || status.State == "partial" {
-					s.publishLatest()
-				}
 				timer := time.NewTimer(delay)
 				select {
 				case <-ctx.Done():
@@ -194,6 +206,18 @@ func (s *Store) publishLatest() {
 		return
 	}
 	go hook(view)
+}
+
+// PublishSource routes polling and watch updates through one publication path.
+func (s *Store) PublishSource(update SourcePublication) Status {
+	s.mu.Lock()
+	status, published := s.publishSourceLocked(update)
+	s.encode()
+	s.mu.Unlock()
+	if published {
+		s.publishLatest()
+	}
+	return status
 }
 
 // AddEvent appends a bounded operational event and republishes the response.
@@ -270,6 +294,7 @@ func (s *Store) begin(name string) {
 	defer s.mu.Unlock()
 	e := s.entries[name]
 	now := time.Now().UTC()
+	e.status.Mode = SourceModePoll
 	e.status.Refreshing, e.status.LastAttempt, e.status.NextAttempt = true, &now, nil
 	s.encode()
 }
@@ -295,31 +320,62 @@ func coverageRegression(old, next []inventory.CoverageItem) error {
 }
 
 func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, next time.Time) Status {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	e := s.entries[name]
-	attemptErr := err
-	e.status.Refreshing, e.status.NextAttempt = false, &next
-	e.status.Coverage = nil
-	if snapshot != nil {
-		e.status.Coverage = append([]inventory.CoverageItem(nil), snapshot.Coverage...)
+	return s.PublishSource(SourcePublication{Source: name, Mode: SourceModePoll, Snapshot: snapshot, Err: err, NextAttempt: &next})
+}
+
+func cloneTime(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
 	}
-	if err == nil && snapshot == nil {
+	out := *t
+	return &out
+}
+
+func copyCoverage(items []inventory.CoverageItem) []inventory.CoverageItem {
+	return append([]inventory.CoverageItem(nil), items...)
+}
+
+func (s *Store) publishSourceLocked(update SourcePublication) (Status, bool) {
+	e := s.entries[update.Source]
+	if e == nil {
+		return Status{State: "error", Error: fmt.Sprintf("unknown source %q", update.Source)}, false
+	}
+	now := time.Now().UTC()
+	err := update.Err
+	attemptErr := update.Err
+	mode := update.Mode
+	if mode == "" {
+		mode = SourceModePoll
+	}
+	e.status.Mode = mode
+	e.status.Refreshing = false
+	e.status.NextAttempt = cloneTime(update.NextAttempt)
+	if e.status.LastAttempt == nil {
+		e.status.LastAttempt = &now
+	}
+	if update.Snapshot != nil {
+		e.status.Coverage = copyCoverage(update.Snapshot.Coverage)
+	} else if e.snapshot != nil {
+		e.status.Coverage = copyCoverage(e.snapshot.Coverage)
+	} else {
+		e.status.Coverage = nil
+	}
+	if err == nil && update.Snapshot == nil {
 		err = fmt.Errorf("collector returned no snapshot")
 	}
 	var regressionErr error
-	if snapshot != nil && e.snapshot != nil {
-		regressionErr = coverageRegression(e.snapshot.Coverage, snapshot.Coverage)
+	if update.Snapshot != nil && e.snapshot != nil {
+		regressionErr = coverageRegression(e.snapshot.Coverage, update.Snapshot.Coverage)
 		if regressionErr != nil {
 			err = regressionErr
 		}
 	}
 	var owned inventory.Snapshot
-	publish := snapshot != nil && regressionErr == nil
+	publish := update.Snapshot != nil && regressionErr == nil
 	if publish {
 		// Clone once at publication; no caller-owned maps enter the shared store.
 		var data []byte
-		data, err = json.Marshal(snapshot)
+		data, err = json.Marshal(update.Snapshot)
 		if err == nil {
 			err = json.Unmarshal(data, &owned)
 		}
@@ -329,17 +385,19 @@ func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, nex
 		e.status.State = "error"
 		if e.snapshot != nil {
 			e.status.State = "stale"
+			e.status.Coverage = copyCoverage(e.snapshot.Coverage)
 		}
-		e.status.Error = err.Error()
+		if err != nil {
+			e.status.Error = err.Error()
+		}
 	} else {
 		e.snapshot = &owned
-		now := time.Now().UTC()
 		e.status.LastSuccess, e.status.Error, e.status.State = &now, "", "ready"
 		if attemptErr != nil {
 			e.status.Error = attemptErr.Error()
 			e.status.State = "partial"
 		}
-		for _, c := range snapshot.Coverage {
+		for _, c := range update.Snapshot.Coverage {
 			if c.Status != "complete" {
 				e.status.State = "partial"
 				break
@@ -347,8 +405,7 @@ func (s *Store) finish(name string, snapshot *inventory.Snapshot, err error, nex
 		}
 		s.revision++
 	}
-	s.encode()
-	return e.status
+	return e.status, publish
 }
 
 // encode runs under the writer lock, or during construction.
@@ -363,7 +420,7 @@ func (s *Store) encode() {
 		if out.Snapshot == nil {
 			out.Snapshot = &inventory.Snapshot{
 				SchemaVersion: "teleskope.io/snapshot/v1alpha1",
-				Source:        inventory.Source{Tool: "teleskope", Version: buildinfo.Version, Mode: "live/poll"},
+				Source:        inventory.Source{Tool: "teleskope", Version: buildinfo.Version, Mode: s.combinedModeLocked()},
 			}
 		}
 		if name == "kubernetes" {
@@ -392,6 +449,31 @@ func (s *Store) encode() {
 	out.Events = append([]Event(nil), s.events...)
 	s.body, _ = json.Marshal(out)
 	s.etag = fmt.Sprintf("\"%x\"", sha256.Sum256(s.body))
+}
+
+func (s *Store) combinedModeLocked() string {
+	modes := map[string]bool{}
+	for _, name := range s.order {
+		e := s.entries[name]
+		if e == nil || e.snapshot == nil {
+			continue
+		}
+		mode := e.status.Mode
+		if mode == "" {
+			mode = SourceModePoll
+		}
+		modes[mode] = true
+	}
+	if len(modes) == 0 {
+		return "live/poll"
+	}
+	if len(modes) > 1 {
+		return "live/mixed"
+	}
+	if modes[SourceModeWatch] {
+		return "live/watch"
+	}
+	return "live/poll"
 }
 
 // Handler serves the live UI. HTTP traffic cannot initiate collection; LLM analysis is only triggered by explicit POST.
