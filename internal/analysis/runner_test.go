@@ -74,6 +74,42 @@ func TestRunnerUsesInjectedAnalyzerCachesAndReturnsMarkdown(t *testing.T) {
 	}
 }
 
+func TestRunnerCacheKeySeparatesPromptScopeConversationAndWebSearch(t *testing.T) {
+	fake := &runnerFakeAnalyzer{}
+	runner := Runner{Analyzer: fake, Cache: &RunCache{}}
+	baseReq := Request{UseCase: UseCaseScan, Snapshot: &inventory.Snapshot{}}
+
+	requests := []Request{
+		baseReq,
+		{UseCase: UseCaseScan, Snapshot: baseReq.Snapshot, CustomPrompt: "focus on workloads"},
+		{UseCase: UseCaseScan, Snapshot: baseReq.Snapshot, Scope: Scope{Namespace: "payments"}},
+		{UseCase: UseCaseScan, Snapshot: baseReq.Snapshot, Conversation: []Message{{Role: "user", Content: "what changed?"}}},
+		{UseCase: UseCaseScan, Snapshot: baseReq.Snapshot, WebSearch: true},
+	}
+	for i, req := range requests {
+		_, err := runner.Run(context.Background(), Job{
+			Request: req,
+			Key:     NewCacheKey("live", 7, "fake-model", req),
+		})
+		if err != nil {
+			t.Fatalf("run %d: %v", i, err)
+		}
+	}
+	if fake.calls != len(requests) {
+		t.Fatalf("calls = %d, want each distinct request to miss cache", fake.calls)
+	}
+	_, err := runner.Run(context.Background(), Job{
+		Request: requests[1],
+		Key:     NewCacheKey("live", 7, "fake-model", requests[1]),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fake.calls != len(requests) {
+		t.Fatalf("calls = %d, want exact prompt match to hit cache", fake.calls)
+	}
+}
+
 func TestRunnerClassifiesProviderErrors(t *testing.T) {
 	wantErr := errors.New("provider down")
 	runner := Runner{Analyzer: &runnerFakeAnalyzer{err: wantErr}, Cache: &RunCache{}}

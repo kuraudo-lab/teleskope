@@ -324,13 +324,15 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		"/api/analyze",
 		"function renderAnalysis",
 		"analysisInFlight",
-		"analysisInFlight || lastAnalyzedRevision === liveRevision || liveRevision < 0",
+		"analysisKey === lastAnalyzedRequestKey",
+		"function currentAnalysisRequest",
+		"function currentAnalysisKey",
 		"Analyze is available after the first scan completes.",
 		"cursor:not-allowed",
 		"font:inherit; font-size:14px",
 		"lastAnalyzedRevision",
+		"lastAnalyzedRequestKey",
 		"function syncAnalyzeButtonState",
-		"lastAnalyzedRevision === liveRevision",
 		"selectSection('advisor')",
 	} {
 		if !strings.Contains(html, want) {

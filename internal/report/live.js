@@ -1,5 +1,5 @@
 // Same-origin browser updates read the shared snapshot; they never trigger scans.
-let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1;
+let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1, lastAnalyzedRequestKey = '';
 document.querySelectorAll('.section').forEach(section => {
   const progress = document.createElement('div');
   progress.className = 'live-progress';
@@ -32,7 +32,7 @@ function syncAnalyzeButtonState() {
     analyzeButton.disabled = true;
     analyzeButton.innerHTML = '<span>Analyzing…</span>';
     analyzeButton.title = 'Analysis is running.';
-  } else if (lastAnalyzedRevision === liveRevision) {
+  } else if (currentAnalysisKey() === lastAnalyzedRequestKey) {
     analyzeButton.disabled = true;
     analyzeButton.innerHTML = '<span>Analyzed</span>';
     analyzeButton.title = 'The current snapshot has already been analyzed.';
@@ -43,17 +43,20 @@ function syncAnalyzeButtonState() {
   }
 }
 analyzeButton.onclick = async () => {
-  if (analysisInFlight || lastAnalyzedRevision === liveRevision || liveRevision < 0 || document.body.classList.contains('live-loading')) return;
+  const analysisRequest = currentAnalysisRequest();
+  const analysisKey = currentAnalysisKey(analysisRequest);
+  if (analysisInFlight || analysisKey === lastAnalyzedRequestKey || liveRevision < 0 || document.body.classList.contains('live-loading')) return;
   analysisInFlight = true;
   syncAnalyzeButtonState();
   setAnalysisMessage('Requesting AI analysis for the current live snapshot…');
   selectSection('advisor');
   try {
-    const result = await fetch('/api/analyze', {method:'POST', cache:'no-store'});
+    const result = await fetch('/api/analyze', {method:'POST', cache:'no-store', headers:{'Content-Type':'application/json'}, body:JSON.stringify(analysisRequest)});
     if (!result.ok) throw new Error((await result.text()).trim() || ('HTTP ' + result.status));
     const data = await result.json();
     llmAnalysis = data.analysis || null;
     lastAnalyzedRevision = liveRevision;
+    lastAnalyzedRequestKey = analysisKey;
     renderAnalysis();
   } catch (error) {
     setAnalysisMessage('AI analysis failed: ' + error.message, 'error');
@@ -62,6 +65,21 @@ analyzeButton.onclick = async () => {
     syncAnalyzeButtonState();
   }
 };
+function currentAnalysisRequest() {
+  const scope = {
+    pageId: activeSection || '',
+    namespace: nsFilter === 'all' ? '' : nsFilter,
+    resourceType: activeSection === 'overview' && resourceFilter !== 'all' ? resourceFilter : '',
+    selectedRefs: selectedDetail ? [selectedDetail].filter(refLike) : []
+  };
+  return {scope};
+}
+function currentAnalysisKey(request=currentAnalysisRequest()) {
+  return liveRevision + ':' + JSON.stringify(request);
+}
+function refLike(value) {
+  return value && (value.name || value.image) && (value.kind || value.apiVersion || value.namespace || value.name);
+}
 function detailKey(obj) {
   if (obj.uid) return 'uid:' + obj.uid;
   return JSON.stringify([obj.apiVersion, obj.kind, obj.namespace, obj.name, obj.image, obj.pod, obj.container, obj.crdName, obj.principalArn, obj.serviceAccount, obj.roleArn]);

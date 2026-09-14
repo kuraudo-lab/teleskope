@@ -222,12 +222,19 @@ func TestHTTPAnalyzeUsesCurrentSnapshot(t *testing.T) {
 
 	s.finish("kubernetes", podSnapshot(1, "complete"), nil, time.Now())
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest("POST", "/api/analyze", nil))
+	body := `{"scope":{"pageId":"overview","namespace":"app","resourceType":"workloads","selectedRefs":[{"kind":"Pod","namespace":"app","name":"web","uid":"ignored"}]},"customPrompt":"focus on app namespace","conversation":[{"role":"assistant","content":"previous answer"}]}`
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/api/analyze", strings.NewReader(body)))
 	if w.Code != 200 {
 		t.Fatalf("analyze = %d: %s", w.Code, w.Body.String())
 	}
 	if fake.got.UseCase != analysis.UseCaseScan || fake.got.Snapshot == nil || len(fake.got.Snapshot.Kubernetes.Pods) != 1 {
 		t.Fatalf("request = %+v", fake.got)
+	}
+	if fake.got.Scope.PageID != "overview" || fake.got.Scope.Namespace != "app" || fake.got.CustomPrompt != "focus on app namespace" || len(fake.got.Conversation) != 1 {
+		t.Fatalf("client analysis request was not applied: %+v", fake.got)
+	}
+	if len(fake.got.Scope.SelectedRefs) != 1 || fake.got.Scope.SelectedRefs[0].UID != "" {
+		t.Fatalf("selected refs were not sanitized: %+v", fake.got.Scope.SelectedRefs)
 	}
 	var out AnalyzeResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
@@ -254,12 +261,17 @@ func TestHTTPAnalyzeUsesCurrentSnapshot(t *testing.T) {
 	}
 
 	cached := httptest.NewRecorder()
-	h.ServeHTTP(cached, httptest.NewRequest("POST", "/api/analyze", nil))
+	h.ServeHTTP(cached, httptest.NewRequest("POST", "/api/analyze", strings.NewReader(body)))
 	if cached.Code != http.StatusOK {
 		t.Fatalf("cached analyze = %d: %s", cached.Code, cached.Body.String())
 	}
 	if fake.calls != 1 {
 		t.Fatalf("analyzer calls = %d, want cache to avoid repeat provider call", fake.calls)
+	}
+	differentPrompt := httptest.NewRecorder()
+	h.ServeHTTP(differentPrompt, httptest.NewRequest("POST", "/api/analyze", strings.NewReader(`{"customPrompt":"different focus"}`)))
+	if differentPrompt.Code != http.StatusOK || fake.calls != 2 {
+		t.Fatalf("different prompt analyze = %d calls=%d", differentPrompt.Code, fake.calls)
 	}
 	got = readView(t, s)
 	var cacheHit bool

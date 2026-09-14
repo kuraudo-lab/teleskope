@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,6 +31,23 @@ func (f *fakeAnalyzer) Analyze(ctx context.Context, req analysis.Request) (analy
 		Summary:       "hub cluster analysis",
 		Sections:      []analysis.Section{{Title: "Inventory", Items: []analysis.Item{{Summary: "web workload", Severity: "info"}}}},
 	}, nil
+}
+
+type hubBlockingAnalyzer struct {
+	calls   atomic.Int32
+	started chan struct{}
+	release chan struct{}
+}
+
+func (b *hubBlockingAnalyzer) Analyze(ctx context.Context, req analysis.Request) (analysis.Result, error) {
+	b.calls.Add(1)
+	b.started <- struct{}{}
+	select {
+	case <-b.release:
+		return analysis.Result{UseCase: req.UseCase, Model: "blocking", Summary: "done"}, nil
+	case <-ctx.Done():
+		return analysis.Result{}, ctx.Err()
+	}
 }
 
 func TestDeriveClusterUsesEKSARNBeforeKubeContext(t *testing.T) {
@@ -209,18 +227,72 @@ func TestHTTPClusterScopedSnapshotAndAnalyze(t *testing.T) {
 	}
 
 	analysisResponse := httptest.NewRecorder()
-	handler.ServeHTTP(analysisResponse, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", nil))
+	body := `{"scope":{"pageId":"overview","namespace":"default","resourceType":"workloads"},"customPrompt":"focus prod-a"}`
+	handler.ServeHTTP(analysisResponse, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", strings.NewReader(body)))
 	if analysisResponse.Code != http.StatusOK || !strings.Contains(analysisResponse.Body.String(), "hub cluster analysis") {
 		t.Fatalf("analyze = %d: %s", analysisResponse.Code, analysisResponse.Body.String())
 	}
 	if analyzer.calls != 1 || analyzer.got.UseCase != analysis.UseCaseScan || analyzer.got.Snapshot == nil {
 		t.Fatalf("analyzer calls=%d request=%+v", analyzer.calls, analyzer.got)
 	}
+	if analyzer.got.Scope.Namespace != "default" || analyzer.got.CustomPrompt != "focus prod-a" {
+		t.Fatalf("analysis scope not applied: %+v", analyzer.got)
+	}
 
 	cached := httptest.NewRecorder()
-	handler.ServeHTTP(cached, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", nil))
+	handler.ServeHTTP(cached, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", strings.NewReader(body)))
 	if cached.Code != http.StatusOK || analyzer.calls != 1 {
 		t.Fatalf("cached analyze = %d calls=%d", cached.Code, analyzer.calls)
+	}
+}
+
+func TestHTTPAnalyzeAllowsDifferentClustersToRunConcurrently(t *testing.T) {
+	store := &Store{}
+	for _, id := range []string{"prod-a", "prod-b"} {
+		if accepted, _, err := store.Put(testEnvelope(id, 3)); err != nil || !accepted {
+			t.Fatalf("put %s accepted=%v err=%v", id, accepted, err)
+		}
+	}
+	analyzer := &hubBlockingAnalyzer{started: make(chan struct{}, 2), release: make(chan struct{})}
+	handler := store.Handler(HandlerOptions{Analyzer: analyzer})
+
+	doneA := make(chan int, 1)
+	go func() {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", nil))
+		doneA <- w.Code
+	}()
+	select {
+	case <-analyzer.started:
+	case <-time.After(time.Second):
+		t.Fatal("first cluster analysis did not start")
+	}
+
+	doneB := make(chan int, 1)
+	go func() {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-b", nil))
+		doneB <- w.Code
+	}()
+	select {
+	case <-analyzer.started:
+	case <-time.After(time.Second):
+		t.Fatal("second cluster analysis was blocked by unrelated cluster")
+	}
+
+	close(analyzer.release)
+	for name, done := range map[string]chan int{"prod-a": doneA, "prod-b": doneB} {
+		select {
+		case code := <-done:
+			if code != http.StatusOK {
+				t.Fatalf("%s analyze = %d", name, code)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("%s analyze did not finish", name)
+		}
+	}
+	if analyzer.calls.Load() != 2 {
+		t.Fatalf("calls = %d, want two independent cluster analyses", analyzer.calls.Load())
 	}
 }
 

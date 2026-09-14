@@ -27,7 +27,12 @@ func TestOpenAICompatibleAnalyzeCallsChatCompletions(t *testing.T) {
 	defer server.Close()
 
 	analyzer := NewOpenAICompatible(LLMConfig{BaseURL: server.URL + "/v1", APIKey: "secret", Model: "test-model", Timeout: time.Second})
-	result, err := analyzer.Analyze(context.Background(), Request{UseCase: UseCaseScan, Snapshot: &inventory.Snapshot{}})
+	result, err := analyzer.Analyze(context.Background(), Request{
+		UseCase:      UseCaseScan,
+		Snapshot:     &inventory.Snapshot{},
+		CustomPrompt: "focus on upgrade risk",
+		Conversation: []Message{{Role: "assistant", Content: "Previous answer"}, {Role: "system", Content: "invalid role becomes user"}},
+	})
 	if err != nil {
 		t.Fatalf("Analyze returned error: %v", err)
 	}
@@ -44,8 +49,14 @@ func TestOpenAICompatibleAnalyzeCallsChatCompletions(t *testing.T) {
 		t.Fatalf("response_format = %#v, want json_object", gotBody["response_format"])
 	}
 	messages := gotBody["messages"].([]any)
-	if len(messages) != 2 || !strings.Contains(messages[0].(map[string]any)["content"].(string), "strict JSON") {
+	if len(messages) != 5 || !strings.Contains(messages[0].(map[string]any)["content"].(string), "strict JSON") {
 		t.Fatalf("unexpected messages: %#v", gotBody["messages"])
+	}
+	if messages[1].(map[string]any)["role"] != "user" || !strings.Contains(messages[1].(map[string]any)["content"].(string), "focus on upgrade risk") {
+		t.Fatalf("custom prompt message = %#v", messages[1])
+	}
+	if messages[2].(map[string]any)["role"] != "assistant" || messages[3].(map[string]any)["role"] != "user" {
+		t.Fatalf("conversation messages = %#v", messages[2:4])
 	}
 	if result.Summary != "cluster looks understandable" || result.SchemaVersion != SchemaVersion || result.Model != "test-model" {
 		t.Fatalf("unexpected result: %+v", result)

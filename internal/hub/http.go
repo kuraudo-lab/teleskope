@@ -215,6 +215,13 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, id string,
 		http.NotFound(w, r)
 		return
 	}
+	clientReq, err := analysis.DecodeClientRequest(r.Body)
+	if err != nil {
+		s.logf(opts, "[analysis] hub cluster analysis failed id=%s cluster=%s phase=request_body error=%s", requestID, id, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	req := analysis.ApplyClientRequest(analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: env.Snapshot}, clientReq)
 	s.mu.Lock()
 	s.ensure()
 	cache := s.analysis
@@ -228,8 +235,8 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, id string,
 			s.logf(opts, "[analysis] %s", event.Message)
 		},
 	}.Run(r.Context(), analysis.Job{
-		Request:   analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: env.Snapshot},
-		Key:       analysis.CacheKey{Subject: id, Revision: env.Revision},
+		Request:   req,
+		Key:       analysis.NewCacheKey(id, env.Revision, "", req),
 		RequestID: requestID,
 		Operation: "hub cluster analysis",
 	})

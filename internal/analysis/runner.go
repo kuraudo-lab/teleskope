@@ -2,6 +2,9 @@ package analysis
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -20,14 +23,32 @@ type RunEvent struct {
 	Message string
 }
 
-// CacheKey identifies an analysis result for the current simple revision cache.
+// CacheKey identifies one analysis result.
 type CacheKey struct {
-	Subject  string
-	Revision uint64
+	Subject                 string
+	Revision                uint64
+	Model                   string
+	PromptFingerprint       string
+	ScopeFingerprint        string
+	ConversationFingerprint string
+	WebSearch               bool
 }
 
 func (k CacheKey) valid() bool {
-	return k.Subject != "" || k.Revision != 0
+	return k.Subject != "" || k.Revision != 0 || k.Model != "" || k.PromptFingerprint != "" || k.ScopeFingerprint != "" || k.ConversationFingerprint != "" || k.WebSearch
+}
+
+// NewCacheKey builds the cache identity for an analysis request.
+func NewCacheKey(subject string, revision uint64, model string, req Request) CacheKey {
+	return CacheKey{
+		Subject:                 subject,
+		Revision:                revision,
+		Model:                   model,
+		PromptFingerprint:       fingerprint(req.CustomPrompt),
+		ScopeFingerprint:        fingerprint(cleanScope(req.Scope)),
+		ConversationFingerprint: fingerprint(req.Conversation),
+		WebSearch:               req.WebSearch,
+	}
 }
 
 // RunCache stores completed results and rejects duplicate concurrent runs.
@@ -208,10 +229,11 @@ func keyLog(key CacheKey) string {
 	if key.Subject != "" {
 		subject = " subject=" + key.Subject
 	}
+	var revision string
 	if key.Revision != 0 {
-		return subject + fmt.Sprintf(" revision=%d", key.Revision)
+		revision = fmt.Sprintf(" revision=%d", key.Revision)
 	}
-	return subject
+	return subject + revision
 }
 
 func collectedAtLog(req Request) string {
@@ -219,4 +241,13 @@ func collectedAtLog(req Request) string {
 		return " collectedAt=" + req.Snapshot.CollectedAt.Format(time.RFC3339)
 	}
 	return ""
+}
+
+func fingerprint(value any) string {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])[:16]
 }

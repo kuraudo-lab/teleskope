@@ -25,6 +25,7 @@ const (
 type modelContext struct {
 	UseCase       UseCase         `json:"useCase"`
 	WebSearch     bool            `json:"webSearch,omitempty"`
+	Scope         Scope           `json:"scope,omitempty"`
 	Snapshot      *scanContext    `json:"snapshot,omitempty"`
 	Source        *scanContext    `json:"source,omitempty"`
 	Target        *scanContext    `json:"target,omitempty"`
@@ -127,20 +128,20 @@ func BuildContext(req Request) ([]byte, error) {
 }
 
 func buildContext(req Request) (modelContext, error) {
-	out := modelContext{UseCase: req.UseCase, WebSearch: req.WebSearch, GeneratedAt: time.Now().UTC()}
+	out := modelContext{UseCase: req.UseCase, WebSearch: req.WebSearch, Scope: cleanScope(req.Scope), GeneratedAt: time.Now().UTC()}
 	switch req.UseCase {
 	case UseCaseScan:
 		if req.Snapshot != nil {
-			scan := buildScanContext(req.Snapshot, &out.Omitted)
+			scan := buildScanContext(req.Snapshot, req.Scope, &out.Omitted)
 			out.Snapshot = &scan
 		}
 	case UseCaseCompare, UseCaseAdvisory:
 		if req.Source != nil {
-			source := buildScanContext(req.Source, &out.Omitted)
+			source := buildScanContext(req.Source, req.Scope, &out.Omitted)
 			out.Source = &source
 		}
 		if req.Target != nil {
-			target := buildScanContext(req.Target, &out.Omitted)
+			target := buildScanContext(req.Target, req.Scope, &out.Omitted)
 			out.Target = &target
 		}
 		if req.CompareReport != nil {
@@ -161,13 +162,13 @@ type ErrUnknownUseCase UseCase
 
 func (e ErrUnknownUseCase) Error() string { return "unknown analysis use case " + string(e) }
 
-func buildScanContext(s *inventory.Snapshot, omitted *[]string) scanContext {
+func buildScanContext(s *inventory.Snapshot, scope Scope, omitted *[]string) scanContext {
 	k := s.Kubernetes
 	links := buildWorkloadLinks(k)
 	workloads := append([]inventory.Workload(nil), k.Workloads...)
 	sort.Slice(workloads, func(i, j int) bool { return refKey(workloads[i].ObjectRef) < refKey(workloads[j].ObjectRef) })
 	var workloadItems []workloadContext
-	for _, w := range take(workloads, maxWorkloads, omitted, "workloads truncated") {
+	for _, w := range take(filterWorkloads(workloads, scope), maxWorkloads, omitted, "workloads truncated") {
 		key := namespacedKey(w.Namespace, w.Name)
 		workloadItems = append(workloadItems, workloadContext{
 			Ref: cleanRef(w.ObjectRef), Replicas: w.Replicas, ReadyReplicas: w.ReadyReplicas, AvailableReplicas: w.AvailableReplicas, Schedule: w.Schedule,
@@ -184,8 +185,90 @@ func buildScanContext(s *inventory.Snapshot, omitted *[]string) scanContext {
 	return scanContext{
 		SchemaVersion: s.SchemaVersion, CollectedAt: s.CollectedAt, Source: s.Source, AWS: s.AWS, EKSCluster: s.EKS.Cluster,
 		KubernetesContext: k.Context, KubernetesServer: k.Server, KubernetesVersion: k.Version.GitVersion, Advisor: analysis,
-		Workloads: workloadItems, RunningImages: takeSortedImages(k.RunningImages, omitted), CoreResourceSummary: summarizeCoreResources(k), Coverage: takeCoverage(k, s.Coverage, omitted),
+		Workloads: workloadItems, RunningImages: takeSortedImages(filterRunningImages(k.RunningImages, scope), omitted), CoreResourceSummary: summarizeCoreResources(k), Coverage: takeCoverage(k, s.Coverage, omitted),
 	}
+}
+
+func cleanScope(scope Scope) Scope {
+	scope.SelectedRefs = cleanRefs(scope.SelectedRefs)
+	return scope
+}
+
+func filterWorkloads(values []inventory.Workload, scope Scope) []inventory.Workload {
+	if isEmptyScope(scope) {
+		return values
+	}
+	selected := refSet(scope.SelectedRefs)
+	out := make([]inventory.Workload, 0, len(values))
+	for _, value := range values {
+		if scope.Namespace != "" && value.Namespace != scope.Namespace {
+			continue
+		}
+		if len(selected) > 0 && !selectedMatches(selected, value.ObjectRef) {
+			continue
+		}
+		if scope.ResourceType != "" && scope.ResourceType != "workload" && scope.ResourceType != "workloads" {
+			continue
+		}
+		out = append(out, value)
+	}
+	return out
+}
+
+func filterRunningImages(values []inventory.RunningImage, scope Scope) []inventory.RunningImage {
+	if isEmptyScope(scope) {
+		return values
+	}
+	out := make([]inventory.RunningImage, 0, len(values))
+	for _, value := range values {
+		if scope.Namespace != "" && !hasString(value.Namespaces, scope.Namespace) {
+			continue
+		}
+		if len(scope.SelectedRefs) > 0 && !runningImageMatches(value, scope.SelectedRefs) {
+			continue
+		}
+		if scope.ResourceType != "" && scope.ResourceType != "image" && scope.ResourceType != "images" && scope.ResourceType != "runningImages" {
+			continue
+		}
+		out = append(out, value)
+	}
+	return out
+}
+
+func isEmptyScope(scope Scope) bool {
+	return scope.PageID == "" && scope.Namespace == "" && scope.ResourceType == "" && len(scope.SelectedRefs) == 0
+}
+
+func refSet(refs []inventory.ObjectRef) map[string]struct{} {
+	out := map[string]struct{}{}
+	for _, ref := range refs {
+		out[refKey(cleanRef(ref))] = struct{}{}
+	}
+	return out
+}
+
+func selectedMatches(selected map[string]struct{}, ref inventory.ObjectRef) bool {
+	_, ok := selected[refKey(cleanRef(ref))]
+	return ok
+}
+
+func runningImageMatches(image inventory.RunningImage, refs []inventory.ObjectRef) bool {
+	selected := refSet(refs)
+	for _, ref := range image.Workloads {
+		if selectedMatches(selected, ref) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 type workloadLinks struct {

@@ -489,6 +489,13 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, opts Handl
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
+	clientReq, err := analysis.DecodeClientRequest(r.Body)
+	if err != nil {
+		s.addAnalysisEvent(opts, "error", "LLM analysis failed id=%s phase=request_body error=%s", requestID, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	req := analysis.ApplyClientRequest(analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: snapshot}, clientReq)
 	out, err := analysis.Runner{
 		Analyzer:   opts.Analyzer,
 		ConfigPath: opts.ConfigPath,
@@ -498,8 +505,8 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, opts Handl
 			s.addAnalysisEvent(opts, event.Level, "%s", event.Message)
 		},
 	}.Run(r.Context(), analysis.Job{
-		Request:   analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: snapshot},
-		Key:       analysis.CacheKey{Subject: "live", Revision: revision},
+		Request:   req,
+		Key:       analysis.NewCacheKey("live", revision, "", req),
 		RequestID: requestID,
 		Operation: "LLM analysis",
 	})

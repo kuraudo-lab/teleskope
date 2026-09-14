@@ -325,8 +325,8 @@ function renderTopology() {
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
 let selectedDetail = null;
-function showText(json) { const obj = JSON.parse(json); selectedDetail = obj; byId('drawerTitle').textContent = obj.name || obj.image || obj.kind || 'Details'; byId('drawerBody').textContent = JSON.stringify(obj, null, 2); byId('drawer').classList.add('open'); }
-function closeDrawer() { selectedDetail = null; byId('drawer').classList.remove('open'); }
+function showText(json) { const obj = JSON.parse(json); selectedDetail = obj; byId('drawerTitle').textContent = obj.name || obj.image || obj.kind || 'Details'; byId('drawerBody').textContent = JSON.stringify(obj, null, 2); byId('drawer').classList.add('open'); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); }
+function closeDrawer() { selectedDetail = null; byId('drawer').classList.remove('open'); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); }
 let renderedAdvisor = "";
 function renderAdvisor() {
   const encoded = JSON.stringify(advisorReport);
@@ -363,8 +363,8 @@ byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !b
 byId('topology').addEventListener('pointermove', e => { if (!topologyDrag.active) return; const dx = e.clientX - topologyDrag.startX, dy = e.clientY - topologyDrag.startY; topologyDrag.moved = topologyDrag.moved || Math.abs(dx) + Math.abs(dy) > 3; topologyView.x = topologyDrag.viewX + dx; topologyView.y = topologyDrag.viewY + dy; applyTopologyTransform(); });
 byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = topologyDrag.moved; if (!topologyDrag.moved && topologyDrag.detail) showText(topologyDrag.detail); topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointercancel', e => { topologyDrag.active = false; byId('topology').classList.remove('panning'); if (byId('topology').hasPointerCapture(e.pointerId)) byId('topology').releasePointerCapture(e.pointerId); });
-byId('focus').addEventListener('change', e => { nsFilter = e.target.value; renderAll(); });
-byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; renderAll(); });
+byId('focus').addEventListener('change', e => { nsFilter = e.target.value; renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
+byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
 byId('exportReport').addEventListener('click', toggleExportMenu);
 byId('exportMenu').addEventListener('click', e => { const item = e.target.closest('[data-export-format]'); if (!item) return; closeExportMenu(); exportReport(item.dataset.exportFormat).catch(error => alert(error.message)); });
 initThemeToggle(); renderNav(); renderHeader(); renderAll();

@@ -83,3 +83,46 @@ func TestBuildContextForCompareIncludesDeterministicReport(t *testing.T) {
 		t.Fatalf("context did not include compareReport: %s", data)
 	}
 }
+
+func TestBuildContextIncludesScopeAndFiltersScanContext(t *testing.T) {
+	snapshot := &inventory.Snapshot{
+		Kubernetes: inventory.Kubernetes{
+			Workloads: []inventory.Workload{
+				{ObjectRef: inventory.ObjectRef{Kind: "Deployment", Namespace: "payments", Name: "api"}},
+				{ObjectRef: inventory.ObjectRef{Kind: "Deployment", Namespace: "platform", Name: "worker"}},
+			},
+			RunningImages: []inventory.RunningImage{
+				{Image: "repo/api:v1", Namespaces: []string{"payments"}, Workloads: []inventory.ObjectRef{{Kind: "Deployment", Namespace: "payments", Name: "api"}}},
+				{Image: "repo/worker:v1", Namespaces: []string{"platform"}, Workloads: []inventory.ObjectRef{{Kind: "Deployment", Namespace: "platform", Name: "worker"}}},
+			},
+		},
+	}
+	data, err := BuildContext(Request{
+		UseCase:  UseCaseScan,
+		Snapshot: snapshot,
+		Scope: Scope{
+			PageID:    "overview",
+			Namespace: "payments",
+			SelectedRefs: []inventory.ObjectRef{{
+				Kind:      "Deployment",
+				Namespace: "payments",
+				Name:      "api",
+				UID:       "not-needed",
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("BuildContext returned error: %v", err)
+	}
+	text := string(data)
+	for _, want := range []string{`"namespace": "payments"`, `"pageId": "overview"`, "repo/api:v1", `"name": "api"`} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("context missing %q:\n%s", want, text)
+		}
+	}
+	for _, unwanted := range []string{"platform", "worker", "not-needed"} {
+		if strings.Contains(text, unwanted) {
+			t.Fatalf("context included out-of-scope detail %q:\n%s", unwanted, text)
+		}
+	}
+}

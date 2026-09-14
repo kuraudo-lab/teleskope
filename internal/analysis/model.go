@@ -30,6 +30,21 @@ type Request struct {
 	Target        *inventory.Snapshot `json:"target,omitempty"`
 	CompareReport *compare.Report     `json:"compareReport,omitempty"`
 	WebSearch     bool                `json:"webSearch,omitempty"`
+	Scope         Scope               `json:"scope,omitempty"`
+	CustomPrompt  string              `json:"customPrompt,omitempty"`
+	Conversation  []Message           `json:"conversation,omitempty"`
+}
+
+type Scope struct {
+	PageID       string                `json:"pageId,omitempty"`
+	Namespace    string                `json:"namespace,omitempty"`
+	ResourceType string                `json:"resourceType,omitempty"`
+	SelectedRefs []inventory.ObjectRef `json:"selectedRefs,omitempty"`
+}
+
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
 type Result struct {

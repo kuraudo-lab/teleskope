@@ -38,11 +38,8 @@ func (a *OpenAICompatible) Analyze(ctx context.Context, req Request) (Result, er
 		return Result{}, err
 	}
 	payload := chatCompletionRequest{
-		Model: a.Model,
-		Messages: []chatMessage{
-			{Role: "system", Content: prompt},
-			{Role: "user", Content: string(modelInput)},
-		},
+		Model:       a.Model,
+		Messages:    messagesFor(req, prompt, string(modelInput)),
 		Temperature: ptrFloat64(0.2),
 	}
 	if a.JSONMode {
@@ -125,6 +122,26 @@ type chatCompletionResponse struct {
 }
 
 func ptrFloat64(v float64) *float64 { return &v }
+
+func messagesFor(req Request, systemPrompt, modelInput string) []chatMessage {
+	messages := []chatMessage{{Role: "system", Content: systemPrompt}}
+	if strings.TrimSpace(req.CustomPrompt) != "" {
+		messages = append(messages, chatMessage{Role: "user", Content: "User analysis instructions:\n" + strings.TrimSpace(req.CustomPrompt)})
+	}
+	for _, message := range req.Conversation {
+		role := strings.TrimSpace(message.Role)
+		if role != "user" && role != "assistant" {
+			role = "user"
+		}
+		content := strings.TrimSpace(message.Content)
+		if content == "" {
+			continue
+		}
+		messages = append(messages, chatMessage{Role: role, Content: content})
+	}
+	messages = append(messages, chatMessage{Role: "user", Content: modelInput})
+	return messages
+}
 
 func textResult(content string) Result {
 	content = strings.TrimSpace(stripJSONFence(content))
