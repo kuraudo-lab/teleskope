@@ -64,3 +64,7 @@ merging can be introduced with explicit dependency rules later.
 `internal/report` shares its embedded page between offline and live rendering.
 The live entry adds a same-origin polling script and collection status panel.
 No frontend build or separate server is required.
+
+Event-based Kubernetes updates should be added behind a separate watch runtime
+module and then routed through the live publication path; see
+[Event-based Kubernetes update design](event-based-kubernetes-updates.md).
