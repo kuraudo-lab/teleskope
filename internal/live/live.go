@@ -26,6 +26,7 @@ type Source struct {
 	Interval, Timeout time.Duration
 	Collect           func(context.Context) (*inventory.Snapshot, error)
 	Log               func(format string, args ...any)
+	PublicationOnly   bool
 }
 
 // Status describes the latest attempt independently of the retained data.
@@ -118,7 +119,7 @@ func New(sources []Source) (*Store, error) {
 		if _, ok := s.entries[source.Name]; ok {
 			return nil, fmt.Errorf("duplicate source %q", source.Name)
 		}
-		if source.Interval <= 0 || source.Timeout <= 0 || source.Collect == nil {
+		if !source.PublicationOnly && (source.Interval <= 0 || source.Timeout <= 0 || source.Collect == nil) {
 			return nil, fmt.Errorf("source %s requires positive interval, timeout and collector", source.Name)
 		}
 		s.order = append(s.order, source.Name)
@@ -133,6 +134,9 @@ func New(sources []Source) (*Store, error) {
 func (s *Store) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	for _, source := range s.sources {
+		if source.PublicationOnly {
+			continue
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

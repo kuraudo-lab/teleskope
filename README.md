@@ -180,7 +180,9 @@ Run a local web server with the same embedded UI as the offline report:
 ```sh
 teleskope serve k8s --kube-context prod
 teleskope serve k8s --kubeconfig ./config --interval 5m --timeout 5m
+teleskope serve k8s --kube-context prod --watch --watch-debounce 750ms
 teleskope serve eks --cluster my-cluster --kube-context prod --aws-interval 15m
+teleskope serve eks --cluster my-cluster --kube-context prod --watch
 teleskope serve eks --cluster my-cluster --skip-kubernetes
 ```
 
@@ -211,14 +213,22 @@ for that source** is retained and marked stale. A successful empty list removes
 old objects. AWS and Kubernetes publication times are independent; the combined
 snapshot is not a transactional cluster-wide observation.
 
+Add `--watch` to use Kubernetes list/watch updates for core live resources
+instead of Kubernetes polling. The first watch slice covers namespaces, nodes,
+service accounts, pods, workloads, services, endpoint slices, ingresses, storage
+objects, and common policy objects. EKS AWS-side inventory remains polling-based
+and independent. Watch updates are debounced with `--watch-debounce`; each usable
+event publication advances the same live revision stream and hub remote-write
+path as polling. Watch failures mark Kubernetes stale or error without clearing
+the last retained Kubernetes evidence.
+
 `GET /api/snapshot` returns an envelope with `revision`, `snapshot` (null until
 the first usable result), and per-source `sources` statuses. The revision changes
 when source data is published; ETags also change for status-only updates. HTTP
 requests never trigger scans. Live state is memory-only and is rebuilt on
 restart. Existing `scan` commands and offline artifacts remain available.
 
-This first live version supports polling. Watch/informer mode and packaged
-in-cluster deployment are subsequent steps.
+Packaged in-cluster deployment is a subsequent step.
 
 ## Multi-cluster hub
 

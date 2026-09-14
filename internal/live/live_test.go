@@ -217,6 +217,22 @@ func TestPublishHookSeesMonotonicMixedRevisions(t *testing.T) {
 	}
 }
 
+func TestPublicationOnlySourceCanBeUpdatedWithoutPolling(t *testing.T) {
+	s, err := New([]Source{{Name: "kubernetes", PublicationOnly: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s.Run(ctx)
+
+	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Snapshot: podSnapshot(1, "complete")})
+	got := readView(t, s)
+	if got.Sources["kubernetes"].Mode != SourceModeWatch || got.Snapshot.Source.Mode != "live/watch" || got.Revision != 1 {
+		t.Fatalf("publication-only source was not published as watch data: %+v", got)
+	}
+}
+
 func TestPartialSnapshotWithErrorIsPublished(t *testing.T) {
 	s := newTestStore(t, "kubernetes")
 

@@ -41,17 +41,21 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 	var hubToken string
 	var clusterID string
 	var clusterName string
-	var interval, awsInterval, timeout time.Duration
+	var interval, awsInterval, timeout, watchDebounce time.Duration
 	var skipKubernetes bool
+	var watchKubernetes bool
 	cmd := &cobra.Command{
 		Use: target, Short: "Serve live " + target + " inventory",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if interval <= 0 || awsInterval <= 0 || timeout <= 0 {
-				return fmt.Errorf("intervals and timeout must be positive")
+			if interval <= 0 || awsInterval <= 0 || timeout <= 0 || watchDebounce <= 0 {
+				return fmt.Errorf("intervals, timeout, and watch debounce must be positive")
 			}
 			if target == "eks" && awsOpts.ClusterName == "" {
 				return fmt.Errorf("--cluster is required")
+			}
+			if skipKubernetes && watchKubernetes {
+				return fmt.Errorf("--watch requires Kubernetes collection")
 			}
 			awsOpts.Profile, _ = cmd.Root().PersistentFlags().GetString("profile")
 			awsOpts.Region, _ = cmd.Root().PersistentFlags().GetString("region")
@@ -76,25 +80,47 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 			}
 			var sources []live.Source
 			if !skipKubernetes {
-				var collector *k8s.Collector
-				sources = append(sources, live.Source{Name: "kubernetes", Interval: interval, Timeout: timeout,
-					Collect: func(ctx context.Context) (*inventory.Snapshot, error) {
-						var err error
-						if collector == nil {
-							collector, err = k8s.NewCollector(kubeOpts)
+				if watchKubernetes {
+					sources = append(sources, live.Source{Name: "kubernetes", PublicationOnly: true, Log: log})
+				} else {
+					var collector *k8s.Collector
+					sources = append(sources, live.Source{Name: "kubernetes", Interval: interval, Timeout: timeout,
+						Collect: func(ctx context.Context) (*inventory.Snapshot, error) {
+							var err error
+							if collector == nil {
+								collector, err = k8s.NewCollector(kubeOpts)
+							}
+							if err != nil {
+								return nil, err
+							}
+							data, coverage, err := collector.Collect(ctx)
+							snapshot := liveKubernetesSnapshot(data, coverage)
+							if err != nil && !hasLiveKubernetesData(data, coverage) {
+								return nil, err
+							}
+							return snapshot, err
+						},
+						Log: log,
+					})
+				}
+			}
+			var watcher k8s.WatchRuntime
+			if watchKubernetes {
+				var err error
+				watcher, err = k8s.NewWatchRuntime(k8s.WatchOptions{
+					Kubeconfig: kubeOpts.Kubeconfig,
+					Context:    kubeOpts.Context,
+					Debounce:   watchDebounce,
+					Progress: func(format string, args ...any) {
+						log("[kubernetes] "+format, args...)
+						if store != nil {
+							store.AddEvent("kubernetes", "debug", format, args...)
 						}
-						if err != nil {
-							return nil, err
-						}
-						data, coverage, err := collector.Collect(ctx)
-						snapshot := liveKubernetesSnapshot(data, coverage)
-						if err != nil && !hasLiveKubernetesData(data, coverage) {
-							return nil, err
-						}
-						return snapshot, err
 					},
-					Log: log,
 				})
+				if err != nil {
+					return err
+				}
 			}
 			if target == "eks" {
 				var collector *awseks.Collector
@@ -136,8 +162,8 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 				return fmt.Errorf("listen: %w", err)
 			}
 			defer listener.Close()
-			log("live serve starting target=%s listen=%s interval=%s aws_interval=%s timeout=%s sources=%s", target, listener.Addr(), interval, awsInterval, timeout, sourceNames(sources))
-			store.AddEvent("serve", "info", "starting target=%s listen=%s interval=%s aws_interval=%s timeout=%s sources=%s", target, listener.Addr(), interval, awsInterval, timeout, sourceNames(sources))
+			log("live serve starting target=%s listen=%s interval=%s aws_interval=%s timeout=%s watch=%t watch_debounce=%s sources=%s", target, listener.Addr(), interval, awsInterval, timeout, watchKubernetes, watchDebounce, sourceNames(sources))
+			store.AddEvent("serve", "info", "starting target=%s listen=%s interval=%s aws_interval=%s timeout=%s watch=%t watch_debounce=%s sources=%s", target, listener.Addr(), interval, awsInterval, timeout, watchKubernetes, watchDebounce, sourceNames(sources))
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			ctx, cancel := context.WithCancel(ctx)
@@ -163,8 +189,22 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 				log("hub remote-write enabled url=%s cluster_id=%s cluster_name=%s", hubURL, firstNonEmpty(clusterID, "auto"), firstNonEmpty(name, "auto"))
 				store.AddEvent("hub", "info", "remote-write enabled url=%s cluster_id=%s cluster_name=%s", hubURL, firstNonEmpty(clusterID, "auto"), firstNonEmpty(name, "auto"))
 			}
+			var workers sync.WaitGroup
+			workers.Go(func() { store.Run(ctx) })
+			if watcher != nil {
+				workers.Go(func() {
+					err := watcher.Run(ctx, func(update k8s.WatchUpdate) {
+						status := publishWatchUpdate(store, update)
+						logWatchPublication(log, status)
+					})
+					if err != nil && ctx.Err() == nil {
+						status := store.PublishSource(live.SourcePublication{Source: "kubernetes", Mode: live.SourceModeWatch, Err: err})
+						logWatchPublication(log, status)
+					}
+				})
+			}
 			done := make(chan struct{})
-			go func() { defer close(done); store.Run(ctx) }()
+			go func() { defer close(done); workers.Wait() }()
 			server := &http.Server{
 				Handler:           store.HandlerWithOptions(live.HandlerOptions{Log: log}),
 				ReadHeaderTimeout: 5 * time.Second,
@@ -201,6 +241,8 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&clusterName, "cluster-name", "", "display cluster name for hub remote write")
 	cmd.Flags().DurationVar(&interval, "interval", defaultKubernetesServeInterval, "delay between completed Kubernetes scans (plus up to 10% jitter)")
 	cmd.Flags().DurationVar(&timeout, "timeout", defaultCollectionTimeout, "timeout for each collection attempt")
+	cmd.Flags().BoolVar(&watchKubernetes, "watch", false, "use Kubernetes list/watch updates in live serve")
+	cmd.Flags().DurationVar(&watchDebounce, "watch-debounce", 750*time.Millisecond, "debounce delay before publishing Kubernetes watch changes")
 	cmd.Flags().StringVar(&kubeOpts.Kubeconfig, "kubeconfig", "", "path to kubeconfig")
 	cmd.Flags().StringVar(&kubeOpts.Context, "kube-context", "", "kubeconfig context")
 	awsInterval = 15 * time.Minute
@@ -271,6 +313,39 @@ func hasLiveKubernetesData(data inventory.Kubernetes, coverage []inventory.Cover
 		len(data.Policies.NetworkPolicyDetails) > 0 ||
 		len(data.Policies.ResourceQuotaDetails) > 0 ||
 		len(data.Policies.LimitRangeDetails) > 0
+}
+
+func publishWatchUpdate(store *live.Store, update k8s.WatchUpdate) live.Status {
+	status := store.PublishSource(live.SourcePublication{
+		Source:   "kubernetes",
+		Mode:     live.SourceModeWatch,
+		Snapshot: update.Snapshot,
+		Err:      update.Health.Err,
+	})
+	switch status.State {
+	case "ready":
+		store.AddEvent("kubernetes", "info", "watch published state=ready resources=%d", len(status.Coverage))
+	case "partial":
+		store.AddEvent("kubernetes", "warn", "watch published state=partial resources=%d error=%s", len(status.Coverage), status.Error)
+	case "stale":
+		store.AddEvent("kubernetes", "warn", "watch retained previous data state=stale error=%s", status.Error)
+	default:
+		store.AddEvent("kubernetes", "error", "watch failed state=%s error=%s", status.State, status.Error)
+	}
+	return status
+}
+
+func logWatchPublication(log func(format string, args ...any), status live.Status) {
+	switch status.State {
+	case "ready":
+		log("[kubernetes] watch published state=ready resources=%d", len(status.Coverage))
+	case "partial":
+		log("[kubernetes] watch published state=partial resources=%d error=%s", len(status.Coverage), status.Error)
+	case "stale":
+		log("[kubernetes] watch retained previous data state=stale error=%s", status.Error)
+	default:
+		log("[kubernetes] watch failed state=%s error=%s", status.State, status.Error)
+	}
 }
 
 func sourceNames(sources []live.Source) string {

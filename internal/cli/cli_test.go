@@ -154,8 +154,10 @@ func TestServeValidation(t *testing.T) {
 		{"serve", "k8s", "--interval", "0s"},
 		{"serve", "k8s", "--timeout", "-1s"},
 		{"serve", "eks", "--cluster", "demo", "--aws-interval", "0s"},
+		{"serve", "eks", "--cluster", "demo", "--skip-kubernetes", "--watch"},
 		{"serve", "k8s", "unexpected"},
 		{"serve", "k8s", "--listen", "invalid-address"},
+		{"serve", "k8s", "--watch-debounce", "0s"},
 		{"serve", "k8s", "--hub-url", "ftp://hub.example"},
 		{"serve-hub", "--listen", "invalid-address"},
 	} {
@@ -187,6 +189,13 @@ func TestCollectionDefaults(t *testing.T) {
 	}
 	if interval != 5*time.Minute {
 		t.Fatalf("serve k8s interval = %s, want 5m", interval)
+	}
+	debounce, err := newServeTarget("k8s", &stdout, &stderr).Flags().GetDuration("watch-debounce")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if debounce != 750*time.Millisecond {
+		t.Fatalf("serve k8s watch debounce = %s, want 750ms", debounce)
 	}
 }
 
