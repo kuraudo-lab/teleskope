@@ -162,7 +162,11 @@ func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 
 	drilldown := httptest.NewRecorder()
 	handler.ServeHTTP(drilldown, httptest.NewRequest(http.MethodGet, "/cluster?id=prod-a", nil))
-	if drilldown.Code != http.StatusOK || !strings.Contains(drilldown.Body.String(), "Analyze with AI") || !strings.Contains(drilldown.Body.String(), "/api/cluster/analyze?id=prod-a") {
+	if drilldown.Code != http.StatusOK ||
+		!strings.Contains(drilldown.Body.String(), "Analyze with AI") ||
+		!strings.Contains(drilldown.Body.String(), `<script id="boot-config" type="application/json">`) ||
+		!strings.Contains(drilldown.Body.String(), `"/api/cluster/snapshot?id=prod-a"`) ||
+		!strings.Contains(drilldown.Body.String(), `"/api/cluster/analyze?id=prod-a"`) {
 		t.Fatalf("drilldown = %d: %s", drilldown.Code, drilldown.Body.String())
 	}
 }

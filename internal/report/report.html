@@ -158,10 +158,12 @@
   </main>
 </div>
 <div class="drawer" id="drawer"><header><h3 id="drawerTitle">Details</h3><button type="button" onclick="closeDrawer()">Close</button></header><pre id="drawerBody"></pre></div>
+<script id="boot-config" type="application/json">__TELESKOPE_BOOT_CONFIG__</script>
 <script id="advisor-data" type="application/json">__TELESKOPE_ADVISOR_JSON__</script>
 <script id="snapshot-data" type="application/json">__TELESKOPE_SNAPSHOT_JSON__</script>
 <script id="markdown-data" type="text/plain">__TELESKOPE_MARKDOWN__</script>
 <script>
+let bootConfig = JSON.parse(document.getElementById('boot-config').textContent);
 let advisorReport = JSON.parse(document.getElementById("advisor-data").textContent);
 let snapshot = JSON.parse(document.getElementById('snapshot-data').textContent);
 let reportMarkdown = document.getElementById('markdown-data').textContent;
@@ -197,7 +199,7 @@ const exportExt = format => format === 'markdown' ? 'md' : 'json';
 const exportType = format => format === 'markdown' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
 function exportBaseName() { const target = (cluster.name || k.context || 'teleskope-scan').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'teleskope-scan'; const collected = snapshot.collectedAt ? String(snapshot.collectedAt).replace(/[:.]/g, '-').replace(/z$/i, 'Z') : 'latest'; return `${target}-${collected}`; }
 function downloadText(name, content, type) { const blob = new Blob([content], {type}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-async function exportReport(format) { const ext = exportExt(format); const filename = `${exportBaseName()}.${ext}`; let content; if (document.body.dataset.live === 'true') { const path = format === 'markdown' ? '/api/export/summary.md' : '/api/export/snapshot.json'; const response = await fetch(path, {cache:'no-store'}); if (!response.ok) throw new Error(`export failed: HTTP ${response.status}`); content = await response.text(); } else { content = format === 'markdown' ? reportMarkdown : JSON.stringify(snapshot, null, 2) + '\n'; } downloadText(filename, content, exportType(format)); }
+async function exportReport(format) { const ext = exportExt(format); const filename = `${exportBaseName()}.${ext}`; let content; if (document.body.dataset.live === 'true') { const path = format === 'markdown' ? bootConfig.endpoints?.exportSummary : bootConfig.endpoints?.exportSnapshot; const response = await fetch(path, {cache:'no-store'}); if (!response.ok) throw new Error(`export failed: HTTP ${response.status}`); content = await response.text(); } else { content = format === 'markdown' ? reportMarkdown : JSON.stringify(snapshot, null, 2) + '\n'; } downloadText(filename, content, exportType(format)); }
 function closeExportMenu() { byId('exportMenu').classList.remove('open'); byId('exportReport').setAttribute('aria-expanded', 'false'); }
 function toggleExportMenu() { const menu = byId('exportMenu'); const open = !menu.classList.contains('open'); menu.classList.toggle('open', open); byId('exportReport').setAttribute('aria-expanded', String(open)); }
 function nodeTotals() { const out = {capacityCpu:0, allocatableCpu:0, capacityMemory:0, allocatableMemory:0, capacityPods:0, allocatablePods:0}; arr(k.nodes).forEach(n => { out.capacityCpu += quantityValue(n.capacity?.cpu, 'cpu'); out.allocatableCpu += quantityValue(n.allocatable?.cpu, 'cpu'); out.capacityMemory += quantityValue(n.capacity?.memory, 'memory'); out.allocatableMemory += quantityValue(n.allocatable?.memory, 'memory'); out.capacityPods += quantityValue(n.capacity?.pods, 'count'); out.allocatablePods += quantityValue(n.allocatable?.pods, 'count'); }); return out; }

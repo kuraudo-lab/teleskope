@@ -51,7 +51,7 @@ analyzeButton.onclick = async () => {
   setAnalysisMessage('Requesting AI analysis for the current live snapshot…');
   selectSection('advisor');
   try {
-    const result = await fetch('/api/analyze', {method:'POST', cache:'no-store', headers:{'Content-Type':'application/json'}, body:JSON.stringify(analysisRequest)});
+    const result = await fetch(bootConfig.endpoints?.analyze, {method:'POST', cache:'no-store', headers:{'Content-Type':'application/json'}, body:JSON.stringify(analysisRequest)});
     if (!result.ok) throw new Error((await result.text()).trim() || ('HTTP ' + result.status));
     const data = await result.json();
     llmAnalysis = data.analysis || null;
@@ -148,7 +148,7 @@ async function refreshLivePage() {
   try {
     // Avoid replacing SVG nodes while a pointer drag is in progress.
     if (!updatesPaused && !topologyDrag.active) {
-      const result = await fetch('/api/snapshot', {
+      const result = await fetch(bootConfig.endpoints?.snapshot, {
         cache: 'no-store',
         headers: liveETag ? {'If-None-Match': liveETag} : {},
         signal: AbortSignal.timeout(10000)

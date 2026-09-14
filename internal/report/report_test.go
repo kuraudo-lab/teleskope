@@ -219,8 +219,10 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"<title>Teleskope cluster report</title>",
 		`rel="icon" type="image/png"`,
 		`aria-hidden="true"><img src="data:image/png;base64,`,
+		`<script id="boot-config" type="application/json">`,
 		`<script id="snapshot-data" type="application/json">`,
 		`<script id="markdown-data" type="text/plain">`,
+		`"mode":"offline"`,
 		`"schemaVersion": "teleskope.io/snapshot/v1alpha1"`,
 		"Target: `Prod Cluster`",
 		"Running images",
@@ -269,8 +271,8 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function downloadText",
 		"async function exportReport",
 		"function toggleExportMenu",
-		"/api/export/snapshot.json",
-		"/api/export/summary.md",
+		"bootConfig.endpoints?.exportSnapshot",
+		"bootConfig.endpoints?.exportSummary",
 		`id="themeToggle"`,
 		`prefers-color-scheme: dark`,
 		`teleskope.theme`,
@@ -307,6 +309,7 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 	html := LiveHTML()
 	for _, want := range []string{
 		`<body data-live="true" class="live-loading">`,
+		`<script id="boot-config" type="application/json">`,
 		"Recent events",
 		"live-event-list",
 		"live-progress",
@@ -322,6 +325,10 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		"Advisory",
 		"AI analysis",
 		"/api/analyze",
+		"bootConfig.endpoints?.analyze",
+		"bootConfig.endpoints?.snapshot",
+		"bootConfig.endpoints?.exportSummary",
+		"bootConfig.endpoints?.exportSnapshot",
 		"function renderAnalysis",
 		"analysisInFlight",
 		"analysisKey === lastAnalyzedRequestKey",
@@ -343,6 +350,71 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		if strings.Contains(html, old) {
 			t.Fatalf("live HTML should not include top-level live status artifact %q", old)
 		}
+	}
+}
+
+func TestLiveHTMLWithOptionsRendersEndpointConfig(t *testing.T) {
+	html := LiveHTMLWithOptions(LiveHTMLOptions{
+		SnapshotPath:       "/custom/snapshot?id=prod-a",
+		AnalyzePath:        "/custom/analyze?id=prod-a",
+		ExportSnapshotPath: "/custom/export/snapshot.json?id=prod-a",
+		ExportSummaryPath:  "/custom/export/summary.md?id=prod-a",
+	})
+	for _, want := range []string{
+		`"snapshot":"/custom/snapshot?id=prod-a"`,
+		`"analyze":"/custom/analyze?id=prod-a"`,
+		`"exportSnapshot":"/custom/export/snapshot.json?id=prod-a"`,
+		`"exportSummary":"/custom/export/summary.md?id=prod-a"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("live endpoint config missing %q:\n%s", want, html)
+		}
+	}
+	for _, old := range []string{
+		`fetch('/custom/snapshot?id=prod-a'`,
+		`fetch('/custom/analyze?id=prod-a'`,
+	} {
+		if strings.Contains(html, old) {
+			t.Fatalf("endpoint was inlined into script instead of boot config: %q", old)
+		}
+	}
+}
+
+func TestRenderUIEscapesScriptsAndScriptData(t *testing.T) {
+	snapshot := &inventory.Snapshot{}
+	html, err := RenderUI(UIRenderOptions{
+		Mode:     UIModeOffline,
+		Snapshot: snapshot,
+		Target:   `</script><script>alert(1)</script>`,
+		Scripts:  []string{`console.log("</script>")`},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(html, `</script><script>alert(1)</script>`) || strings.Contains(html, `console.log("</script>")`) {
+		t.Fatalf("script content was not escaped:\n%s", html)
+	}
+	for _, want := range []string{`<\/script><script>alert(1)<\/script>`, `console.log("<\/script>")`} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("escaped script content missing %q:\n%s", want, html)
+		}
+	}
+}
+
+func TestRenderUILiveBodyMarkerComesFromMode(t *testing.T) {
+	livePage, err := RenderUI(UIRenderOptions{Mode: UIModeLive})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(livePage, `<body data-live="true" class="live-loading">`) {
+		t.Fatalf("live page missing body marker")
+	}
+	offlinePage, err := RenderUI(UIRenderOptions{Mode: UIModeOffline, Snapshot: &inventory.Snapshot{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(offlinePage, `data-live="true"`) || !strings.Contains(offlinePage, "<body>") {
+		t.Fatalf("offline page should not include live body marker")
 	}
 }
 
