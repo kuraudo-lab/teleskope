@@ -15,7 +15,11 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -56,15 +60,17 @@ type WatchRuntime interface {
 }
 
 type kubernetesWatchRuntime struct {
-	opts        WatchOptions
-	client      kubernetes.Interface
-	contextName string
-	server      string
+	opts             WatchOptions
+	client           kubernetes.Interface
+	dynamic          dynamic.Interface
+	contextName      string
+	contextNamespace string
+	server           string
 }
 
 // NewWatchRuntime initializes a watch runtime without starting informers.
 func NewWatchRuntime(opts WatchOptions) (WatchRuntime, error) {
-	config, contextName, _, server, err := loadRESTConfig(Options{
+	config, contextName, contextNamespace, server, err := loadRESTConfig(Options{
 		Kubeconfig: opts.Kubeconfig,
 		Context:    opts.Context,
 		Progress:   opts.Progress,
@@ -76,20 +82,36 @@ func NewWatchRuntime(opts WatchOptions) (WatchRuntime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect Kubernetes cluster: create client: %w", err)
 	}
-	return NewWatchRuntimeWithClient(client, opts, contextName, server), nil
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("connect Kubernetes cluster: create dynamic client: %w", err)
+	}
+	return NewWatchRuntimeWithClients(client, dynamicClient, opts, contextName, contextNamespace, server), nil
 }
 
 // NewWatchRuntimeWithClient creates a watch runtime around an existing client.
 func NewWatchRuntimeWithClient(client kubernetes.Interface, opts WatchOptions, contextName, server string) WatchRuntime {
+	return NewWatchRuntimeWithClients(client, nil, opts, contextName, "", server)
+}
+
+// NewWatchRuntimeWithClients creates a watch runtime around existing typed and dynamic clients.
+func NewWatchRuntimeWithClients(client kubernetes.Interface, dynamicClient dynamic.Interface, opts WatchOptions, contextName, contextNamespace, server string) WatchRuntime {
 	if opts.Debounce <= 0 {
 		opts.Debounce = defaultWatchDebounce
 	}
-	return &kubernetesWatchRuntime{opts: opts, client: client, contextName: contextName, server: server}
+	return &kubernetesWatchRuntime{opts: opts, client: client, dynamic: dynamicClient, contextName: contextName, contextNamespace: contextNamespace, server: server}
 }
 
 func (r *kubernetesWatchRuntime) Run(ctx context.Context, publish func(WatchUpdate)) error {
 	factory := informers.NewSharedInformerFactoryWithOptions(r.client, 0)
-	informers := r.coreInformers(factory)
+	coreInformers := r.coreInformers(factory)
+	informers := append([]watchedInformer(nil), coreInformers...)
+	var dynamicFactory dynamicinformer.DynamicSharedInformerFactory
+	if r.dynamic != nil {
+		dynamicFactory = dynamicinformer.NewFilteredDynamicSharedInformerFactory(r.dynamic, 0, metav1.NamespaceAll, nil)
+		apiResources, _, _ := r.discoverAPIResources(ctx)
+		informers = append(informers, r.dynamicInformers(dynamicFactory, apiResources)...)
+	}
 	health := &watchHealthState{state: "loading"}
 	dirty := make(chan struct{}, 1)
 	var synced bool
@@ -136,8 +158,11 @@ func (r *kubernetesWatchRuntime) Run(ctx context.Context, publish func(WatchUpda
 	}
 
 	factory.Start(ctx.Done())
+	if dynamicFactory != nil {
+		dynamicFactory.Start(ctx.Done())
+	}
 	progress(r.opts.Progress, "waiting for Kubernetes watch caches to sync resources=%d", len(informers))
-	if !cache.WaitForCacheSync(ctx.Done(), informerSyncs(informers)...) {
+	if !cache.WaitForCacheSync(ctx.Done(), informerSyncs(coreInformers)...) {
 		if ctx.Err() != nil {
 			return nil
 		}
@@ -148,7 +173,7 @@ func (r *kubernetesWatchRuntime) Run(ctx context.Context, publish func(WatchUpda
 	synced = true
 	syncMu.Unlock()
 	progress(r.opts.Progress, "Kubernetes watch caches synced")
-	publish(r.buildUpdate(informers, health))
+	publish(r.buildUpdate(ctx, informers, health))
 
 	for {
 		select {
@@ -162,40 +187,124 @@ func (r *kubernetesWatchRuntime) Run(ctx context.Context, publish func(WatchUpda
 				return nil
 			case <-timer.C:
 			}
-			publish(r.buildUpdate(informers, health))
+			publish(r.buildUpdate(ctx, informers, health))
 		}
 	}
 }
 
 type watchedInformer struct {
-	resource string
-	informer cache.SharedIndexInformer
+	resource    string
+	informer    cache.SharedIndexInformer
+	publishOnly bool
 }
 
 func (r *kubernetesWatchRuntime) coreInformers(factory informers.SharedInformerFactory) []watchedInformer {
 	return []watchedInformer{
-		{"Namespaces", factory.Core().V1().Namespaces().Informer()},
-		{"Nodes", factory.Core().V1().Nodes().Informer()},
-		{"ServiceAccounts", factory.Core().V1().ServiceAccounts().Informer()},
-		{"Pods", factory.Core().V1().Pods().Informer()},
-		{"Services", factory.Core().V1().Services().Informer()},
-		{"Deployments", factory.Apps().V1().Deployments().Informer()},
-		{"DaemonSets", factory.Apps().V1().DaemonSets().Informer()},
-		{"StatefulSets", factory.Apps().V1().StatefulSets().Informer()},
-		{"ReplicaSets", factory.Apps().V1().ReplicaSets().Informer()},
-		{"Jobs", factory.Batch().V1().Jobs().Informer()},
-		{"CronJobs", factory.Batch().V1().CronJobs().Informer()},
-		{"EndpointSlices", factory.Discovery().V1().EndpointSlices().Informer()},
-		{"IngressClasses", factory.Networking().V1().IngressClasses().Informer()},
-		{"Ingresses", factory.Networking().V1().Ingresses().Informer()},
-		{"PersistentVolumes", factory.Core().V1().PersistentVolumes().Informer()},
-		{"PersistentVolumeClaims", factory.Core().V1().PersistentVolumeClaims().Informer()},
-		{"StorageClasses", factory.Storage().V1().StorageClasses().Informer()},
-		{"PodDisruptionBudgets", factory.Policy().V1().PodDisruptionBudgets().Informer()},
-		{"NetworkPolicies", factory.Networking().V1().NetworkPolicies().Informer()},
-		{"ResourceQuotas", factory.Core().V1().ResourceQuotas().Informer()},
-		{"LimitRanges", factory.Core().V1().LimitRanges().Informer()},
-		{"HorizontalPodAutoscalers", factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer()},
+		dataInformer("Namespaces", factory.Core().V1().Namespaces().Informer()),
+		dataInformer("Nodes", factory.Core().V1().Nodes().Informer()),
+		dataInformer("ServiceAccounts", factory.Core().V1().ServiceAccounts().Informer()),
+		dataInformer("Pods", factory.Core().V1().Pods().Informer()),
+		dataInformer("Services", factory.Core().V1().Services().Informer()),
+		dataInformer("Deployments", factory.Apps().V1().Deployments().Informer()),
+		dataInformer("DaemonSets", factory.Apps().V1().DaemonSets().Informer()),
+		dataInformer("StatefulSets", factory.Apps().V1().StatefulSets().Informer()),
+		dataInformer("ReplicaSets", factory.Apps().V1().ReplicaSets().Informer()),
+		dataInformer("Jobs", factory.Batch().V1().Jobs().Informer()),
+		dataInformer("CronJobs", factory.Batch().V1().CronJobs().Informer()),
+		dataInformer("EndpointSlices", factory.Discovery().V1().EndpointSlices().Informer()),
+		dataInformer("IngressClasses", factory.Networking().V1().IngressClasses().Informer()),
+		dataInformer("Ingresses", factory.Networking().V1().Ingresses().Informer()),
+		dataInformer("PersistentVolumes", factory.Core().V1().PersistentVolumes().Informer()),
+		dataInformer("PersistentVolumeClaims", factory.Core().V1().PersistentVolumeClaims().Informer()),
+		dataInformer("StorageClasses", factory.Storage().V1().StorageClasses().Informer()),
+		dataInformer("PodDisruptionBudgets", factory.Policy().V1().PodDisruptionBudgets().Informer()),
+		dataInformer("NetworkPolicies", factory.Networking().V1().NetworkPolicies().Informer()),
+		dataInformer("ResourceQuotas", factory.Core().V1().ResourceQuotas().Informer()),
+		dataInformer("LimitRanges", factory.Core().V1().LimitRanges().Informer()),
+		dataInformer("HorizontalPodAutoscalers", factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer()),
+	}
+}
+
+func (r *kubernetesWatchRuntime) dynamicInformers(factory dynamicinformer.DynamicSharedInformerFactory, apiResources []inventory.APIResource) []watchedInformer {
+	out := []watchedInformer{
+		publishOnlyInformer("CustomResourceDefinitions", factory.ForResource(schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}).Informer()),
+		publishOnlyInformer("APIServices", factory.ForResource(schema.GroupVersionResource{Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices"}).Informer()),
+	}
+	for _, candidate := range watchedGatewayResources(apiResources) {
+		out = append(out, publishOnlyInformer(candidate.resource, factory.ForResource(candidate.gvr).Informer()))
+	}
+	return out
+}
+
+func dataInformer(resource string, informer cache.SharedIndexInformer) watchedInformer {
+	return watchedInformer{resource: resource, informer: informer}
+}
+
+func publishOnlyInformer(resource string, informer cache.SharedIndexInformer) watchedInformer {
+	return watchedInformer{resource: resource, informer: informer, publishOnly: true}
+}
+
+type watchedGatewayResource struct {
+	resource string
+	gvr      schema.GroupVersionResource
+}
+
+func watchedGatewayResources(apiResources []inventory.APIResource) []watchedGatewayResource {
+	seen := map[string]bool{}
+	var out []watchedGatewayResource
+	for _, item := range apiResources {
+		if item.Group != "gateway.networking.k8s.io" && item.Group != "gateway.networking.x-k8s.io" {
+			continue
+		}
+		if !containsString(item.Verbs, "watch") {
+			continue
+		}
+		name := gatewayWatchResourceName(item.Resource)
+		if name == "" {
+			continue
+		}
+		key := item.Group + "/" + item.Version + "/" + item.Resource
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, watchedGatewayResource{resource: name, gvr: schema.GroupVersionResource{Group: item.Group, Version: item.Version, Resource: item.Resource}})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].resource == out[j].resource {
+			return out[i].gvr.String() < out[j].gvr.String()
+		}
+		return out[i].resource < out[j].resource
+	})
+	return out
+}
+
+func gatewayWatchResourceName(resource string) string {
+	switch resource {
+	case "gatewayclasses":
+		return "GatewayClasses"
+	case "gateways":
+		return "Gateways"
+	case "httproutes":
+		return "HTTPRoutes"
+	case "grpcroutes":
+		return "GRPCRoutes"
+	case "tlsroutes":
+		return "TLSRoutes"
+	case "tcproutes":
+		return "TCPRoutes"
+	case "udproutes":
+		return "UDPRoutes"
+	case "referencegrants":
+		return "ReferenceGrants"
+	case "backendtlspolicies":
+		return "BackendTLSPolicies"
+	case "backendtrafficpolicies":
+		return "BackendTrafficPolicies"
+	case "xbackendtrafficpolicies":
+		return "XBackendTrafficPolicies"
+	default:
+		return ""
 	}
 }
 
@@ -257,13 +366,23 @@ func (h *watchHealthState) snapshot() WatchHealth {
 	}
 }
 
-func (r *kubernetesWatchRuntime) buildUpdate(informers []watchedInformer, health *watchHealthState) WatchUpdate {
+func (r *kubernetesWatchRuntime) buildUpdate(ctx context.Context, informers []watchedInformer, health *watchHealthState) WatchUpdate {
 	now := time.Now().UTC()
 	data := inventory.Kubernetes{Context: r.contextName, Server: r.server}
 	coverage := make([]inventory.CoverageItem, 0, len(informers)+1)
+	apiResources, apiCoverage, err := r.discoverAPIResources(ctx)
+	data.APIResources = apiResources
+	coverage = append(coverage, apiCoverage)
 	for _, item := range informers {
+		if item.publishOnly {
+			continue
+		}
 		count := r.addInformerData(&data, item)
 		coverage = append(coverage, complete("kubernetes", item.resource, count, now))
+	}
+	if r.dynamic != nil {
+		collectExtensions(ctx, r.dynamic, &data, &coverage, now)
+		collectGateways(ctx, r.dynamic, &data, &coverage, now, r.contextNamespace)
 	}
 	data.RunningContainers = runningContainers(data)
 	data.RunningImages = runningImages(data.RunningContainers)
@@ -277,8 +396,20 @@ func (r *kubernetesWatchRuntime) buildUpdate(informers []watchedInformer, health
 		Coverage:      coverage,
 	}
 	out := health.snapshot()
+	if err != nil {
+		out.Err = err
+	}
 	out.Coverage = append([]inventory.CoverageItem(nil), coverage...)
 	return WatchUpdate{Snapshot: snapshot, Health: out}
+}
+
+func (r *kubernetesWatchRuntime) discoverAPIResources(ctx context.Context) ([]inventory.APIResource, inventory.CoverageItem, error) {
+	now := time.Now().UTC()
+	apiResources, err := collectAPIResources(ctx, r.client.Discovery())
+	if err != nil {
+		return apiResources, partial("kubernetes", "APIResources", len(apiResources), err, now), err
+	}
+	return apiResources, complete("kubernetes", "APIResources", len(apiResources), now), nil
 }
 
 func (r *kubernetesWatchRuntime) addInformerData(out *inventory.Kubernetes, item watchedInformer) int {

@@ -209,6 +209,17 @@ func loadRESTConfig(opts Options) (*rest.Config, string, string, string, error) 
 
 func collectAPIResources(ctx context.Context, client discovery.DiscoveryInterface) ([]inventory.APIResource, error) {
 	lists, err := discovery.ToDiscoveryInterfaceWithContext(client).ServerPreferredResourcesWithContext(ctx)
+	if err == nil && len(lists) == 0 {
+		_, lists, err = discovery.ToDiscoveryInterfaceWithContext(client).ServerGroupsAndResourcesWithContext(ctx)
+	}
+	resources := mapAPIResourceLists(lists)
+	if err != nil && discovery.IsGroupDiscoveryFailedError(err) {
+		return resources, err
+	}
+	return resources, err
+}
+
+func mapAPIResourceLists(lists []*metav1.APIResourceList) []inventory.APIResource {
 	resources := make([]inventory.APIResource, 0)
 	for _, list := range lists {
 		gv, parseErr := schema.ParseGroupVersion(list.GroupVersion)
@@ -234,10 +245,7 @@ func collectAPIResources(ctx context.Context, client discovery.DiscoveryInterfac
 		}
 		return resources[i].GroupVersion < resources[j].GroupVersion
 	})
-	if err != nil && discovery.IsGroupDiscoveryFailedError(err) {
-		return resources, err
-	}
-	return resources, err
+	return resources
 }
 
 func collectCore(ctx context.Context, client *kubernetes.Clientset, metadataClient metadata.Interface, out *inventory.Kubernetes, coverage *[]inventory.CoverageItem, now time.Time) {
