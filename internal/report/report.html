@@ -91,6 +91,10 @@
     tr:hover td { background:var(--table-hover); }
     .scroll { overflow-x:auto; overflow-y:visible; }
     .chip { display:inline-flex; align-items:center; gap:6px; background:var(--chip); color:var(--chip-text); border:1px solid rgba(96,165,250,.18); border-radius:999px; padding:3px 8px; margin:2px; font-size:12px; white-space:nowrap; }
+    .source-freshness { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .source-freshness .chip { align-items:flex-start; flex-direction:column; gap:2px; border-radius:10px; white-space:normal; line-height:1.35; max-width:340px; }
+    .source-freshness strong { font-size:12px; }
+    .source-freshness small { color:var(--muted); font-size:11px; }
     .badge { border-radius:999px; padding:3px 8px; font-size:12px; font-weight:700; }
     .ok { color:#052e22; background:var(--green); }
     .warn { color:#422006; background:var(--amber); }
@@ -127,7 +131,7 @@
   </aside>
   <main>
     <header>
-      <div><div class="eyebrow">Cluster inventory</div><h2 id="title">Loading</h2><p class="sub" id="subtitle"></p></div>
+      <div><div class="eyebrow">Cluster inventory</div><h2 id="title">Loading</h2><p class="sub" id="subtitle"></p><div id="sourceFreshness" class="source-freshness" aria-label="Source freshness"></div></div>
       <div class="toolbar"><select id="focus" aria-label="Namespace"><option value="all">All namespaces</option></select><select id="resourceType" aria-label="Resource type"><option value="all">All resource types</option></select><button type="button" id="analyzeSnapshot" class="export-button ai-button" hidden disabled><span>Analyze with AI</span></button><div class="export" id="exportMenu"><button type="button" id="exportReport" class="export-button" aria-haspopup="menu" aria-expanded="false">Export</button><div class="export-menu" role="menu" aria-label="Export format"><button type="button" role="menuitem" data-export-format="json">JSON</button><button type="button" role="menuitem" data-export-format="markdown">Markdown</button></div></div><button type="button" id="themeToggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch theme">Theme</button></div>
     </header>
     <section class="section active" data-section="overview"><div id="cards" class="grid cards"></div><div class="topology-shell"><div class="panel"><h3>Topology</h3><div id="topology" class="topology"></div></div></div></section>

@@ -31,14 +31,17 @@ type Source struct {
 
 // Status describes the latest attempt independently of the retained data.
 type Status struct {
-	State       string                   `json:"state"`
-	Mode        string                   `json:"mode,omitempty"`
-	Refreshing  bool                     `json:"refreshing"`
-	LastAttempt *time.Time               `json:"lastAttempt,omitempty"`
-	LastSuccess *time.Time               `json:"lastSuccess,omitempty"`
-	NextAttempt *time.Time               `json:"nextAttempt,omitempty"`
-	Error       string                   `json:"error,omitempty"`
-	Coverage    []inventory.CoverageItem `json:"coverage,omitempty"`
+	State          string                   `json:"state"`
+	Mode           string                   `json:"mode,omitempty"`
+	Refreshing     bool                     `json:"refreshing"`
+	LastAttempt    *time.Time               `json:"lastAttempt,omitempty"`
+	LastSuccess    *time.Time               `json:"lastSuccess,omitempty"`
+	NextAttempt    *time.Time               `json:"nextAttempt,omitempty"`
+	LastEventAt    *time.Time               `json:"lastEventAt,omitempty"`
+	LastFullSyncAt *time.Time               `json:"lastFullSyncAt,omitempty"`
+	Reconnects     int                      `json:"reconnects,omitempty"`
+	Error          string                   `json:"error,omitempty"`
+	Coverage       []inventory.CoverageItem `json:"coverage,omitempty"`
 }
 
 const (
@@ -48,11 +51,14 @@ const (
 
 // SourcePublication is one immutable source update ready for live publication.
 type SourcePublication struct {
-	Source      string
-	Mode        string
-	Snapshot    *inventory.Snapshot
-	Err         error
-	NextAttempt *time.Time
+	Source         string
+	Mode           string
+	Snapshot       *inventory.Snapshot
+	Err            error
+	NextAttempt    *time.Time
+	LastEventAt    *time.Time
+	LastFullSyncAt *time.Time
+	Reconnects     int
 }
 
 // Event records a recent live-server operation for display in the web UI.
@@ -354,6 +360,9 @@ func (s *Store) publishSourceLocked(update SourcePublication) (Status, bool) {
 	e.status.Mode = mode
 	e.status.Refreshing = false
 	e.status.NextAttempt = cloneTime(update.NextAttempt)
+	e.status.LastEventAt = cloneTime(update.LastEventAt)
+	e.status.LastFullSyncAt = cloneTime(update.LastFullSyncAt)
+	e.status.Reconnects = update.Reconnects
 	if e.status.LastAttempt == nil {
 		e.status.LastAttempt = &now
 	}

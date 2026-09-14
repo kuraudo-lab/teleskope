@@ -180,16 +180,28 @@ func TestPublishSourceMergesWatchAndPollingWithoutCollection(t *testing.T) {
 
 func TestPublishSourceRetainsEvidenceOnStaleWatchUpdate(t *testing.T) {
 	s := newTestStore(t, "kubernetes")
-	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Snapshot: podSnapshot(1, "complete")})
+	eventAt := time.Date(2026, 9, 14, 8, 0, 0, 0, time.UTC)
+	fullSyncAt := eventAt.Add(-time.Minute)
+	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Snapshot: podSnapshot(1, "complete"), LastEventAt: &eventAt, LastFullSyncAt: &fullSyncAt})
 	before := readView(t, s)
 
-	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Err: errors.New("watch disconnected")})
+	nextEventAt := eventAt.Add(time.Minute)
+	s.PublishSource(SourcePublication{Source: "kubernetes", Mode: SourceModeWatch, Err: errors.New("watch disconnected"), LastEventAt: &nextEventAt, LastFullSyncAt: &fullSyncAt, Reconnects: 2})
 	got := readView(t, s)
 	if got.Revision != before.Revision || len(got.Snapshot.Kubernetes.Pods) != 1 || got.Sources["kubernetes"].State != "stale" {
 		t.Fatalf("stale watch update did not retain evidence: %+v", got)
 	}
 	if len(got.Sources["kubernetes"].Coverage) != 1 || got.Sources["kubernetes"].Coverage[0].Resource != "Pods" {
 		t.Fatalf("stale source coverage = %+v, want retained Pods coverage", got.Sources["kubernetes"].Coverage)
+	}
+	if got.Sources["kubernetes"].LastEventAt == nil || !got.Sources["kubernetes"].LastEventAt.Equal(nextEventAt) {
+		t.Fatalf("last event = %v, want %v", got.Sources["kubernetes"].LastEventAt, nextEventAt)
+	}
+	if got.Sources["kubernetes"].LastFullSyncAt == nil || !got.Sources["kubernetes"].LastFullSyncAt.Equal(fullSyncAt) {
+		t.Fatalf("last full sync = %v, want %v", got.Sources["kubernetes"].LastFullSyncAt, fullSyncAt)
+	}
+	if got.Sources["kubernetes"].Reconnects != 2 {
+		t.Fatalf("reconnects = %d, want 2", got.Sources["kubernetes"].Reconnects)
 	}
 }
 

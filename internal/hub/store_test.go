@@ -123,9 +123,46 @@ func TestFleetIncludesClusterEventsAndMarkdown(t *testing.T) {
 	}
 }
 
+func TestFleetCarriesWatchFreshness(t *testing.T) {
+	store := &Store{}
+	env := testEnvelope("prod-a", 1)
+	eventAt := env.CollectedAt.Add(2 * time.Minute)
+	fullSyncAt := env.CollectedAt
+	env.Sources["kubernetes"] = live.Status{
+		State:          "stale",
+		Mode:           live.SourceModeWatch,
+		LastEventAt:    &eventAt,
+		LastFullSyncAt: &fullSyncAt,
+		Reconnects:     3,
+		Error:          "watch disconnected",
+	}
+	if accepted, _, err := store.Put(env); err != nil || !accepted {
+		t.Fatalf("put accepted=%v err=%v", accepted, err)
+	}
+
+	fleet := store.Fleet()
+	source := fleet.Clusters[0].Sources["kubernetes"]
+	if fleet.Clusters[0].State != "stale" || source.Mode != live.SourceModeWatch || source.Reconnects != 3 {
+		t.Fatalf("fleet source freshness = %+v", fleet.Clusters[0])
+	}
+	if source.LastEventAt == nil || !source.LastEventAt.Equal(eventAt) {
+		t.Fatalf("last event = %v, want %v", source.LastEventAt, eventAt)
+	}
+	if source.LastFullSyncAt == nil || !source.LastFullSyncAt.Equal(fullSyncAt) {
+		t.Fatalf("last full sync = %v, want %v", source.LastFullSyncAt, fullSyncAt)
+	}
+
+	body, _ := store.encodedFleet()
+	for _, want := range []string{`"mode":"watch"`, `"lastEventAt"`, `"lastFullSyncAt"`, `"reconnects":3`} {
+		if !strings.Contains(string(body), want) {
+			t.Fatalf("encoded fleet missing %q: %s", want, body)
+		}
+	}
+}
+
 func TestHubHTMLUsesEmbeddedTeleskopeIcon(t *testing.T) {
 	html := HubHTML()
-	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`} {
+	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`, "watch reconnecting", "full resync", "reconnects", "eventKind(event)"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("hub html missing %q", want)
 		}

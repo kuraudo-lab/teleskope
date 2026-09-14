@@ -317,10 +317,13 @@ func hasLiveKubernetesData(data inventory.Kubernetes, coverage []inventory.Cover
 
 func publishWatchUpdate(store *live.Store, update k8s.WatchUpdate) live.Status {
 	status := store.PublishSource(live.SourcePublication{
-		Source:   "kubernetes",
-		Mode:     live.SourceModeWatch,
-		Snapshot: update.Snapshot,
-		Err:      update.Health.Err,
+		Source:         "kubernetes",
+		Mode:           live.SourceModeWatch,
+		Snapshot:       update.Snapshot,
+		Err:            update.Health.Err,
+		LastEventAt:    optionalTime(update.Health.LastEventAt),
+		LastFullSyncAt: optionalTime(update.Health.LastRelistAt),
+		Reconnects:     update.Health.Reconnects,
 	})
 	switch status.State {
 	case "ready":
@@ -333,6 +336,13 @@ func publishWatchUpdate(store *live.Store, update k8s.WatchUpdate) live.Status {
 		store.AddEvent("kubernetes", "error", "watch failed state=%s error=%s", status.State, status.Error)
 	}
 	return status
+}
+
+func optionalTime(value time.Time) *time.Time {
+	if value.IsZero() {
+		return nil
+	}
+	return &value
 }
 
 func logWatchPublication(log func(format string, args ...any), status live.Status) {

@@ -1,5 +1,5 @@
 // Same-origin browser updates read the shared snapshot; they never trigger scans.
-let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1, lastAnalyzedRequestKey = '';
+let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1, lastAnalyzedRequestKey = '', liveSources = {};
 document.querySelectorAll('.section').forEach(section => {
   const progress = document.createElement('div');
   progress.className = 'live-progress';
@@ -118,10 +118,13 @@ function applyLiveSnapshot(next) {
 }
 function renderLiveStatus(sources, events) {
   const labels = {loading:'Loading', ready:'Up to date', partial:'Partial coverage', stale:'Stale — showing previous data', error:'No data — collection failed'};
-  const entries = Object.entries(sources);
+  liveSources = sources || {};
+  renderSourceFreshness();
+  const entries = Object.entries(liveSources);
   const lines = entries.map(([name, s]) => {
     const last = s.lastSuccess ? new Date(s.lastSuccess).toLocaleString() : 'none yet';
-    return name + ': ' + (labels[s.state] || s.state) + (s.refreshing ? ' · refreshing' : '') + ' · last published ' + last;
+    const state = s.mode === 'watch' ? watchStateLabel(s) : (labels[s.state] || s.state);
+    return name + ': ' + state + (s.refreshing ? ' · refreshing' : '') + ' · last published ' + last;
   });
   const hasRefreshing = entries.some(([, s]) => s.refreshing || s.state === 'loading');
   const hasError = entries.some(([, s]) => s.state === 'error');
@@ -132,13 +135,56 @@ function renderLiveStatus(sources, events) {
   byId('live-event-list').innerHTML = arr(events).slice(-80).reverse().map(event => {
     const at = event.at ? new Date(event.at).toLocaleTimeString() : '-';
     const level = event.level || 'info';
+    const kind = eventKind(event);
     return '<div class="live-event live-event-' + esc(level) + '">' +
       '<span class="live-event-time">' + esc(at) + '</span>' +
+      '<span class="live-event-kind">' + esc(kind) + '</span>' +
       '<span class="live-event-source">' + esc(event.source || '-') + '</span>' +
       '<span class="live-event-level">' + esc(level) + '</span>' +
       '<span class="live-event-message">' + esc(event.message || '-') + '</span>' +
       '</div>';
   }).join('') || '<p class="muted">No events yet</p>';
+}
+function renderSourceFreshness() {
+  const target = byId('sourceFreshness');
+  if (!target) return;
+  const entries = Object.entries(liveSources || {});
+  target.innerHTML = entries.map(([name, status]) => {
+    const label = status.mode === 'watch' ? watchStateLabel(status) : (status.state || 'loading');
+    const details = sourceFreshnessDetail(status);
+    return '<span class="chip ' + esc(sourceStateClass(status.state)) + '" title="' + esc(details) + '"><strong>' + esc(name + ': ' + label) + '</strong><small>' + esc(details) + '</small></span>';
+  }).join('');
+}
+function sourceStateClass(state) {
+  if (state === 'ready') return 'ok';
+  if (state === 'error') return 'bad';
+  return 'warn';
+}
+function sourceFreshnessDetail(status) {
+  const published = status.lastSuccess ? 'published ' + shortTime(status.lastSuccess) : 'not published';
+  if (status.mode !== 'watch') return published;
+  const eventAt = status.lastEventAt ? 'event ' + shortTime(status.lastEventAt) : 'event none';
+  const fullSync = status.lastFullSyncAt ? 'full resync ' + shortTime(status.lastFullSyncAt) : 'full resync none';
+  return eventAt + ' · ' + fullSync + ' · reconnects ' + (status.reconnects || 0);
+}
+function watchStateLabel(status) {
+  if (status.state === 'ready') return 'watch connected';
+  if (status.state === 'stale') return 'watch reconnecting';
+  if (status.state === 'error') return 'watch error';
+  if (status.state === 'partial') return 'watch partial';
+  return 'watch ' + (status.state || 'loading');
+}
+function shortTime(value) {
+  return value ? new Date(value).toLocaleTimeString() : '-';
+}
+function eventKind(event) {
+  const source = event.source || '';
+  const message = event.message || '';
+  if (source === 'analysis' || message.includes('analysis')) return 'analysis';
+  if (message.includes('watch ')) return 'watch';
+  if (message.includes('published') || message.includes('retained previous data')) return 'publication';
+  if (message.includes('refresh starting') || message.includes('collect')) return 'collection';
+  return 'event';
 }
 function updateLiveProgress(icon, message, spinning) {
   document.querySelectorAll('.live-progress').forEach(progress => {

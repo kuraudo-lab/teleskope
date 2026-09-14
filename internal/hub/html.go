@@ -59,6 +59,8 @@ func HubHTML() string {
     .partial, .stale { color:#422006; background:var(--amber); }
     .error { color:#450a0a; background:var(--red); }
     .sources { display:flex; gap:6px; flex-wrap:wrap; }
+    .sources .badge { flex-direction:column; align-items:flex-start; gap:2px; border-radius:10px; white-space:normal; line-height:1.35; }
+    .sources small { font-weight:500; opacity:.82; }
     a { color:var(--blue); text-decoration:none; }
     a:hover { text-decoration:underline; }
     @media (max-width:1000px) { .app { grid-template-columns:1fr; } aside { position:relative; height:auto; } header { flex-direction:column; } .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -84,7 +86,7 @@ func HubHTML() string {
       <div class="panel"><h3>Clusters</h3><div class="scroll"><table><thead><tr><th>Cluster</th><th>Provider</th><th>Region</th><th>State</th><th>Sources</th><th>Revision</th><th>Collected</th><th>Inventory</th><th>Advisor</th></tr></thead><tbody id="clusters"><tr><td colspan="9" class="muted">No clusters have reported yet.</td></tr></tbody></table></div></div>
     </section>
     <section class="section" data-section="events">
-      <div class="panel"><h3>Recent events</h3><div class="scroll"><table><thead><tr><th>Time</th><th>Cluster</th><th>Source</th><th>Level</th><th>Message</th></tr></thead><tbody id="events"><tr><td colspan="5" class="muted">No events have reported yet.</td></tr></tbody></table></div></div>
+      <div class="panel"><h3>Recent events</h3><div class="scroll"><table><thead><tr><th>Time</th><th>Cluster</th><th>Kind</th><th>Source</th><th>Level</th><th>Message</th></tr></thead><tbody id="events"><tr><td colspan="6" class="muted">No events have reported yet.</td></tr></tbody></table></div></div>
     </section>
   </main>
 </div>
@@ -98,7 +100,11 @@ function renderNav() { byId('nav').innerHTML = navItems.map(([id,label],i) => '<
 function selectSection(id) { document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.target === id)); document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === id)); }
 function filtered() { const want = byId('stateFilter').value; return fleet.clusters.filter(c => want === 'all' || c.state === want); }
 function totals(rows) { return rows.reduce((out, c) => { out.nodes += c.nodes || 0; out.workloads += c.workloads || 0; out.pods += c.pods || 0; out.images += c.images || 0; return out; }, {nodes:0, workloads:0, pods:0, images:0}); }
-function sourceBadges(sources) { const entries = Object.entries(sources || {}); return entries.length ? '<div class="sources">' + entries.map(([name, status]) => '<span class="badge ' + stateClass(status.state) + '">' + esc(name) + ':' + esc(status.state || '-') + '</span>').join('') + '</div>' : '<span class="muted">-</span>'; }
+function shortTime(value) { return value ? new Date(value).toLocaleTimeString() : '-'; }
+function watchStateLabel(status) { if (status.mode !== 'watch') return status.state || '-'; if (status.state === 'ready') return 'watch connected'; if (status.state === 'stale') return 'watch reconnecting'; if (status.state === 'error') return 'watch error'; if (status.state === 'partial') return 'watch partial'; return 'watch ' + (status.state || 'loading'); }
+function sourceDetail(status) { if (status.mode !== 'watch') return status.lastSuccess ? 'published ' + shortTime(status.lastSuccess) : 'not published'; return (status.lastEventAt ? 'event ' + shortTime(status.lastEventAt) : 'event none') + ' · ' + (status.lastFullSyncAt ? 'full resync ' + shortTime(status.lastFullSyncAt) : 'full resync none') + ' · reconnects ' + (status.reconnects || 0); }
+function sourceBadges(sources) { const entries = Object.entries(sources || {}); return entries.length ? '<div class="sources">' + entries.map(([name, status]) => '<span class="badge ' + stateClass(status.state) + '" title="' + esc(sourceDetail(status)) + '"><span>' + esc(name + ': ' + watchStateLabel(status)) + '</span><small>' + esc(sourceDetail(status)) + '</small></span>').join('') + '</div>' : '<span class="muted">-</span>'; }
+function eventKind(event) { const source = event.source || '', message = event.message || ''; if (source === 'analysis' || message.includes('analysis')) return 'analysis'; if (message.includes('watch ')) return 'watch'; if (message.includes('published') || message.includes('retained previous data')) return 'publication'; if (message.includes('refresh starting') || message.includes('collect')) return 'collection'; return 'event'; }
 function render() {
   const rows = filtered(), total = totals(fleet.clusters);
   byId('subtitle').textContent = fleet.clusters.length + ' clusters - hub revision ' + (fleet.revision || 0);
@@ -111,8 +117,8 @@ function render() {
   }).join('') : '<tr><td colspan="9" class="muted">No clusters match the current filter.</td></tr>';
   byId('events').innerHTML = (fleet.events || []).length ? fleet.events.map(item => {
     const cluster = item.cluster || {}, event = item.event || {};
-    return '<tr><td>' + esc(event.at) + '</td><td>' + esc(cluster.name || cluster.id) + '</td><td>' + esc(event.source) + '</td><td><span class="badge ' + stateClass(event.level === 'error' ? 'error' : event.level === 'warn' ? 'partial' : 'ready') + '">' + esc(event.level) + '</span></td><td>' + esc(event.message) + '</td></tr>';
-  }).join('') : '<tr><td colspan="5" class="muted">No events have reported yet.</td></tr>';
+    return '<tr><td>' + esc(event.at) + '</td><td>' + esc(cluster.name || cluster.id) + '</td><td>' + esc(eventKind(event)) + '</td><td>' + esc(event.source) + '</td><td><span class="badge ' + stateClass(event.level === 'error' ? 'error' : event.level === 'warn' ? 'partial' : 'ready') + '">' + esc(event.level) + '</span></td><td>' + esc(event.message) + '</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="muted">No events have reported yet.</td></tr>';
 }
 async function refresh() {
   try {

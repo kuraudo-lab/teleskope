@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/kuraudo-lab/teleskope/internal/k8s"
+	"github.com/kuraudo-lab/teleskope/internal/live"
 	"github.com/spf13/cobra"
 )
 
@@ -208,6 +210,29 @@ func TestLiveKubernetesDataDetection(t *testing.T) {
 	}
 	if !hasLiveKubernetesData(inventory.Kubernetes{Pods: []inventory.Pod{{ObjectRef: inventory.ObjectRef{Name: "web"}}}}, nil) {
 		t.Fatal("collected resources should publish a partial snapshot")
+	}
+}
+
+func TestPublishWatchUpdateIncludesFreshness(t *testing.T) {
+	store, err := live.New([]live.Source{{Name: "kubernetes", PublicationOnly: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventAt := time.Date(2026, 9, 14, 9, 0, 0, 0, time.UTC)
+	fullSyncAt := eventAt.Add(-time.Minute)
+	status := publishWatchUpdate(store, k8s.WatchUpdate{
+		Snapshot: &inventory.Snapshot{
+			CollectedAt:   eventAt,
+			SchemaVersion: "teleskope.io/snapshot/v1alpha1",
+			Kubernetes: inventory.Kubernetes{
+				Pods: []inventory.Pod{{ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "default", Name: "web"}}},
+			},
+			Coverage: []inventory.CoverageItem{{Area: "kubernetes", Resource: "Pods", Status: "complete", ObjectCount: 1, CollectedAt: eventAt}},
+		},
+		Health: k8s.WatchHealth{State: "ready", LastEventAt: eventAt, LastRelistAt: fullSyncAt, Reconnects: 4},
+	})
+	if status.Mode != live.SourceModeWatch || status.LastEventAt == nil || !status.LastEventAt.Equal(eventAt) || status.LastFullSyncAt == nil || !status.LastFullSyncAt.Equal(fullSyncAt) || status.Reconnects != 4 {
+		t.Fatalf("watch status = %+v", status)
 	}
 }
 
