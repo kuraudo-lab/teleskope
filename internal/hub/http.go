@@ -201,6 +201,10 @@ func (s *Store) writeClusterSnapshot(w http.ResponseWriter, r *http.Request, id 
 		Sources:  env.Sources,
 		Events:   env.Events,
 	}
+	eksProjection := report.BuildEKSProjection(env.Snapshot)
+	if eksProjection.Visible {
+		out.EKSProjection = &eksProjection
+	}
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method == http.MethodGet {
 		_ = json.NewEncoder(w).Encode(out)

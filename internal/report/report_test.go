@@ -221,9 +221,11 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		`aria-hidden="true"><img src="data:image/png;base64,`,
 		`<script id="boot-config" type="application/json">`,
 		`<script id="snapshot-data" type="application/json">`,
+		`<script id="eks-projection-data" type="application/json">`,
 		`<script id="markdown-data" type="text/plain">`,
 		`"mode":"offline"`,
 		`"schemaVersion": "teleskope.io/snapshot/v1alpha1"`,
+		`"visible":true`,
 		"Target: `Prod Cluster`",
 		"Running images",
 		"EKS overview",
@@ -234,10 +236,12 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"eksInsightsTable",
 		"accessEntriesTable",
 		"podIdentityTable",
+		"eksProjection.overview",
+		"eksProjection.insights",
+		"eksProjection.capacity",
+		"eksProjection.addons",
+		"eksProjection.nodegroups",
 		"IRSA:",
-		"nodeTotals",
-		"declaredTotals",
-		"quantityValue",
 		"Gateway routes",
 		"gatewayClassesTable",
 		"gatewaysTable",
@@ -429,11 +433,14 @@ func TestAdvisorArtifactAndHTML(t *testing.T) {
 		t.Fatalf("advisor artifact: %s %v", data, err)
 	}
 	page, err := HTML(s)
-	if err != nil || strings.Contains(page, "__TELESKOPE_ADVISOR_JSON__") || !strings.Contains(page, `data-section="advisor"`) {
+	if err != nil || strings.Contains(page, "__TELESKOPE_ADVISOR_JSON__") || strings.Contains(page, "__TELESKOPE_EKS_PROJECTION_JSON__") || !strings.Contains(page, `data-section="advisor"`) {
 		t.Fatal("advisor HTML missing or not encoded")
 	}
 	if strings.Contains(LiveHTML(), "__TELESKOPE_ADVISOR_JSON__") {
 		t.Fatal("unresolved live placeholder")
+	}
+	if strings.Contains(LiveHTML(), "__TELESKOPE_EKS_PROJECTION_JSON__") {
+		t.Fatal("unresolved live EKS projection placeholder")
 	}
 	if strings.Contains(LiveHTML(), "__TELESKOPE_MARKDOWN__") {
 		t.Fatal("unresolved live markdown placeholder")

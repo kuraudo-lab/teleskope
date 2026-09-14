@@ -137,6 +137,9 @@ func TestPartialInitialDataAndIndependentSources(t *testing.T) {
 	if len(got.Snapshot.Kubernetes.Pods) != 0 || got.Snapshot.EKS.Cluster.Name != "prod" || got.Sources["eks"].State != "stale" {
 		t.Fatalf("sources coupled: %+v", got)
 	}
+	if got.EKSProjection == nil || !got.EKSProjection.Visible || got.EKSProjection.Overview[0].Value != "prod" {
+		t.Fatalf("EKS projection missing from live response: %+v", got.EKSProjection)
+	}
 }
 
 func TestPartialSnapshotWithErrorIsPublished(t *testing.T) {

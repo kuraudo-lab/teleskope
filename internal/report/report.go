@@ -180,137 +180,111 @@ func markdown(snapshot *inventory.Snapshot, title string) string {
 }
 
 func writeEKS(b *strings.Builder, snapshot *inventory.Snapshot) {
-	cluster := snapshot.EKS.Cluster
+	view := BuildEKSProjection(snapshot)
+	if !view.Visible {
+		return
+	}
 	fmt.Fprintf(b, "## EKS\n\n")
-	fmt.Fprintf(b, "| Field | Value |\n| --- | --- |\n")
-	fmt.Fprintf(b, "| Cluster | %s |\n", mdCell(cluster.Name))
-	fmt.Fprintf(b, "| Region | %s |\n", mdCell(snapshot.AWS.Region))
-	fmt.Fprintf(b, "| Version | %s |\n", mdCell(cluster.Version))
-	fmt.Fprintf(b, "| Platform | %s |\n", mdCell(cluster.PlatformVersion))
-	fmt.Fprintf(b, "| Status | %s |\n", mdCell(cluster.Status))
-	fmt.Fprintf(b, "| ARN | %s |\n", mdCell(cluster.ARN))
-	fmt.Fprintf(b, "| Endpoint | public=%t private=%t |\n", cluster.VPC.EndpointPublicAccess, cluster.VPC.EndpointPrivateAccess)
-	fmt.Fprintf(b, "| Auth | %s bootstrapCreatorAdmin=%s |\n", mdCell(cluster.AccessConfig.AuthenticationMode), mdCell(boolPtr(cluster.AccessConfig.BootstrapClusterCreatorAdminPermissions)))
-	fmt.Fprintf(b, "| Control plane logs | enabled=%s disabled=%s |\n", mdCell(strings.Join(cluster.EnabledControlPlaneLogTypes, ",")), mdCell(strings.Join(cluster.DisabledControlPlaneLogTypes, ",")))
-	fmt.Fprintf(b, "| Auto mode | compute=%s nodePools=%s blockStorage=%s |\n\n", mdCell(boolPtr(cluster.AutoMode.ComputeEnabled)), mdCell(strings.Join(cluster.AutoMode.ComputeNodePools, ",")), mdCell(boolPtr(cluster.AutoMode.BlockStorageEnabled)))
-
-	writeEKSInsights(b, snapshot.EKS.Insights)
-	writeEKSCapacity(b, snapshot.Kubernetes)
-	writeEKSNetwork(b, cluster, snapshot.EKS.Nodegroups)
-	writeEKSSecurity(b, snapshot)
-	writeEKSAddons(b, snapshot.EKS.Addons)
-	writeEKSNodegroups(b, snapshot.EKS.Nodegroups)
+	writeFieldRows(b, view.Overview)
+	writeEKSInsightRows(b, view.Insights)
+	writeEKSCapacityRows(b, view.Capacity)
+	writeFieldSection(b, "### EKS network", view.Network)
+	writeFieldSection(b, "### EKS security and identity", view.Security)
+	writeAccessEntryRows(b, view.AccessEntries)
+	writePodIdentityRows(b, view.PodIdentities)
+	writeEKSAddonRows(b, view.Addons)
+	writeEKSNodegroupRows(b, view.Nodegroups)
 }
 
-func writeEKSInsights(b *strings.Builder, insights []inventory.EKSInsight) {
-	if len(insights) == 0 {
+func writeFieldRows(b *strings.Builder, rows []FieldValueRow) {
+	if len(rows) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "| Field | Value |\n| --- | --- |\n")
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s |\n", mdCell(row.Field), mdCell(row.Value))
+	}
+	fmt.Fprintln(b)
+}
+
+func writeFieldSection(b *strings.Builder, title string, rows []FieldValueRow) {
+	if len(rows) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "%s\n\n", title)
+	writeFieldRows(b, rows)
+}
+
+func writeEKSInsightRows(b *strings.Builder, rows []EKSInsightRow) {
+	if len(rows) == 0 {
 		return
 	}
 	fmt.Fprintf(b, "### EKS upgrade and rollback insights\n\n")
 	fmt.Fprintf(b, "| Name | Category | Kubernetes | Status | Reason | Recommendation | Affected resources |\n| --- | --- | --- | --- | --- | --- | ---: |\n")
-	for _, insight := range sortedEKSInsights(insights) {
+	for _, insight := range rows {
 		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %d |\n",
-			mdCell(insight.Name), mdCell(insight.Category), mdCell(insight.KubernetesVersion), mdCell(insight.Status), mdCell(insight.Reason), mdCell(trimMarkdownText(insight.Recommendation)), len(insight.Resources))
+			mdCell(insight.Name), mdCell(insight.Category), mdCell(insight.KubernetesVersion), mdCell(insight.Status), mdCell(insight.Reason), mdCell(insight.Recommendation), insight.AffectedResources)
 	}
 	fmt.Fprintln(b)
 }
 
-func writeEKSCapacity(b *strings.Builder, kubernetes inventory.Kubernetes) {
-	if len(kubernetes.Nodes) == 0 && len(kubernetes.Pods) == 0 && len(kubernetes.Workloads) == 0 {
+func writeEKSCapacityRows(b *strings.Builder, rows []EKSCapacityRow) {
+	if len(rows) == 0 {
 		return
 	}
-	capacity := nodeResourceTotals(kubernetes.Nodes)
-	requests := containerResourceTotals(kubernetes)
 	fmt.Fprintf(b, "### EKS compute capacity and declared usage\n\n")
 	fmt.Fprintf(b, "| Resource | Capacity | Allocatable | Requested by specs | Limits by specs |\n| --- | ---: | ---: | ---: | ---: |\n")
-	fmt.Fprintf(b, "| CPU | %s | %s | %s | %s |\n", mdCell(formatMilliCPU(capacity.CapacityCPUm)), mdCell(formatMilliCPU(capacity.AllocatableCPUm)), mdCell(formatMilliCPU(requests.RequestCPUm)), mdCell(formatMilliCPU(requests.LimitCPUm)))
-	fmt.Fprintf(b, "| Memory | %s | %s | %s | %s |\n", mdCell(formatBytes(capacity.CapacityMemoryBytes)), mdCell(formatBytes(capacity.AllocatableMemoryBytes)), mdCell(formatBytes(requests.RequestMemoryBytes)), mdCell(formatBytes(requests.LimitMemoryBytes)))
-	fmt.Fprintf(b, "| Pods | %d | %d | - | - |\n\n", capacity.CapacityPods, capacity.AllocatablePods)
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n", mdCell(row.Resource), mdCell(row.Capacity), mdCell(row.Allocatable), mdCell(row.RequestedBySpecs), mdCell(row.LimitsBySpecs))
+	}
+	fmt.Fprintln(b)
 	fmt.Fprintf(b, "> Requested/limits are derived from Pod and workload specs; live metrics-server usage is not collected yet.\n\n")
 }
 
-func writeEKSNetwork(b *strings.Builder, cluster inventory.Cluster, nodegroups []inventory.Nodegroup) {
-	if cluster.VPC.VPCID == "" && len(cluster.VPC.SubnetIDs) == 0 && cluster.Network.IPFamily == "" {
+func writeAccessEntryRows(b *strings.Builder, rows []AccessEntryRow) {
+	if len(rows) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "### EKS network\n\n")
-	fmt.Fprintf(b, "| Field | Value |\n| --- | --- |\n")
-	fmt.Fprintf(b, "| VPC | %s |\n", mdCell(cluster.VPC.VPCID))
-	fmt.Fprintf(b, "| Cluster subnets | %s |\n", mdCell(strings.Join(cluster.VPC.SubnetIDs, ",")))
-	fmt.Fprintf(b, "| Cluster security groups | %s |\n", mdCell(strings.Join(cluster.VPC.SecurityGroupIDs, ",")))
-	fmt.Fprintf(b, "| Cluster security group | %s |\n", mdCell(cluster.VPC.ClusterSecurityGroupID))
-	fmt.Fprintf(b, "| Public access CIDRs | %s |\n", mdCell(strings.Join(cluster.VPC.PublicAccessCIDRs, ",")))
-	fmt.Fprintf(b, "| IP family | %s |\n", mdCell(cluster.Network.IPFamily))
-	fmt.Fprintf(b, "| Service CIDR | %s |\n", mdCell(strings.Join(nonEmpty(cluster.Network.ServiceIPv4CIDR, cluster.Network.ServiceIPv6CIDR), ",")))
-	fmt.Fprintf(b, "| Auto Mode load balancing | %s |\n", mdCell(boolPtr(cluster.Network.AutoModeLoadBalancingEnabled)))
-	if len(nodegroups) > 0 {
-		parts := make([]string, 0, len(nodegroups))
-		for _, nodegroup := range sortedNodegroups(nodegroups) {
-			parts = append(parts, nodegroup.Name+":"+strings.Join(nodegroup.Subnets, ","))
-		}
-		fmt.Fprintf(b, "| Nodegroup subnets | %s |\n", mdCell(strings.Join(parts, "<br>")))
+	fmt.Fprintf(b, "#### Access entries\n\n")
+	fmt.Fprintf(b, "| Principal | Type | User | Groups | Policies |\n| --- | --- | --- | --- | --- |\n")
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n", mdCell(row.Principal), mdCell(row.Type), mdCell(row.User), mdCell(row.Groups), mdCell(row.Policies))
 	}
 	fmt.Fprintln(b)
 }
 
-func writeEKSSecurity(b *strings.Builder, snapshot *inventory.Snapshot) {
-	cluster := snapshot.EKS.Cluster
-	if cluster.RoleARN == "" && cluster.OIDCIssuer == "" && len(snapshot.EKS.AccessEntries) == 0 && len(snapshot.EKS.PodIdentityAssociations) == 0 && len(cluster.Encryption) == 0 {
+func writePodIdentityRows(b *strings.Builder, rows []PodIdentityRow) {
+	if len(rows) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "### EKS security and identity\n\n")
-	fmt.Fprintf(b, "| Area | Value |\n| --- | --- |\n")
-	fmt.Fprintf(b, "| Cluster role | %s |\n", mdCell(cluster.RoleARN))
-	fmt.Fprintf(b, "| OIDC issuer | %s |\n", mdCell(cluster.OIDCIssuer))
-	fmt.Fprintf(b, "| Encryption | %s |\n", mdCell(encryptionValue(cluster.Encryption)))
-	fmt.Fprintf(b, "| Access entries | %d |\n", len(snapshot.EKS.AccessEntries))
-	fmt.Fprintf(b, "| Pod Identity associations | %d |\n\n", len(snapshot.EKS.PodIdentityAssociations))
-	if len(snapshot.EKS.AccessEntries) > 0 {
-		fmt.Fprintf(b, "#### Access entries\n\n")
-		fmt.Fprintf(b, "| Principal | Type | User | Groups | Policies |\n| --- | --- | --- | --- | --- |\n")
-		for _, entry := range sortedAccessEntries(snapshot.EKS.AccessEntries) {
-			fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n", mdCell(entry.PrincipalARN), mdCell(entry.Type), mdCell(entry.Username), mdCell(strings.Join(entry.KubernetesGroups, ",")), mdCell(accessPolicies(entry.Policies)))
-		}
-		fmt.Fprintln(b)
+	fmt.Fprintf(b, "#### Pod Identity associations\n\n")
+	fmt.Fprintf(b, "| Namespace | ServiceAccount | Role | Target role | Owner |\n| --- | --- | --- | --- | --- |\n")
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n", mdCell(row.Namespace), mdCell(row.ServiceAccount), mdCell(row.Role), mdCell(row.TargetRole), mdCell(row.Owner))
 	}
-	if len(snapshot.EKS.PodIdentityAssociations) > 0 {
-		fmt.Fprintf(b, "#### Pod Identity associations\n\n")
-		fmt.Fprintf(b, "| Namespace | ServiceAccount | Role | Target role | Owner |\n| --- | --- | --- | --- | --- |\n")
-		for _, association := range sortedPodIdentities(snapshot.EKS.PodIdentityAssociations) {
-			fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n", mdCell(association.Namespace), mdCell(association.ServiceAccount), mdCell(association.RoleARN), mdCell(association.TargetRoleARN), mdCell(association.OwnerARN))
-		}
-		fmt.Fprintln(b)
-	}
+	fmt.Fprintln(b)
 }
 
-func writeEKSAddons(b *strings.Builder, addons []inventory.Addon) {
-	if len(addons) == 0 {
+func writeEKSAddonRows(b *strings.Builder, rows []EKSAddonRow) {
+	if len(rows) == 0 {
 		return
 	}
 	fmt.Fprintf(b, "### Managed add-ons\n\n")
 	fmt.Fprintf(b, "| Name | Version | Status | Namespace | IAM | Issues |\n| --- | --- | --- | --- | --- | --- |\n")
-	for _, addon := range sortedAddons(addons) {
-		iam := "-"
-		if addon.ServiceAccountRoleARN != "" {
-			iam = "IRSA:" + addon.ServiceAccountRoleARN
-		}
-		if len(addon.PodIdentityAssociations) > 0 {
-			iam = fmt.Sprintf("%s PodIdentity=%d", iam, len(addon.PodIdentityAssociations))
-		}
-		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s |\n", mdCell(addon.Name), mdCell(addon.Version), mdCell(addon.Status), mdCell(addon.Namespace), mdCell(iam), mdCell(healthIssues(addon.Issues)))
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s |\n", mdCell(row.Name), mdCell(row.Version), mdCell(row.Status), mdCell(row.Namespace), mdCell(row.IAM), mdCell(row.Issues))
 	}
 	fmt.Fprintln(b)
 }
 
-func writeEKSNodegroups(b *strings.Builder, nodegroups []inventory.Nodegroup) {
-	if len(nodegroups) == 0 {
+func writeEKSNodegroupRows(b *strings.Builder, rows []EKSNodegroupRow) {
+	if len(rows) == 0 {
 		return
 	}
 	fmt.Fprintf(b, "### Managed nodegroups\n\n")
 	fmt.Fprintf(b, "| Name | Version | Release | Status | AMI | Capacity | Size | Subnets | IAM | Issues |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
-	for _, nodegroup := range sortedNodegroups(nodegroups) {
-		size := fmt.Sprintf("desired=%s min=%s max=%s", int32Ptr(nodegroup.DesiredSize), int32Ptr(nodegroup.MinSize), int32Ptr(nodegroup.MaxSize))
-		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", mdCell(nodegroup.Name), mdCell(nodegroup.Version), mdCell(nodegroup.ReleaseVersion), mdCell(nodegroup.Status), mdCell(nodegroup.AMIType), mdCell(strings.Join(nodegroup.InstanceTypes, ",")), mdCell(size), mdCell(strings.Join(nodegroup.Subnets, ",")), mdCell(nodegroup.NodeRoleARN), mdCell(healthIssues(nodegroup.Issues)))
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", mdCell(row.Name), mdCell(row.Version), mdCell(row.Release), mdCell(row.Status), mdCell(row.AMI), mdCell(row.Capacity), mdCell(row.Size), mdCell(row.Subnets), mdCell(row.IAM), mdCell(row.Issues))
 	}
 	fmt.Fprintln(b)
 }
@@ -1336,28 +1310,6 @@ func formatBytes(value int64) string {
 	return fmt.Sprintf("%.1f MiB", float64(value)/float64(miB))
 }
 
-func sortedEKSInsights(items []inventory.EKSInsight) []inventory.EKSInsight {
-	out := append([]inventory.EKSInsight(nil), items...)
-	sort.Slice(out, func(i, j int) bool {
-		left := strings.Join([]string{out[i].Category, out[i].Status, out[i].Name}, "\x00")
-		right := strings.Join([]string{out[j].Category, out[j].Status, out[j].Name}, "\x00")
-		return left < right
-	})
-	return out
-}
-
-func sortedAddons(items []inventory.Addon) []inventory.Addon {
-	out := append([]inventory.Addon(nil), items...)
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
-}
-
-func sortedNodegroups(items []inventory.Nodegroup) []inventory.Nodegroup {
-	out := append([]inventory.Nodegroup(nil), items...)
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
-}
-
 func sortedAccessEntries(items []inventory.AccessEntry) []inventory.AccessEntry {
 	out := append([]inventory.AccessEntry(nil), items...)
 	sort.Slice(out, func(i, j int) bool { return out[i].PrincipalARN < out[j].PrincipalARN })
@@ -1375,8 +1327,7 @@ func sortedPodIdentities(items []inventory.PodIdentityAssociation) []inventory.P
 }
 
 func trimMarkdownText(value string) string {
-	value = strings.TrimSpace(value)
-	value = strings.ReplaceAll(value, "\n", " ")
+	value = strings.Join(strings.Fields(value), " ")
 	if len(value) > 180 {
 		return value[:177] + "..."
 	}

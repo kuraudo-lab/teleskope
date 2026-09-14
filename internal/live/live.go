@@ -72,11 +72,12 @@ type Store struct {
 
 // Response is the immutable live view served to browsers and remote hub writers.
 type Response struct {
-	Advisor  *advisor.Report     `json:"advisor,omitempty"`
-	Revision uint64              `json:"revision"`
-	Snapshot *inventory.Snapshot `json:"snapshot"`
-	Sources  map[string]Status   `json:"sources"`
-	Events   []Event             `json:"events,omitempty"`
+	Advisor       *advisor.Report       `json:"advisor,omitempty"`
+	EKSProjection *report.EKSProjection `json:"eksProjection,omitempty"`
+	Revision      uint64                `json:"revision"`
+	Snapshot      *inventory.Snapshot   `json:"snapshot"`
+	Sources       map[string]Status     `json:"sources"`
+	Events        []Event               `json:"events,omitempty"`
 }
 
 type AnalyzeResponse = analysis.RunResponse
@@ -383,6 +384,10 @@ func (s *Store) encode() {
 		}
 		analysis.SetFreshness(state)
 		out.Advisor = &analysis
+		eksProjection := report.BuildEKSProjection(out.Snapshot)
+		if eksProjection.Visible {
+			out.EKSProjection = &eksProjection
+		}
 	}
 	out.Events = append([]Event(nil), s.events...)
 	s.body, _ = json.Marshal(out)

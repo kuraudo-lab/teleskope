@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	reportview "github.com/kuraudo-lab/teleskope/internal/report"
 )
 
 // Human writes a compact terminal summary inspired by small TUI status tools.
@@ -19,54 +20,56 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 	}
 	fmt.Fprintf(w, "teleskope  %s\n", value(title))
 
-	if hasEKS(snapshot) {
-		fmt.Fprintf(w, "region     %s\n", snapshot.AWS.Region)
+	eksView := reportview.BuildEKSProjection(snapshot)
+	if eksView.Visible {
+		overview := fieldRowMap(eksView.Overview)
+		network := fieldRowMap(eksView.Network)
+		fmt.Fprintf(w, "region     %s\n", value(overview["Region"]))
 		if snapshot.AWS.ARN != "" {
 			fmt.Fprintf(w, "identity   %s\n", snapshot.AWS.ARN)
 		}
-		fmt.Fprintf(w, "version    k8s %s / platform %s / status %s\n", value(cluster.Version), value(cluster.PlatformVersion), value(cluster.Status))
-		fmt.Fprintf(w, "endpoint   public=%t private=%t vpc=%s\n", cluster.VPC.EndpointPublicAccess, cluster.VPC.EndpointPrivateAccess, value(cluster.VPC.VPCID))
-		fmt.Fprintf(w, "network    ipFamily=%s serviceCIDR=%s\n", value(cluster.Network.IPFamily), serviceCIDR(cluster.Network))
-		fmt.Fprintf(w, "auth       %s\n", value(cluster.AccessConfig.AuthenticationMode))
+		fmt.Fprintf(w, "version    k8s %s / platform %s / status %s\n", value(overview["Version"]), value(overview["Platform"]), value(overview["Status"]))
+		fmt.Fprintf(w, "endpoint   %s vpc=%s\n", value(overview["Endpoint"]), value(network["VPC"]))
+		fmt.Fprintf(w, "network    ipFamily=%s serviceCIDR=%s\n", value(network["IP family"]), value(network["Service CIDR"]))
+		fmt.Fprintf(w, "auth       %s\n", strings.Split(value(overview["Auth"]), " bootstrapCreatorAdmin=")[0])
 		fmt.Fprintln(w)
 
-		fmt.Fprintf(w, "addons     %d\n", len(snapshot.EKS.Addons))
-		for _, addon := range snapshot.EKS.Addons {
+		if len(eksView.Insights) > 0 {
+			fmt.Fprintf(w, "insights   %d\n", len(eksView.Insights))
+			for _, insight := range eksView.Insights {
+				fmt.Fprintf(w, "  %s  %s  k8s=%s affected=%d\n", marker(insight.Status), insight.Name, value(insight.KubernetesVersion), insight.AffectedResources)
+			}
+			fmt.Fprintln(w)
+		}
+
+		fmt.Fprintf(w, "addons     %d\n", len(eksView.Addons))
+		for _, addon := range eksView.Addons {
 			fmt.Fprintf(w, "  %s  %s  %s", marker(addon.Status), addon.Name, value(addon.Version))
-			if addon.Namespace != "" {
+			if addon.Namespace != "-" {
 				fmt.Fprintf(w, "  ns=%s", addon.Namespace)
 			}
-			if addon.ServiceAccountRoleARN != "" {
+			if strings.Contains(addon.IAM, "IRSA:") {
 				fmt.Fprintf(w, "  irsa")
 			}
-			if len(addon.PodIdentityAssociations) > 0 {
-				fmt.Fprintf(w, "  pod-identity=%d", len(addon.PodIdentityAssociations))
-			}
-			if addon.ConfigurationValues != "" {
-				fmt.Fprintf(w, "  config")
+			if strings.Contains(addon.IAM, "PodIdentity=") {
+				fmt.Fprintf(w, "  pod-identity=%s", strings.TrimPrefix(addon.IAM[strings.LastIndex(addon.IAM, "PodIdentity="):], "PodIdentity="))
 			}
 			fmt.Fprintln(w)
 		}
 		fmt.Fprintln(w)
 
-		fmt.Fprintf(w, "nodegroups %d\n", len(snapshot.EKS.Nodegroups))
-		for _, nodegroup := range snapshot.EKS.Nodegroups {
-			fmt.Fprintf(w, "  %s  %s  k8s=%s ami=%s capacity=%s desired=%s",
-				marker(nodegroup.Status),
-				nodegroup.Name,
-				value(nodegroup.Version),
-				value(nodegroup.ReleaseVersion),
-				value(nodegroup.CapacityType),
-				int32Value(nodegroup.DesiredSize),
-			)
-			if len(nodegroup.InstanceTypes) > 0 {
-				fmt.Fprintf(w, "  type=%s", strings.Join(nodegroup.InstanceTypes, ","))
+		fmt.Fprintf(w, "nodegroups %d\n", len(eksView.Nodegroups))
+		for _, nodegroup := range eksView.Nodegroups {
+			fmt.Fprintf(w, "  %s  %s  k8s=%s ami=%s capacity=%s %s",
+				marker(nodegroup.Status), nodegroup.Name, value(nodegroup.Version), value(nodegroup.Release), value(nodegroup.CapacityType), value(nodegroup.Size))
+			if nodegroup.Capacity != "-" {
+				fmt.Fprintf(w, "  type=%s", nodegroup.Capacity)
 			}
 			fmt.Fprintln(w)
 		}
 		fmt.Fprintln(w)
 
-		fmt.Fprintf(w, "identity   accessEntries=%d podIdentity=%d\n", len(snapshot.EKS.AccessEntries), len(snapshot.EKS.PodIdentityAssociations))
+		fmt.Fprintf(w, "identity   accessEntries=%d podIdentity=%d\n", len(eksView.AccessEntries), len(eksView.PodIdentities))
 		fmt.Fprintln(w)
 	}
 
@@ -481,14 +484,6 @@ func writeWorkloadRelations(w io.Writer, kubernetes inventory.Kubernetes) {
 
 func newTable(w io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-}
-
-func hasEKS(snapshot *inventory.Snapshot) bool {
-	return snapshot.EKS.Cluster.Name != "" ||
-		len(snapshot.EKS.Addons) > 0 ||
-		len(snapshot.EKS.Nodegroups) > 0 ||
-		len(snapshot.EKS.AccessEntries) > 0 ||
-		len(snapshot.EKS.PodIdentityAssociations) > 0
 }
 
 func hasKubernetes(snapshot *inventory.Snapshot) bool {
@@ -1162,16 +1157,6 @@ func int32PtrValue(value *int32) string {
 	return fmt.Sprintf("%d", *value)
 }
 
-func serviceCIDR(network inventory.NetworkConfig) string {
-	if network.ServiceIPv4CIDR != "" {
-		return network.ServiceIPv4CIDR
-	}
-	if network.ServiceIPv6CIDR != "" {
-		return network.ServiceIPv6CIDR
-	}
-	return "-"
-}
-
 func value(v string) string {
 	if v == "" {
 		return "-"
@@ -1179,20 +1164,21 @@ func value(v string) string {
 	return v
 }
 
-func int32Value(v *int32) string {
-	if v == nil {
-		return "-"
+func fieldRowMap(rows []reportview.FieldValueRow) map[string]string {
+	out := make(map[string]string, len(rows))
+	for _, row := range rows {
+		out[row.Field] = row.Value
 	}
-	return fmt.Sprintf("%d", *v)
+	return out
 }
 
 func marker(status string) string {
 	switch strings.ToLower(status) {
-	case "active", "complete":
+	case "active", "complete", "passing":
 		return "ok"
 	case "creating", "updating", "pending":
 		return ".."
-	case "denied", "degraded", "failed":
+	case "denied", "degraded", "failed", "warning", "error":
 		return "!!"
 	case "partial":
 		return "~~"

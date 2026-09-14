@@ -86,7 +86,8 @@ function detailKey(obj) {
 }
 function applyLiveSnapshot(next) {
   const scrolls = [...document.querySelectorAll('.scroll')].map(el => [el, el.scrollTop, el.scrollLeft]);
-  snapshot = next;
+  snapshot = next.snapshot || next;
+  eksProjection = next.eksProjection || {};
   k = snapshot.kubernetes || {};
   eks = snapshot.eks || {};
   cluster = eks.cluster || {};
@@ -161,7 +162,7 @@ async function refreshLivePage() {
           renderAdvisor();
           if (data.snapshot && data.revision !== liveRevision) {
             liveRevision = data.revision;
-            applyLiveSnapshot(data.snapshot);
+            applyLiveSnapshot(data);
           }
           renderLiveStatus(data.sources, data.events);
           liveETag = result.headers.get('ETag') || '';

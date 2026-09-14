@@ -209,3 +209,30 @@ func TestHumanIncludesActionableKubernetesFacts(t *testing.T) {
 		}
 	}
 }
+
+func TestHumanIncludesEKSInsightOnlySnapshot(t *testing.T) {
+	snapshot := &inventory.Snapshot{
+		EKS: inventory.EKSInventory{Insights: []inventory.EKSInsight{{
+			Name:              "Deprecated APIs",
+			Category:          "UPGRADE_READINESS",
+			KubernetesVersion: "1.32",
+			Status:            "WARNING",
+			Resources:         []inventory.EKSInsightResource{{Status: "WARNING"}},
+		}}},
+	}
+
+	var out bytes.Buffer
+	if err := Human(&out, snapshot); err != nil {
+		t.Fatalf("Human returned error: %v", err)
+	}
+	text := out.String()
+	for _, want := range []string{
+		"teleskope  -",
+		"insights   1",
+		"!!  Deprecated APIs  k8s=1.32 affected=1",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("human output missing %q:\n%s", want, text)
+		}
+	}
+}
