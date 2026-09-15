@@ -17,6 +17,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	autoBlock := false
 	autoLB := true
 	disk := int32(20)
+	zero := int32(0)
 	desired := int32(2)
 	minSize := int32(1)
 	maxSize := int32(4)
@@ -69,6 +70,31 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 				Allocatable:      map[string]string{"cpu": "1930m", "memory": "7600Mi", "pods": "29"},
 				Labels:           map[string]string{"eks.amazonaws.com/nodegroup": "system", "node.kubernetes.io/instance-type": "m7i.large", "topology.kubernetes.io/zone": "ap-northeast-1a"},
 			}},
+			ServiceAccounts: []inventory.ServiceAccount{{
+				ObjectRef: inventory.ObjectRef{Kind: "ServiceAccount", Namespace: "app", Name: "worker"},
+			}},
+			Workloads: []inventory.Workload{
+				{
+					ObjectRef:          inventory.ObjectRef{APIVersion: "apps/v1", Kind: "Deployment", Namespace: "app", Name: "web"},
+					Replicas:           &desired,
+					ReadyReplicas:      1,
+					Selector:           map[string]string{"app": "web"},
+					ServiceAccountName: "web",
+					Containers:         []inventory.Container{{Name: "web", Image: "repo/web:v1"}},
+				},
+				{
+					ObjectRef:            inventory.ObjectRef{APIVersion: "apps/v1", Kind: "Deployment", Namespace: "app", Name: "worker"},
+					Replicas:             &zero,
+					Selector:             map[string]string{"app": "worker"},
+					ServiceAccountName:   "worker",
+					Containers:           []inventory.Container{{Name: "worker", Image: "repo/worker:v2", EnvConfigRefs: []inventory.ObjectRef{{Kind: "ConfigMap", Namespace: "app", Name: "worker-env"}}}},
+					Volumes:              []inventory.Volume{{Name: "cache", Type: "persistentVolumeClaim", PersistentVolumeClaim: "worker-cache"}, {Name: "settings", Type: "configMap", ConfigMap: "worker-config"}, {Name: "token", Type: "secret", Secret: "worker-secret"}},
+					ConfigRefs:           []inventory.ObjectRef{{Kind: "ConfigMap", Namespace: "app", Name: "worker-config"}},
+					SecretRefs:           []inventory.ObjectRef{{Kind: "Secret", Namespace: "app", Name: "worker-secret"}},
+					ImagePullSecretRefs:  []inventory.ObjectRef{{Kind: "Secret", Namespace: "app", Name: "worker-pull"}},
+					VolumeClaimTemplates: []inventory.ObjectRef{{Kind: "PersistentVolumeClaim", Namespace: "app", Name: "worker-cache-template"}},
+				},
+			},
 			Pods: []inventory.Pod{{
 				ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "app", Name: "web-abc"},
 				Phase:     "Running",
@@ -132,6 +158,12 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 					Selector:  map[string]string{"app": "web"},
 					Ports:     []inventory.ServicePort{{Protocol: "TCP", Port: 80, TargetPort: "http"}},
 				},
+				{
+					ObjectRef: inventory.ObjectRef{Kind: "Service", Namespace: "app", Name: "worker"},
+					Type:      "ClusterIP",
+					Selector:  map[string]string{"app": "worker"},
+					Ports:     []inventory.ServicePort{{Protocol: "TCP", Port: 9090, TargetPort: "metrics"}},
+				},
 			},
 			GatewayClasses: []inventory.GatewayClass{{
 				ObjectRef:      inventory.ObjectRef{APIVersion: "gateway.networking.k8s.io/v1", Kind: "GatewayClass", Name: "alb"},
@@ -151,6 +183,12 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 					Matches:     []string{"PathPrefix:/"},
 					BackendRefs: []inventory.ObjectRef{{APIVersion: "v1", Kind: "Service", Namespace: "app", Name: "web"}},
 				}},
+			}},
+			PersistentVolumeClaims: []inventory.PersistentVolumeClaim{{
+				ObjectRef:        inventory.ObjectRef{Kind: "PersistentVolumeClaim", Namespace: "app", Name: "worker-cache"},
+				StorageClassName: "gp3",
+				RequestedStorage: "5Gi",
+				Phase:            "Bound",
 			}},
 		},
 		Coverage: []inventory.CoverageItem{{Area: "kubernetes", Resource: "services", Status: "complete", ObjectCount: 1, CollectedAt: now}},
@@ -297,6 +335,19 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"pointerdown",
 		"pointermove",
 		"applyTopologyTransform",
+		"Workload lookup",
+		`id="workloadSearch"`,
+		`id="workloadSearchResults"`,
+		"function workloadDetailHTML",
+		"function renderWorkloadSearch",
+		"function openWorkloadDetail",
+		"data-workload-key",
+		"dependency-graph",
+		"repo/worker:v2",
+		"worker-cache-template",
+		"worker-config",
+		"worker-secret",
+		"worker-pull",
 		"pods=${r.podCount || 0}",
 		"join('<br>')",
 	} {
