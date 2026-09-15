@@ -123,6 +123,35 @@ func TestFleetIncludesClusterEventsAndMarkdown(t *testing.T) {
 	}
 }
 
+func TestFleetSummaryIncludesDashboardSignals(t *testing.T) {
+	store := &Store{}
+	env := testEnvelope("prod-a", 1)
+	env.Cluster.Provider = "eks"
+	env.Cluster.Region = "ap-northeast-1"
+	env.Snapshot.AWS.Region = "ap-northeast-1"
+	env.Snapshot.EKS.Cluster.Version = "1.33"
+	env.Snapshot.EKS.Addons = []inventory.Addon{
+		{Name: "vpc-cni", Status: "ACTIVE"},
+		{Name: "coredns", Status: "DEGRADED"},
+	}
+	env.Snapshot.EKS.Nodegroups = []inventory.Nodegroup{
+		{Name: "system", Status: "ACTIVE", Issues: []inventory.HealthIssue{{Code: "AutoScalingGroupNotFound"}}},
+		{Name: "workers", Status: "CREATING"},
+	}
+	if accepted, _, err := store.Put(env); err != nil || !accepted {
+		t.Fatalf("put accepted=%v err=%v", accepted, err)
+	}
+
+	fleet := store.Fleet()
+	if len(fleet.Clusters) != 1 {
+		t.Fatalf("fleet clusters = %+v", fleet.Clusters)
+	}
+	got := fleet.Clusters[0]
+	if got.KubernetesVersion != "1.33" || got.AddonRisks != 1 || got.NodegroupRisks != 2 {
+		t.Fatalf("dashboard summary = %+v", got)
+	}
+}
+
 func TestFleetCarriesWatchFreshness(t *testing.T) {
 	store := &Store{}
 	env := testEnvelope("prod-a", 1)
@@ -162,7 +191,7 @@ func TestFleetCarriesWatchFreshness(t *testing.T) {
 
 func TestHubHTMLUsesEmbeddedTeleskopeIcon(t *testing.T) {
 	html := HubHTML()
-	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`, "watch reconnecting", "full resync", "reconnects", "eventKind(event)"} {
+	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`, "providerFilter", "regionFilter", "versionDist", "riskCounts", "sourceHealth", "addonRisks", "nodegroupRisks", "watch reconnecting", "full resync", "reconnects", "eventKind(event)"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("hub html missing %q", want)
 		}

@@ -35,17 +35,20 @@ type Envelope struct {
 
 // Summary is the hub's compact fleet row for one cluster.
 type Summary struct {
-	Cluster     Cluster                `json:"cluster"`
-	Revision    uint64                 `json:"revision"`
-	CollectedAt time.Time              `json:"collectedAt"`
-	State       string                 `json:"state"`
-	Nodes       int                    `json:"nodes"`
-	Workloads   int                    `json:"workloads"`
-	Pods        int                    `json:"pods"`
-	Images      int                    `json:"images"`
-	Events      int                    `json:"events"`
-	Advisor     string                 `json:"advisor,omitempty"`
-	Sources     map[string]live.Status `json:"sources,omitempty"`
+	Cluster           Cluster                `json:"cluster"`
+	Revision          uint64                 `json:"revision"`
+	CollectedAt       time.Time              `json:"collectedAt"`
+	State             string                 `json:"state"`
+	KubernetesVersion string                 `json:"kubernetesVersion,omitempty"`
+	AddonRisks        int                    `json:"addonRisks"`
+	NodegroupRisks    int                    `json:"nodegroupRisks"`
+	Nodes             int                    `json:"nodes"`
+	Workloads         int                    `json:"workloads"`
+	Pods              int                    `json:"pods"`
+	Images            int                    `json:"images"`
+	Events            int                    `json:"events"`
+	Advisor           string                 `json:"advisor,omitempty"`
+	Sources           map[string]live.Status `json:"sources,omitempty"`
 }
 
 // FleetEvent records one recent event annotated with the cluster that reported it.
@@ -188,6 +191,10 @@ func summarize(env Envelope) Summary {
 	}
 	if env.Snapshot != nil {
 		k := env.Snapshot.Kubernetes
+		eks := env.Snapshot.EKS
+		summary.KubernetesVersion = firstNonEmpty(eks.Cluster.Version, k.Version.GitVersion)
+		summary.AddonRisks = addonRiskCount(eks.Addons)
+		summary.NodegroupRisks = nodegroupRiskCount(eks.Nodegroups)
 		summary.Nodes = len(k.Nodes)
 		summary.Workloads = len(k.Workloads)
 		summary.Pods = len(k.Pods)
@@ -197,4 +204,29 @@ func summarize(env Envelope) Summary {
 		summary.Advisor = env.Advisor.Summary
 	}
 	return summary
+}
+
+func addonRiskCount(addons []inventory.Addon) int {
+	count := 0
+	for _, addon := range addons {
+		if len(addon.Issues) > 0 || nonActiveStatus(addon.Status) {
+			count++
+		}
+	}
+	return count
+}
+
+func nodegroupRiskCount(nodegroups []inventory.Nodegroup) int {
+	count := 0
+	for _, nodegroup := range nodegroups {
+		if len(nodegroup.Issues) > 0 || nonActiveStatus(nodegroup.Status) {
+			count++
+		}
+	}
+	return count
+}
+
+func nonActiveStatus(status string) bool {
+	status = strings.TrimSpace(status)
+	return status != "" && strings.ToUpper(status) != "ACTIVE"
 }
