@@ -189,6 +189,7 @@ func writeEKS(b *strings.Builder, snapshot *inventory.Snapshot) {
 	writeEKSInsightRows(b, view.Insights)
 	writeEKSCapacityRows(b, view.Capacity)
 	writeFieldSection(b, "### EKS network", view.Network)
+	writeEKSNetworkDetailRows(b, view.NetworkDetails)
 	writeFieldSection(b, "### EKS security and identity", view.Security)
 	writeAccessEntryRows(b, view.AccessEntries)
 	writePodIdentityRows(b, view.PodIdentities)
@@ -240,6 +241,18 @@ func writeEKSCapacityRows(b *strings.Builder, rows []EKSCapacityRow) {
 	}
 	fmt.Fprintln(b)
 	fmt.Fprintf(b, "> Requested/limits are derived from Pod and workload specs; live metrics-server usage is not collected yet.\n\n")
+}
+
+func writeEKSNetworkDetailRows(b *strings.Builder, rows []EKSNetworkDetailRow) {
+	if len(rows) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "### EKS networking details\n\n")
+	fmt.Fprintf(b, "| Area | Source | Association | Evidence | Coverage gap |\n| --- | --- | --- | --- | --- |\n")
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n", mdCell(row.Area), mdCell(row.Source), mdCell(row.Association), mdCell(row.Evidence), mdCell(row.CoverageGap))
+	}
+	fmt.Fprintln(b)
 }
 
 func writeAccessEntryRows(b *strings.Builder, rows []AccessEntryRow) {

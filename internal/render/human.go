@@ -31,6 +31,16 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 		fmt.Fprintf(w, "version    k8s %s / platform %s / status %s\n", value(overview["Version"]), value(overview["Platform"]), value(overview["Status"]))
 		fmt.Fprintf(w, "endpoint   %s vpc=%s\n", value(overview["Endpoint"]), value(network["VPC"]))
 		fmt.Fprintf(w, "network    ipFamily=%s serviceCIDR=%s\n", value(network["IP family"]), value(network["Service CIDR"]))
+		if len(eksView.NetworkDetails) > 0 {
+			fmt.Fprintf(w, "network details %d\n", len(eksView.NetworkDetails))
+			for _, row := range eksView.NetworkDetails {
+				fmt.Fprintf(w, "  %s  %s  assoc=%s evidence=%s", row.Area, row.Source, value(row.Association), value(row.Evidence))
+				if row.CoverageGap != "-" {
+					fmt.Fprintf(w, "  gap=%s", row.CoverageGap)
+				}
+				fmt.Fprintln(w)
+			}
+		}
 		fmt.Fprintf(w, "auth       %s\n", strings.Split(value(overview["Auth"]), " bootstrapCreatorAdmin=")[0])
 		fmt.Fprintln(w)
 

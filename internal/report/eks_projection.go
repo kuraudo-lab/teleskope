@@ -14,6 +14,7 @@ type EKSProjection struct {
 	Insights           []EKSInsightRow            `json:"insights,omitempty"`
 	Capacity           []EKSCapacityRow           `json:"capacity,omitempty"`
 	Network            []FieldValueRow            `json:"network,omitempty"`
+	NetworkDetails     []EKSNetworkDetailRow      `json:"networkDetails,omitempty"`
 	Security           []FieldValueRow            `json:"security,omitempty"`
 	AccessEntries      []AccessEntryRow           `json:"accessEntries,omitempty"`
 	PodIdentities      []PodIdentityRow           `json:"podIdentities,omitempty"`
@@ -43,6 +44,14 @@ type EKSCapacityRow struct {
 	Allocatable      string `json:"allocatable"`
 	RequestedBySpecs string `json:"requestedBySpecs"`
 	LimitsBySpecs    string `json:"limitsBySpecs"`
+}
+
+type EKSNetworkDetailRow struct {
+	Area        string `json:"area"`
+	Source      string `json:"source"`
+	Association string `json:"association"`
+	Evidence    string `json:"evidence"`
+	CoverageGap string `json:"coverageGap"`
 }
 
 type AccessEntryRow struct {
@@ -124,6 +133,7 @@ func BuildEKSProjection(snapshot *inventory.Snapshot) EKSProjection {
 	out.Insights = projectEKSInsights(snapshot.EKS.Insights)
 	out.Capacity = projectEKSCapacity(snapshot.Kubernetes)
 	out.Network = projectEKSNetwork(cluster, snapshot.EKS.Nodegroups)
+	out.NetworkDetails = projectEKSNetworkDetails(snapshot)
 	out.Security, out.AccessEntries, out.PodIdentities = projectEKSSecurity(snapshot)
 	out.Addons = projectEKSAddons(snapshot.EKS.Addons, snapshot.EKS.Insights)
 	out.Nodegroups = projectEKSNodegroups(snapshot.EKS.Nodegroups)
@@ -182,6 +192,207 @@ func projectEKSNetwork(cluster inventory.Cluster, nodegroups []inventory.Nodegro
 		rows = append(rows, FieldValueRow{"Nodegroup subnets", display(strings.Join(parts, "<br>"))})
 	}
 	return rows
+}
+
+func projectEKSNetworkDetails(snapshot *inventory.Snapshot) []EKSNetworkDetailRow {
+	cluster := snapshot.EKS.Cluster
+	rows := []EKSNetworkDetailRow{}
+	add := func(area, source, association, evidence, gap string) {
+		rows = append(rows, EKSNetworkDetailRow{
+			Area:        display(area),
+			Source:      display(source),
+			Association: display(association),
+			Evidence:    display(evidence),
+			CoverageGap: display(gap),
+		})
+	}
+	if cluster.VPC.VPCID != "" || len(cluster.VPC.SubnetIDs) > 0 || cluster.VPC.ClusterSecurityGroupID != "" || len(cluster.VPC.SecurityGroupIDs) > 0 {
+		add("vpc", "eks.cluster", cluster.Name, strings.Join(nonEmpty(evidencePart("vpc", cluster.VPC.VPCID), evidencePart("subnets", strings.Join(cluster.VPC.SubnetIDs, ",")), evidencePart("clusterSG", cluster.VPC.ClusterSecurityGroupID), evidencePart("extraSGs", strings.Join(cluster.VPC.SecurityGroupIDs, ","))), " "), "subnet CIDRs, route tables, ENIs and security group rules are not collected")
+	}
+	for _, nodegroup := range sortedNodegroups(snapshot.EKS.Nodegroups) {
+		if len(nodegroup.Subnets) == 0 && nodegroup.RemoteAccessSecurityGroupID == "" {
+			continue
+		}
+		add("nodegroup networking", "eks.nodegroup/"+nodegroup.Name, nodegroup.Name, strings.Join(nonEmpty(evidencePart("subnets", strings.Join(nodegroup.Subnets, ",")), evidencePart("remoteAccessSG", nodegroup.RemoteAccessSecurityGroupID)), " "), "subnet AZ/CIDR and security group rules are not collected")
+	}
+	for group, zones := range nodeZonesByGroup(snapshot.Kubernetes.Nodes) {
+		add("node placement", "kubernetes.nodes", group, "zones="+strings.Join(zones, ","), "node subnet IDs and ENI attachments are not collected")
+	}
+	for _, addon := range sortedAddons(snapshot.EKS.Addons) {
+		if !isVPCCNIName(addon.Name) {
+			continue
+		}
+		add("vpc-cni", "eks.addon/"+addon.Name, addon.Namespace, strings.Join(nonEmpty(evidencePart("version", addon.Version), evidencePart("status", addon.Status), evidencePart("config", trimMarkdownText(addon.ConfigurationValues))), " "), "effective DaemonSet environment is not proven by add-on metadata alone")
+	}
+	for _, workload := range sortedWorkloads(snapshot.Kubernetes.Workloads) {
+		if !isAWSNodeWorkload(workload) {
+			continue
+		}
+		add("vpc-cni", "kubernetes.workload/"+ref(workload.ObjectRef), mapValue(workload.Selector), awsNodeWorkloadEvidence(workload), "environment literal values are not collected unless exposed through referenced ConfigMaps")
+	}
+	for _, config := range sortedConfigObjects(snapshot.Kubernetes.ConfigMaps) {
+		if !isCNIConfigObject(config) {
+			continue
+		}
+		add("vpc-cni config", "kubernetes.configmap/"+ref(config.ObjectRef), config.Namespace, cniConfigEvidence(config.Data), "only collected ConfigMap keys are visible; Secret values are intentionally omitted")
+	}
+	for _, item := range sortedCustomResourceInstances(snapshot.Kubernetes.CustomResourceInstances) {
+		if !isCNIResource(item) {
+			continue
+		}
+		add("custom networking", "kubernetes."+strings.ToLower(item.Kind)+"/"+ref(item.ObjectRef), strings.Join(nonEmpty(item.CRDGroup, item.CRDVersion), "/"), strings.Join(nonEmpty(evidencePart("crd", item.CRDName), evidencePart("labels", nonDash(mapValue(item.Labels))), evidencePart("owners", nonDash(refsValue(item.OwnerReferences)))), " "), "custom resource spec fields are not collected in this snapshot model")
+	}
+	for _, node := range sortedNodes(snapshot.Kubernetes.Nodes) {
+		labels := cniNodeLabels(node.Labels)
+		if len(labels) == 0 {
+			continue
+		}
+		add("node cni labels", "kubernetes.node/"+node.Name, node.Labels["eks.amazonaws.com/nodegroup"], strings.Join(labels, ","), "node ENI IDs and pod-level security groups are not collected")
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		left := strings.Join([]string{rows[i].Area, rows[i].Source, rows[i].Association}, "\x00")
+		right := strings.Join([]string{rows[j].Area, rows[j].Source, rows[j].Association}, "\x00")
+		return left < right
+	})
+	return rows
+}
+
+func nodeZonesByGroup(nodes []inventory.Node) map[string][]string {
+	out := map[string][]string{}
+	for _, node := range sortedNodes(nodes) {
+		group, _ := nodeOwnership(node, map[string]inventory.Nodegroup{})
+		if node.Labels["eks.amazonaws.com/nodegroup"] != "" {
+			group = node.Labels["eks.amazonaws.com/nodegroup"]
+		}
+		zone := node.Labels["topology.kubernetes.io/zone"]
+		if zone == "" {
+			continue
+		}
+		out[group] = appendUnique(out[group], zone)
+	}
+	for group := range out {
+		sort.Strings(out[group])
+	}
+	return out
+}
+
+func evidencePart(key, value string) string {
+	if strings.TrimSpace(value) == "" {
+		return ""
+	}
+	return key + "=" + value
+}
+
+func nonDash(value string) string {
+	if value == "-" {
+		return ""
+	}
+	return value
+}
+
+func isVPCCNIName(name string) bool {
+	name = strings.ToLower(name)
+	return name == "vpc-cni" || name == "aws-node" || strings.Contains(name, "vpc-cni")
+}
+
+func isAWSNodeWorkload(workload inventory.Workload) bool {
+	if workload.Name == "aws-node" && workload.Namespace == "kube-system" {
+		return true
+	}
+	if strings.Contains(strings.ToLower(ref(workload.ObjectRef)), "aws-node") {
+		return true
+	}
+	for _, container := range append(workload.Containers, workload.InitContainers...) {
+		if strings.Contains(strings.ToLower(container.Name), "aws-node") || strings.Contains(strings.ToLower(container.Image), "amazon-k8s-cni") {
+			return true
+		}
+	}
+	return false
+}
+
+func awsNodeWorkloadEvidence(workload inventory.Workload) string {
+	images := []string{}
+	configRefs := []string{}
+	for _, container := range append(workload.Containers, workload.InitContainers...) {
+		if container.Image != "" {
+			images = appendUnique(images, container.Name+"="+container.Image)
+		}
+		for _, ref := range container.EnvConfigRefs {
+			configRefs = appendUnique(configRefs, ref.Name)
+		}
+	}
+	for _, ref := range workload.ConfigRefs {
+		configRefs = appendUnique(configRefs, ref.Name)
+	}
+	sort.Strings(images)
+	sort.Strings(configRefs)
+	return strings.Join(nonEmpty("images="+strings.Join(images, ","), "configRefs="+strings.Join(configRefs, ","), "nodeSelector="+mapValue(workload.NodeSelector)), " ")
+}
+
+func sortedConfigObjects(items []inventory.ConfigObject) []inventory.ConfigObject {
+	out := append([]inventory.ConfigObject(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return ref(out[i].ObjectRef) < ref(out[j].ObjectRef) })
+	return out
+}
+
+func isCNIConfigObject(config inventory.ConfigObject) bool {
+	if config.Namespace == "kube-system" && (config.Name == "amazon-vpc-cni" || config.Name == "aws-node") {
+		return true
+	}
+	name := strings.ToLower(config.Name)
+	return strings.Contains(name, "vpc-cni") || strings.Contains(name, "aws-node")
+}
+
+func cniConfigEvidence(data map[string]string) string {
+	if len(data) == 0 {
+		return "metadata only"
+	}
+	keys := make([]string, 0, len(data))
+	for key := range data {
+		if isCNIConfigKey(key) {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	values := make([]string, 0, len(keys))
+	for _, key := range keys {
+		values = append(values, key+"="+data[key])
+	}
+	if len(values) == 0 {
+		return "data keys collected; no known VPC CNI toggles found"
+	}
+	return strings.Join(values, ",")
+}
+
+func isCNIConfigKey(key string) bool {
+	key = strings.ToUpper(key)
+	return strings.Contains(key, "WARM_") ||
+		strings.Contains(key, "PREFIX") ||
+		strings.Contains(key, "CUSTOM_NETWORK") ||
+		strings.Contains(key, "ENI_CONFIG") ||
+		strings.Contains(key, "SECURITY_GROUP") ||
+		strings.Contains(key, "EXTERNALSNAT") ||
+		strings.Contains(key, "SNAT")
+}
+
+func isCNIResource(item inventory.CustomResourceInstance) bool {
+	kind := strings.ToLower(strings.TrimSpace(firstNonEmpty(item.CRDKind, item.Kind)))
+	return kind == "eniconfig" || kind == "securitygrouppolicy"
+}
+
+func cniNodeLabels(labels map[string]string) []string {
+	out := []string{}
+	for key, value := range labels {
+		lower := strings.ToLower(key)
+		if strings.Contains(lower, "eniconfig") || strings.HasPrefix(lower, "vpc.amazonaws.com/") || strings.Contains(lower, "pod-eni") {
+			out = append(out, key+"="+value)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func projectEKSSecurity(snapshot *inventory.Snapshot) ([]FieldValueRow, []AccessEntryRow, []PodIdentityRow) {

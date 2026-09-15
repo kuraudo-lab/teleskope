@@ -71,7 +71,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 				Architecture:     "amd64",
 				Capacity:         map[string]string{"cpu": "2", "memory": "8Gi", "pods": "29"},
 				Allocatable:      map[string]string{"cpu": "1930m", "memory": "7600Mi", "pods": "29"},
-				Labels:           map[string]string{"eks.amazonaws.com/nodegroup": "system", "node.kubernetes.io/instance-type": "m7i.large", "topology.kubernetes.io/zone": "ap-northeast-1a"},
+				Labels:           map[string]string{"eks.amazonaws.com/nodegroup": "system", "k8s.amazonaws.com/eniConfig": "az-a", "node.kubernetes.io/instance-type": "m7i.large", "topology.kubernetes.io/zone": "ap-northeast-1a"},
 			}},
 			ServiceAccounts: []inventory.ServiceAccount{{
 				ObjectRef: inventory.ObjectRef{Kind: "ServiceAccount", Namespace: "app", Name: "worker"},
@@ -96,6 +96,24 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 					SecretRefs:           []inventory.ObjectRef{{Kind: "Secret", Namespace: "app", Name: "worker-secret"}},
 					ImagePullSecretRefs:  []inventory.ObjectRef{{Kind: "Secret", Namespace: "app", Name: "worker-pull"}},
 					VolumeClaimTemplates: []inventory.ObjectRef{{Kind: "PersistentVolumeClaim", Namespace: "app", Name: "worker-cache-template"}},
+				},
+				{
+					ObjectRef: inventory.ObjectRef{APIVersion: "apps/v1", Kind: "DaemonSet", Namespace: "kube-system", Name: "aws-node"},
+					Selector:  map[string]string{"k8s-app": "aws-node"},
+					Containers: []inventory.Container{{
+						Name:          "aws-node",
+						Image:         "602401143452.dkr.ecr.ap-northeast-1.amazonaws.com/amazon-k8s-cni:v1.20.0",
+						EnvConfigRefs: []inventory.ObjectRef{{Kind: "ConfigMap", Namespace: "kube-system", Name: "amazon-vpc-cni"}},
+					}},
+				},
+			},
+			ConfigMaps: []inventory.ConfigObject{
+				{
+					ObjectRef: inventory.ObjectRef{Kind: "ConfigMap", Namespace: "kube-system", Name: "amazon-vpc-cni"},
+					Data: map[string]string{
+						"ENABLE_PREFIX_DELEGATION":           "true",
+						"AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG": "true",
+					},
 				},
 			},
 			Pods: []inventory.Pod{{
@@ -129,6 +147,20 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 					CRDVersion: "v1",
 					CRDKind:    "Widget",
 					CRDPlural:  "widgets",
+				},
+				{
+					ObjectRef:  inventory.ObjectRef{APIVersion: "crd.k8s.amazonaws.com/v1alpha1", Kind: "ENIConfig", Name: "az-a"},
+					CRDName:    "eniconfigs.crd.k8s.amazonaws.com",
+					CRDGroup:   "crd.k8s.amazonaws.com",
+					CRDVersion: "v1alpha1",
+					CRDKind:    "ENIConfig",
+				},
+				{
+					ObjectRef:  inventory.ObjectRef{APIVersion: "vpcresources.k8s.aws/v1beta1", Kind: "SecurityGroupPolicy", Namespace: "app", Name: "web"},
+					CRDName:    "securitygrouppolicies.vpcresources.k8s.aws",
+					CRDGroup:   "vpcresources.k8s.aws",
+					CRDVersion: "v1beta1",
+					CRDKind:    "SecurityGroupPolicy",
 				},
 			},
 			RunningImages: []inventory.RunningImage{
@@ -221,7 +253,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	for _, want := range []string{
 		"# Teleskope scan summary",
 		"Target: `Prod Cluster`",
-		"| CRD instances | 1 |",
+		"| CRD instances | 3 |",
 		"### EKS upgrade and rollback insights",
 		"| Deprecated APIs | UPGRADE_READINESS | 1.32 | WARNING | deprecated API observed | Migrate API versions. | 1 |",
 		"| Addon Compatibility | UPGRADE_READINESS | 1.32 | WARNING | addon update required | Upgrade add-on before the cluster upgrade. | 0 |",
@@ -231,6 +263,10 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"| Memory | 8.0 GiB | 7.4 GiB | 256.0 MiB | 512.0 MiB |",
 		"### EKS network",
 		"| Cluster subnets | subnet-a,subnet-b |",
+		"### EKS networking details",
+		"| vpc-cni config | kubernetes.configmap/configmap/kube-system/amazon-vpc-cni | kube-system | AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG=true,ENABLE_PREFIX_DELEGATION=true | only collected ConfigMap keys are visible; Secret values are intentionally omitted |",
+		"| custom networking | kubernetes.eniconfig/eniconfig/az-a | crd.k8s.amazonaws.com/v1alpha1 | crd=eniconfigs.crd.k8s.amazonaws.com | custom resource spec fields are not collected in this snapshot model |",
+		"subnet CIDRs, route tables, ENIs and security group rules are not collected",
 		"### EKS security and identity",
 		"| Cluster role | arn:aws:iam::123456789012:role/eks-cluster |",
 		"### Managed nodegroups",
@@ -284,7 +320,10 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"eksProjection.overview",
 		"eksProjection.insights",
 		"eksProjection.capacity",
+		"eksProjection.networkDetails",
 		"eksProjection.addons",
+		"eksNetworkDetailsTable",
+		"networkDetails",
 		"targetKubernetes",
 		"compatibleVersions",
 		"Upgrade add-on before the cluster upgrade.",

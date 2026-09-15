@@ -1,6 +1,7 @@
 package report
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
@@ -117,6 +118,90 @@ func TestBuildEKSProjectionPartialSnapshots(t *testing.T) {
 			},
 		},
 		{
+			name: "networking details",
+			snap: &inventory.Snapshot{
+				EKS: inventory.EKSInventory{
+					Cluster: inventory.Cluster{
+						Name: "prod",
+						VPC: inventory.VPCConfig{
+							VPCID:                  "vpc-123",
+							SubnetIDs:              []string{"subnet-a"},
+							ClusterSecurityGroupID: "sg-cluster",
+							SecurityGroupIDs:       []string{"sg-extra"},
+						},
+					},
+					Addons:     []inventory.Addon{{Name: "vpc-cni", Version: "v1.20.0", Status: "ACTIVE", Namespace: "kube-system", ConfigurationValues: `{"env":{"ENABLE_PREFIX_DELEGATION":"true"}}`}},
+					Nodegroups: []inventory.Nodegroup{{Name: "system", Subnets: []string{"subnet-a", "subnet-b"}, RemoteAccessSecurityGroupID: "sg-remote"}},
+				},
+				Kubernetes: inventory.Kubernetes{
+					Nodes: []inventory.Node{{
+						ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "node-a"},
+						Labels: map[string]string{
+							"eks.amazonaws.com/nodegroup": "system",
+							"topology.kubernetes.io/zone": "ap-northeast-1a",
+							"k8s.amazonaws.com/eniConfig": "az-a",
+							"vpc.amazonaws.com/pod-eni":   "true",
+						},
+					}},
+					Workloads: []inventory.Workload{{
+						ObjectRef: inventory.ObjectRef{Kind: "DaemonSet", Namespace: "kube-system", Name: "aws-node"},
+						Selector:  map[string]string{"k8s-app": "aws-node"},
+						Containers: []inventory.Container{{
+							Name:          "aws-node",
+							Image:         "602401143452.dkr.ecr.ap-northeast-1.amazonaws.com/amazon-k8s-cni:v1.20.0",
+							EnvConfigRefs: []inventory.ObjectRef{{Kind: "ConfigMap", Namespace: "kube-system", Name: "amazon-vpc-cni"}},
+						}},
+					}},
+					ConfigMaps: []inventory.ConfigObject{{
+						ObjectRef: inventory.ObjectRef{Kind: "ConfigMap", Namespace: "kube-system", Name: "amazon-vpc-cni"},
+						Data: map[string]string{
+							"ENABLE_PREFIX_DELEGATION":             "true",
+							"AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG":   "true",
+							"ENI_CONFIG_LABEL_DEF":                 "k8s.amazonaws.com/eniConfig",
+							"irrelevant":                           "ignored",
+							"WARM_PREFIX_TARGET":                   "1",
+							"AWS_VPC_K8S_CNI_EXTERNALSNAT":         "false",
+							"POD_SECURITY_GROUP_ENFORCING_MODE":    "standard",
+							"ENABLE_POD_ENI":                       "true",
+							"AWS_VPC_K8S_CNI_RANDOMIZESNAT":        "prng",
+							"AWS_VPC_K8S_CNI_NODE_PORT_SUPPORT":    "true",
+							"AWS_VPC_ENI_MTU":                      "9001",
+							"AWS_VPC_K8S_CNI_EXCLUDE_SNAT_CIDRS":   "10.0.0.0/8",
+							"AWS_VPC_K8S_CNI_VETHPREFIX":           "eni",
+							"AWS_MANAGE_ENIS_NON_SCHEDULABLE":      "false",
+							"AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER":   "false",
+							"AWS_VPC_K8S_CNI_CONNMARK":             "128",
+							"AWS_VPC_K8S_CNI_VETHPREFIX_UNRELATED": "kept",
+						},
+					}},
+					CustomResourceInstances: []inventory.CustomResourceInstance{
+						{ObjectRef: inventory.ObjectRef{Kind: "ENIConfig", Name: "az-a"}, CRDName: "eniconfigs.crd.k8s.amazonaws.com", CRDGroup: "crd.k8s.amazonaws.com", CRDVersion: "v1alpha1", CRDKind: "ENIConfig", Labels: map[string]string{"topology.kubernetes.io/zone": "ap-northeast-1a"}},
+						{ObjectRef: inventory.ObjectRef{Kind: "SecurityGroupPolicy", Namespace: "app", Name: "web"}, CRDName: "securitygrouppolicies.vpcresources.k8s.aws", CRDGroup: "vpcresources.k8s.aws", CRDVersion: "v1beta1", CRDKind: "SecurityGroupPolicy"},
+					},
+				},
+			},
+			assert: func(t *testing.T, got EKSProjection) {
+				t.Helper()
+				for _, want := range []struct {
+					area, source, contains string
+				}{
+					{"vpc", "eks.cluster", "security group rules are not collected"},
+					{"nodegroup networking", "eks.nodegroup/system", "subnets=subnet-a,subnet-b"},
+					{"node placement", "kubernetes.nodes", "zones=ap-northeast-1a"},
+					{"vpc-cni", "eks.addon/vpc-cni", "ENABLE_PREFIX_DELEGATION"},
+					{"vpc-cni", "kubernetes.workload/daemonset/kube-system/aws-node", "amazon-k8s-cni:v1.20.0"},
+					{"vpc-cni config", "kubernetes.configmap/configmap/kube-system/amazon-vpc-cni", "AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG=true"},
+					{"custom networking", "kubernetes.eniconfig/eniconfig/az-a", "crd=eniconfigs.crd.k8s.amazonaws.com"},
+					{"custom networking", "kubernetes.securitygrouppolicy/securitygrouppolicy/app/web", "custom resource spec fields are not collected"},
+					{"node cni labels", "kubernetes.node/node-a", "k8s.amazonaws.com/eniConfig=az-a"},
+				} {
+					if !containsNetworkDetail(got.NetworkDetails, want.area, want.source, want.contains) {
+						t.Fatalf("network details missing %#v in %#v", want, got.NetworkDetails)
+					}
+				}
+			},
+		},
+		{
 			name: "no eks facts",
 			snap: &inventory.Snapshot{},
 			assert: func(t *testing.T, got EKSProjection) {
@@ -160,4 +245,17 @@ func nodegroupRow(rows []EKSNodegroupRow, name string) EKSNodegroupRow {
 		}
 	}
 	return EKSNodegroupRow{}
+}
+
+func containsNetworkDetail(rows []EKSNetworkDetailRow, area, source, contains string) bool {
+	for _, row := range rows {
+		if row.Area != area || row.Source != source {
+			continue
+		}
+		haystack := strings.Join([]string{row.Association, row.Evidence, row.CoverageGap}, " ")
+		if strings.Contains(haystack, contains) {
+			return true
+		}
+	}
+	return false
 }
