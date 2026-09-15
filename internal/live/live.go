@@ -45,8 +45,9 @@ type Status struct {
 }
 
 const (
-	SourceModePoll  = "poll"
-	SourceModeWatch = "watch"
+	SourceModePoll     = "poll"
+	SourceModeWatch    = "watch"
+	SourceModeRecorded = "recorded"
 )
 
 // SourcePublication is one immutable source update ready for live publication.
@@ -485,6 +486,9 @@ func (s *Store) combinedModeLocked() string {
 	}
 	if modes[SourceModeWatch] {
 		return "live/watch"
+	}
+	if modes[SourceModeRecorded] {
+		return "recorded"
 	}
 	return "live/poll"
 }

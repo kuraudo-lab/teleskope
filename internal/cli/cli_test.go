@@ -153,6 +153,8 @@ func TestProgressRendersNumberedStepsAndDetails(t *testing.T) {
 func TestServeValidation(t *testing.T) {
 	for _, args := range [][]string{
 		{"serve", "eks"},
+		{"serve", "snapshot"},
+		{"serve", "snapshot", "/private/tmp/teleskope-missing-snapshot-for-test.json"},
 		{"serve", "k8s", "--interval", "0s"},
 		{"serve", "k8s", "--timeout", "-1s"},
 		{"serve", "eks", "--cluster", "demo", "--aws-interval", "0s"},
@@ -167,6 +169,47 @@ func TestServeValidation(t *testing.T) {
 		if code := Run(args, &stdout, &stderr); code != 1 {
 			t.Fatalf("%v: code=%d", args, code)
 		}
+	}
+}
+
+func TestRecordedSnapshotPublication(t *testing.T) {
+	collectedAt := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	snapshot := &inventory.Snapshot{
+		SchemaVersion: "teleskope.io/snapshot/v1alpha1",
+		CollectedAt:   collectedAt,
+		Source:        inventory.Source{Tool: "teleskope", Version: "test", Mode: "out-of-cluster/run-once"},
+		AWS:           inventory.AWSIdentity{Region: "eu-west-1"},
+		EKS:           inventory.EKSInventory{Cluster: inventory.Cluster{Name: "demo", Version: "1.33"}},
+		Kubernetes: inventory.Kubernetes{
+			Context: "demo",
+			Pods:    []inventory.Pod{{ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "default", Name: "web"}}},
+		},
+		Coverage: []inventory.CoverageItem{
+			{Area: "aws", Resource: "EKSCluster", Status: "complete", ObjectCount: 1},
+			{Area: "kubernetes", Resource: "Pods", Status: "complete", ObjectCount: 1},
+		},
+	}
+	store, err := live.New(recordedSources(snapshot))
+	if err != nil {
+		t.Fatal(err)
+	}
+	publishRecordedSnapshot(store, snapshot)
+
+	view, err := store.View()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Revision != 2 {
+		t.Fatalf("revision = %d, want 2", view.Revision)
+	}
+	if view.Snapshot == nil || view.Snapshot.Source.Mode != "recorded" {
+		t.Fatalf("snapshot source = %+v, want recorded", view.Snapshot)
+	}
+	if view.Sources["kubernetes"].Mode != live.SourceModeRecorded || view.Sources["eks"].Mode != live.SourceModeRecorded {
+		t.Fatalf("source modes = %+v", view.Sources)
+	}
+	if view.Snapshot.EKS.Cluster.Name != "demo" || len(view.Snapshot.Kubernetes.Pods) != 1 {
+		t.Fatalf("recorded snapshot was not merged: %+v", view.Snapshot)
 	}
 }
 

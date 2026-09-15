@@ -15,6 +15,7 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/awseks"
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
+	"github.com/kuraudo-lab/teleskope/internal/compare"
 	"github.com/kuraudo-lab/teleskope/internal/hub"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/k8s"
@@ -29,7 +30,72 @@ const (
 
 func newServeCommand(stdout, stderr io.Writer) *cobra.Command {
 	cmd := &cobra.Command{Use: "serve", Short: "Serve a live read-only inventory with periodic collection"}
-	cmd.AddCommand(newServeTarget("k8s", stdout, stderr), newServeTarget("eks", stdout, stderr))
+	cmd.AddCommand(newServeTarget("k8s", stdout, stderr), newServeTarget("eks", stdout, stderr), newServeSnapshotCommand(stdout, stderr))
+	return cmd
+}
+
+func newServeSnapshotCommand(stdout, stderr io.Writer) *cobra.Command {
+	var listen string
+	cmd := &cobra.Command{
+		Use:   "snapshot <path>",
+		Short: "Serve a recorded snapshot without connecting to AWS or Kubernetes",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			snapshot, err := compare.LoadSnapshot(args[0])
+			if err != nil {
+				return err
+			}
+			sources := recordedSources(snapshot)
+			if len(sources) == 0 {
+				return fmt.Errorf("recorded snapshot %s has no EKS or Kubernetes inventory", args[0])
+			}
+			var logMu sync.Mutex
+			log := func(format string, args ...any) {
+				logMu.Lock()
+				defer logMu.Unlock()
+				fmt.Fprintf(stderr, format+"\n", args...)
+			}
+			store, err := live.New(sources)
+			if err != nil {
+				return err
+			}
+			publishRecordedSnapshot(store, snapshot)
+			listener, err := net.Listen("tcp", listen)
+			if err != nil {
+				return fmt.Errorf("listen: %w", err)
+			}
+			defer listener.Close()
+			log("recorded serve starting listen=%s snapshot=%s sources=%s", listener.Addr(), args[0], sourceNames(sources))
+			store.AddEvent("serve", "info", "recorded snapshot loaded path=%s sources=%s", args[0], sourceNames(sources))
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			server := &http.Server{
+				Handler:           store.HandlerWithOptions(live.HandlerOptions{Log: log}),
+				ReadHeaderTimeout: 5 * time.Second,
+				WriteTimeout:      defaultServeWriteTimeout,
+				IdleTimeout:       60 * time.Second,
+			}
+			serverDone := make(chan error, 1)
+			go func() { serverDone <- server.Serve(listener) }()
+			fmt.Fprintf(stdout, "Recorded inventory: http://%s\n", listener.Addr())
+			select {
+			case err = <-serverDone:
+			case <-ctx.Done():
+				log("recorded serve shutting down")
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
+					_ = server.Close()
+				}
+				cancel()
+				err = <-serverDone
+			}
+			if err == http.ErrServerClosed {
+				return nil
+			}
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&listen, "listen", "127.0.0.1:8080", "HTTP listen address (no built-in authentication)")
 	return cmd
 }
 
@@ -260,6 +326,96 @@ func liveKubernetesSnapshot(data inventory.Kubernetes, coverage []inventory.Cove
 		Source:     inventory.Source{Tool: "teleskope", Version: buildinfo.Version, Mode: "live/poll"},
 		Kubernetes: data, Coverage: coverage,
 	}
+}
+
+func recordedSources(snapshot *inventory.Snapshot) []live.Source {
+	var sources []live.Source
+	if snapshotHasKubernetesInventory(snapshot) {
+		sources = append(sources, live.Source{Name: "kubernetes", PublicationOnly: true})
+	}
+	if snapshotHasEKSInventory(snapshot) {
+		sources = append(sources, live.Source{Name: "eks", PublicationOnly: true})
+	}
+	return sources
+}
+
+func publishRecordedSnapshot(store *live.Store, snapshot *inventory.Snapshot) {
+	if snapshotHasKubernetesInventory(snapshot) {
+		store.PublishSource(live.SourcePublication{
+			Source:   "kubernetes",
+			Mode:     live.SourceModeRecorded,
+			Snapshot: recordedKubernetesSnapshot(snapshot),
+		})
+	}
+	if snapshotHasEKSInventory(snapshot) {
+		store.PublishSource(live.SourcePublication{
+			Source:   "eks",
+			Mode:     live.SourceModeRecorded,
+			Snapshot: recordedEKSSnapshot(snapshot),
+		})
+	}
+}
+
+func recordedKubernetesSnapshot(snapshot *inventory.Snapshot) *inventory.Snapshot {
+	return &inventory.Snapshot{
+		SchemaVersion: snapshot.SchemaVersion,
+		CollectedAt:   snapshot.CollectedAt,
+		Source:        snapshot.Source,
+		Kubernetes:    snapshot.Kubernetes,
+		Coverage:      coverageByArea(snapshot.Coverage, "kubernetes"),
+	}
+}
+
+func recordedEKSSnapshot(snapshot *inventory.Snapshot) *inventory.Snapshot {
+	return &inventory.Snapshot{
+		SchemaVersion: snapshot.SchemaVersion,
+		CollectedAt:   snapshot.CollectedAt,
+		Source:        snapshot.Source,
+		AWS:           snapshot.AWS,
+		EKS:           snapshot.EKS,
+		Coverage:      coverageByArea(snapshot.Coverage, "aws", "eks"),
+	}
+}
+
+func coverageByArea(items []inventory.CoverageItem, areas ...string) []inventory.CoverageItem {
+	allowed := map[string]bool{}
+	for _, area := range areas {
+		allowed[area] = true
+	}
+	var out []inventory.CoverageItem
+	for _, item := range items {
+		if allowed[item.Area] {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+func snapshotHasKubernetesInventory(snapshot *inventory.Snapshot) bool {
+	if snapshot == nil {
+		return false
+	}
+	return hasLiveKubernetesData(snapshot.Kubernetes, coverageByArea(snapshot.Coverage, "kubernetes"))
+}
+
+func snapshotHasEKSInventory(snapshot *inventory.Snapshot) bool {
+	if snapshot == nil {
+		return false
+	}
+	eks := snapshot.EKS
+	return snapshot.AWS.Region != "" ||
+		snapshot.AWS.AccountID != "" ||
+		snapshot.AWS.ARN != "" ||
+		snapshot.AWS.UserID != "" ||
+		eks.Cluster.Name != "" ||
+		eks.Cluster.ARN != "" ||
+		eks.Cluster.Version != "" ||
+		len(eks.Addons) > 0 ||
+		len(eks.Nodegroups) > 0 ||
+		len(eks.Insights) > 0 ||
+		len(eks.AccessEntries) > 0 ||
+		len(eks.PodIdentityAssociations) > 0 ||
+		len(coverageByArea(snapshot.Coverage, "aws", "eks")) > 0
 }
 
 func hasLiveKubernetesData(data inventory.Kubernetes, coverage []inventory.CoverageItem) bool {

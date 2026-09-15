@@ -184,6 +184,7 @@ teleskope serve k8s --kube-context prod --watch --watch-debounce 750ms
 teleskope serve eks --cluster my-cluster --kube-context prod --aws-interval 15m
 teleskope serve eks --cluster my-cluster --kube-context prod --watch
 teleskope serve eks --cluster my-cluster --skip-kubernetes
+teleskope serve snapshot testdata/recorded/eks-demo-snapshot.json
 ```
 
 Open [localhost:8080](http://localhost:8080). The default listener is
@@ -191,6 +192,14 @@ Open [localhost:8080](http://localhost:8080). The default listener is
 authentication. Inventory can include ConfigMap contents and infrastructure
 details; keep the listener local or put it behind an authenticated access
 boundary.
+
+Use `serve snapshot` for UI acceptance with recorded data. The argument may be a
+`snapshot.json` file or a report directory containing one. This mode publishes
+the recorded EKS and Kubernetes sources once, never connects to AWS or
+Kubernetes, and keeps the same live UI, export, and AI analysis endpoints as
+polling/watch serve. The repository includes
+`testdata/recorded/eks-demo-snapshot.json`, generated from a real EKS scan and
+sanitized with `scripts/sanitize-snapshot.py`.
 
 Each source scans immediately, then waits after its previous scan finishes:
 Kubernetes defaults to 5 minutes, AWS to 15 minutes, with up to 10% added
