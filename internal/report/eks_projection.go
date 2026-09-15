@@ -61,12 +61,15 @@ type PodIdentityRow struct {
 }
 
 type EKSAddonRow struct {
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	Status    string `json:"status"`
-	Namespace string `json:"namespace"`
-	IAM       string `json:"iam"`
-	Issues    string `json:"issues"`
+	Name               string `json:"name"`
+	Version            string `json:"version"`
+	Status             string `json:"status"`
+	Namespace          string `json:"namespace"`
+	TargetKubernetes   string `json:"targetKubernetes"`
+	CompatibleVersions string `json:"compatibleVersions"`
+	Upgrade            string `json:"upgrade"`
+	IAM                string `json:"iam"`
+	Issues             string `json:"issues"`
 }
 
 type EKSNodegroupRow struct {
@@ -105,7 +108,7 @@ func BuildEKSProjection(snapshot *inventory.Snapshot) EKSProjection {
 	out.Capacity = projectEKSCapacity(snapshot.Kubernetes)
 	out.Network = projectEKSNetwork(cluster, snapshot.EKS.Nodegroups)
 	out.Security, out.AccessEntries, out.PodIdentities = projectEKSSecurity(snapshot)
-	out.Addons = projectEKSAddons(snapshot.EKS.Addons)
+	out.Addons = projectEKSAddons(snapshot.EKS.Addons, snapshot.EKS.Insights)
 	out.Nodegroups = projectEKSNodegroups(snapshot.EKS.Nodegroups)
 	return out
 }
@@ -198,19 +201,83 @@ func projectEKSSecurity(snapshot *inventory.Snapshot) ([]FieldValueRow, []Access
 	return summary, access, identities
 }
 
-func projectEKSAddons(addons []inventory.Addon) []EKSAddonRow {
+func projectEKSAddons(addons []inventory.Addon, insights []inventory.EKSInsight) []EKSAddonRow {
+	compatibility := addonCompatibilityByName(insights)
 	rows := make([]EKSAddonRow, 0, len(addons))
 	for _, addon := range sortedAddons(addons) {
+		compat := compatibility[addon.Name]
 		rows = append(rows, EKSAddonRow{
-			Name:      display(addon.Name),
-			Version:   display(addon.Version),
-			Status:    display(addon.Status),
-			Namespace: display(addon.Namespace),
-			IAM:       addonIAM(addon),
-			Issues:    healthIssues(addon.Issues),
+			Name:               display(addon.Name),
+			Version:            display(addon.Version),
+			Status:             display(addon.Status),
+			Namespace:          display(addon.Namespace),
+			TargetKubernetes:   display(strings.Join(compat.TargetKubernetes, ",")),
+			CompatibleVersions: display(strings.Join(compat.CompatibleVersions, ",")),
+			Upgrade:            addonUpgrade(addon.Version, compat),
+			IAM:                addonIAM(addon),
+			Issues:             healthIssues(addon.Issues),
 		})
 	}
 	return rows
+}
+
+type addonCompatibility struct {
+	TargetKubernetes   []string
+	CompatibleVersions []string
+	Statuses           []string
+	Reasons            []string
+	Recommendations    []string
+}
+
+func addonCompatibilityByName(insights []inventory.EKSInsight) map[string]addonCompatibility {
+	out := map[string]addonCompatibility{}
+	for _, insight := range sortedEKSInsights(insights) {
+		for _, item := range insight.AddonCompatibility {
+			if item.Name == "" {
+				continue
+			}
+			current := out[item.Name]
+			current.TargetKubernetes = appendUnique(current.TargetKubernetes, insight.KubernetesVersion)
+			current.CompatibleVersions = appendUnique(current.CompatibleVersions, item.CompatibleVersions...)
+			current.Statuses = appendUnique(current.Statuses, insight.Status)
+			current.Reasons = appendUnique(current.Reasons, insight.Reason)
+			current.Recommendations = appendUnique(current.Recommendations, trimMarkdownText(insight.Recommendation))
+			out[item.Name] = current
+		}
+	}
+	for name, current := range out {
+		sort.Strings(current.TargetKubernetes)
+		sort.Strings(current.CompatibleVersions)
+		sort.Strings(current.Statuses)
+		sort.Strings(current.Reasons)
+		sort.Strings(current.Recommendations)
+		out[name] = current
+	}
+	return out
+}
+
+func addonUpgrade(currentVersion string, compat addonCompatibility) string {
+	if len(compat.CompatibleVersions) == 0 && len(compat.Statuses) == 0 && len(compat.Reasons) == 0 {
+		return "-"
+	}
+	parts := []string{}
+	if len(compat.Statuses) > 0 {
+		parts = append(parts, "status="+strings.Join(compat.Statuses, ","))
+	}
+	if len(compat.CompatibleVersions) > 0 {
+		if has(compat.CompatibleVersions, currentVersion) {
+			parts = append(parts, "current version listed compatible")
+		} else {
+			parts = append(parts, "use "+strings.Join(compat.CompatibleVersions, ","))
+		}
+	}
+	if len(compat.Reasons) > 0 {
+		parts = append(parts, "reason="+strings.Join(compat.Reasons, "; "))
+	}
+	if len(compat.Recommendations) > 0 {
+		parts = append(parts, "recommendation="+strings.Join(compat.Recommendations, "; "))
+	}
+	return strings.Join(parts, " ")
 }
 
 func projectEKSNodegroups(nodegroups []inventory.Nodegroup) []EKSNodegroupRow {
@@ -274,4 +341,34 @@ func sortedNodegroups(items []inventory.Nodegroup) []inventory.Nodegroup {
 	out := append([]inventory.Nodegroup(nil), items...)
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
+}
+
+func appendUnique(values []string, additions ...string) []string {
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			seen[value] = struct{}{}
+		}
+	}
+	for _, value := range additions {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		values = append(values, value)
+		seen[value] = struct{}{}
+	}
+	return values
+}
+
+func has(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }

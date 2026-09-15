@@ -54,6 +54,15 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 			if strings.Contains(addon.IAM, "PodIdentity=") {
 				fmt.Fprintf(w, "  pod-identity=%s", strings.TrimPrefix(addon.IAM[strings.LastIndex(addon.IAM, "PodIdentity="):], "PodIdentity="))
 			}
+			if addon.TargetKubernetes != "-" {
+				fmt.Fprintf(w, "  target-k8s=%s", addon.TargetKubernetes)
+			}
+			if addon.CompatibleVersions != "-" {
+				fmt.Fprintf(w, "  compatible=%s", addon.CompatibleVersions)
+			}
+			if addon.Upgrade != "-" {
+				fmt.Fprintf(w, "  upgrade=%s", addon.Upgrade)
+			}
 			fmt.Fprintln(w)
 		}
 		fmt.Fprintln(w)

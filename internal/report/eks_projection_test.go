@@ -36,10 +36,26 @@ func TestBuildEKSProjectionPartialSnapshots(t *testing.T) {
 		},
 		{
 			name: "addons only",
-			snap: &inventory.Snapshot{EKS: inventory.EKSInventory{Addons: []inventory.Addon{
-				{Name: "z-addon", Version: "v2", Status: "DEGRADED", Issues: []inventory.HealthIssue{{Code: "ConfigError", Message: "bad config"}}},
-				{Name: "vpc-cni", Version: "v1", Status: "ACTIVE", Namespace: "kube-system", ServiceAccountRoleARN: "arn:aws:iam::123456789012:role/cni", PodIdentityAssociations: []string{"kube-system/aws-node"}},
-			}}},
+			snap: &inventory.Snapshot{
+				EKS: inventory.EKSInventory{
+					Addons: []inventory.Addon{
+						{Name: "z-addon", Version: "v2", Status: "DEGRADED", Issues: []inventory.HealthIssue{{Code: "ConfigError", Message: "bad config"}}},
+						{Name: "vpc-cni", Version: "v1", Status: "ACTIVE", Namespace: "kube-system", ServiceAccountRoleARN: "arn:aws:iam::123456789012:role/cni", PodIdentityAssociations: []string{"kube-system/aws-node"}},
+					},
+					Insights: []inventory.EKSInsight{{
+						Name:              "Addon Compatibility",
+						Category:          "UPGRADE_READINESS",
+						KubernetesVersion: "1.32",
+						Status:            "WARNING",
+						Reason:            "update required",
+						Recommendation:    "Upgrade the managed add-on.",
+						AddonCompatibility: []inventory.AddonCompatibility{{
+							Name:               "vpc-cni",
+							CompatibleVersions: []string{"v2", "v3"},
+						}},
+					}},
+				},
+			},
 			assert: func(t *testing.T, got EKSProjection) {
 				t.Helper()
 				if !got.Visible {
@@ -47,6 +63,9 @@ func TestBuildEKSProjectionPartialSnapshots(t *testing.T) {
 				}
 				if len(got.Addons) != 2 || got.Addons[0].Name != "vpc-cni" || got.Addons[0].IAM != "IRSA:arn:aws:iam::123456789012:role/cni PodIdentity=1" {
 					t.Fatalf("addons = %#v", got.Addons)
+				}
+				if got.Addons[0].TargetKubernetes != "1.32" || got.Addons[0].CompatibleVersions != "v2,v3" || got.Addons[0].Upgrade != "status=WARNING use v2,v3 reason=update required recommendation=Upgrade the managed add-on." {
+					t.Fatalf("addon compatibility = %#v", got.Addons[0])
 				}
 				if got.Addons[1].Issues != "ConfigError:bad config" {
 					t.Fatalf("addon issues = %q", got.Addons[1].Issues)

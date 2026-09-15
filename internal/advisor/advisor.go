@@ -148,6 +148,52 @@ func Analyze(s *inventory.Snapshot) Report {
 	if len(k.CustomResourceDefinitions) == 0 {
 		add("extensions.api", "cluster", "", "unknown", "none", "No custom API definitions observed.", "Review collection coverage before drawing conclusions about extensions.", inventory.ObjectRef{}, "", "", "CustomResourceDefinitions")
 	}
+	addonCompatibility := addonCompatibilityByName(s.EKS.Insights)
+	for _, addon := range s.EKS.Addons {
+		assessment, basis := "supported", "observed"
+		summary := "Managed add-on is active and has no recorded health issues."
+		constraint := "Add-on status and EKS insights do not verify controller runtime health inside the cluster."
+		if addon.Status != "" && addon.Status != "ACTIVE" {
+			assessment = "unsupported"
+			summary = "Managed add-on is not ACTIVE."
+		}
+		if len(addon.Issues) > 0 {
+			assessment = "unsupported"
+			summary = fmt.Sprintf("Managed add-on reports %d health issue(s).", len(addon.Issues))
+		}
+		compat := addonCompatibility[addon.Name]
+		if len(compat.CompatibleVersions) > 0 {
+			basis = "aws-reported"
+			if assessment == "supported" && !has(compat.CompatibleVersions, addon.Version) {
+				assessment = "unknown"
+				summary = "EKS reports compatible add-on versions for a target Kubernetes release; current version is not listed."
+			}
+		}
+		cov, at := coverageArea(s.Coverage, "eks", "Addons")
+		capability := Capability{
+			Key:            "eks.addon",
+			Scope:          addon.Name,
+			Implementation: addon.Version,
+			Assessment:     assessment,
+			Basis:          basis,
+			Summary:        summary,
+			Constraints:    []string{constraint},
+			Collection:     collectionFor(s.Coverage, "eks", "Addons", "Insights"),
+			Coverage:       cov,
+			Freshness:      "snapshot",
+			RuleID:         "eks.addon/v1",
+		}
+		ref := inventory.ObjectRef{Kind: "Addon", Name: addon.Name}
+		capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "addonVersion/status", Value: addon.Version + "/" + addon.Status, CollectedAt: at})
+		for _, issue := range addon.Issues {
+			capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "health.issue", Value: strings.TrimSpace(issue.Code + ":" + issue.Message), CollectedAt: at})
+		}
+		if len(compat.TargetKubernetes) > 0 || len(compat.CompatibleVersions) > 0 {
+			_, insightAt := coverageArea(s.Coverage, "eks", "Insights")
+			capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "insight.addonCompatibility", Value: fmt.Sprintf("target=%s compatible=%s status=%s", strings.Join(compat.TargetKubernetes, ","), strings.Join(compat.CompatibleVersions, ","), strings.Join(compat.Statuses, ",")), CollectedAt: insightAt})
+		}
+		r.Capabilities = append(r.Capabilities, capability)
+	}
 	sort.Slice(r.Capabilities, func(i, j int) bool {
 		a, b := r.Capabilities[i], r.Capabilities[j]
 		return a.Key+"/"+a.Scope < b.Key+"/"+b.Scope
@@ -158,7 +204,7 @@ func Analyze(s *inventory.Snapshot) Report {
 			return x.Resource.Kind+"/"+x.Resource.Namespace+"/"+x.Resource.Name < y.Resource.Kind+"/"+y.Resource.Namespace+"/"+y.Resource.Name
 		})
 	}
-	r.Summary = fmt.Sprintf("%d Ingress classes, %d Gateway classes, %d StorageClasses and %d custom API definitions observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified.", len(k.IngressClasses), len(k.GatewayClasses), len(k.StorageClasses), len(k.CustomResourceDefinitions))
+	r.Summary = fmt.Sprintf("%d Ingress classes, %d Gateway classes, %d StorageClasses, %d custom API definitions and %d EKS managed add-ons observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified.", len(k.IngressClasses), len(k.GatewayClasses), len(k.StorageClasses), len(k.CustomResourceDefinitions), len(s.EKS.Addons))
 	unknown, incomplete, rwx := 0, 0, 0
 	for _, c := range r.Capabilities {
 		if c.Assessment == "unknown" {
@@ -173,6 +219,87 @@ func Analyze(s *inventory.Snapshot) Report {
 	}
 	r.Summary += fmt.Sprintf(" RWX bindings observed in %d StorageClasses; %d assessments remain unknown and %d have incomplete coverage.", rwx, unknown, incomplete)
 	return r
+}
+
+type addonCompatibility struct {
+	TargetKubernetes   []string
+	CompatibleVersions []string
+	Statuses           []string
+}
+
+func addonCompatibilityByName(insights []inventory.EKSInsight) map[string]addonCompatibility {
+	out := map[string]addonCompatibility{}
+	for _, insight := range insights {
+		for _, item := range insight.AddonCompatibility {
+			if item.Name == "" {
+				continue
+			}
+			current := out[item.Name]
+			current.TargetKubernetes = appendUnique(current.TargetKubernetes, insight.KubernetesVersion)
+			current.CompatibleVersions = appendUnique(current.CompatibleVersions, item.CompatibleVersions...)
+			current.Statuses = appendUnique(current.Statuses, insight.Status)
+			out[item.Name] = current
+		}
+	}
+	for name, current := range out {
+		sort.Strings(current.TargetKubernetes)
+		sort.Strings(current.CompatibleVersions)
+		sort.Strings(current.Statuses)
+		out[name] = current
+	}
+	return out
+}
+
+func appendUnique(values []string, additions ...string) []string {
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			seen[value] = struct{}{}
+		}
+	}
+	for _, value := range additions {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		values = append(values, value)
+		seen[value] = struct{}{}
+	}
+	return values
+}
+
+func coverageArea(items []inventory.CoverageItem, area, resource string) (string, time.Time) {
+	state := "partial"
+	var at time.Time
+	for _, item := range items {
+		if item.Area != area || item.Resource != resource {
+			continue
+		}
+		state = item.Status
+		at = item.CollectedAt
+		break
+	}
+	return state, at
+}
+
+func collectionFor(items []inventory.CoverageItem, area string, resources ...string) []inventory.CoverageItem {
+	var out []inventory.CoverageItem
+	for _, resource := range resources {
+		found := false
+		for _, item := range items {
+			if item.Area == area && item.Resource == resource {
+				out = append(out, item)
+				found = true
+			}
+		}
+		if !found {
+			out = append(out, inventory.CoverageItem{Area: area, Resource: resource, Status: "unavailable", Reason: "Collection coverage not recorded in this snapshot."})
+		}
+	}
+	return out
 }
 
 func has(values []string, want string) bool {

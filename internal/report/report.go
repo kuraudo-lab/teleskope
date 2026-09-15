@@ -270,9 +270,9 @@ func writeEKSAddonRows(b *strings.Builder, rows []EKSAddonRow) {
 		return
 	}
 	fmt.Fprintf(b, "### Managed add-ons\n\n")
-	fmt.Fprintf(b, "| Name | Version | Status | Namespace | IAM | Issues |\n| --- | --- | --- | --- | --- | --- |\n")
+	fmt.Fprintf(b, "| Name | Version | Status | Namespace | Target Kubernetes | Compatible versions | Upgrade | IAM | Issues |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, row := range rows {
-		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s |\n", mdCell(row.Name), mdCell(row.Version), mdCell(row.Status), mdCell(row.Namespace), mdCell(row.IAM), mdCell(row.Issues))
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", mdCell(row.Name), mdCell(row.Version), mdCell(row.Status), mdCell(row.Namespace), mdCell(row.TargetKubernetes), mdCell(row.CompatibleVersions), mdCell(row.Upgrade), mdCell(row.IAM), mdCell(row.Issues))
 	}
 	fmt.Fprintln(b)
 }

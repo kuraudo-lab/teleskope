@@ -19,6 +19,17 @@ func capability(t *testing.T, r Report, key string) Capability {
 	return Capability{}
 }
 
+func scopedCapability(t *testing.T, r Report, key, scope string) Capability {
+	t.Helper()
+	for _, c := range r.Capabilities {
+		if c.Key == key && c.Scope == scope {
+			return c
+		}
+	}
+	t.Fatalf("missing %s/%s", key, scope)
+	return Capability{}
+}
+
 func TestUnknownIsNotUnsupported(t *testing.T) {
 	for _, status := range []string{"complete", "denied", "unavailable", "partial"} {
 		t.Run(status, func(t *testing.T) {
@@ -103,6 +114,47 @@ func TestCoexistingUnusedClassesAndDeterminism(t *testing.T) {
 		}
 	}
 	if !strings.Contains(r.Summary, "1 Ingress classes, 1 Gateway classes") {
+		t.Fatal(r.Summary)
+	}
+}
+
+func TestEKSAddonAdvisorFindings(t *testing.T) {
+	s := &inventory.Snapshot{
+		EKS: inventory.EKSInventory{
+			Addons: []inventory.Addon{
+				{Name: "vpc-cni", Version: "v1", Status: "ACTIVE"},
+				{Name: "coredns", Version: "v1", Status: "DEGRADED", Issues: []inventory.HealthIssue{{Code: "ConfigError", Message: "bad config"}}},
+			},
+			Insights: []inventory.EKSInsight{{
+				Name:              "Addon Compatibility",
+				Category:          "UPGRADE_READINESS",
+				KubernetesVersion: "1.32",
+				Status:            "WARNING",
+				AddonCompatibility: []inventory.AddonCompatibility{{
+					Name:               "vpc-cni",
+					CompatibleVersions: []string{"v2"},
+				}},
+			}},
+		},
+		Coverage: []inventory.CoverageItem{
+			{Area: "eks", Resource: "Addons", Status: "complete"},
+			{Area: "eks", Resource: "Insights", Status: "complete"},
+		},
+	}
+
+	r := Analyze(s)
+	cni := scopedCapability(t, r, "eks.addon", "vpc-cni")
+	if cni.Assessment != "unknown" || cni.Basis != "aws-reported" || !strings.Contains(cni.Summary, "current version is not listed") {
+		t.Fatalf("vpc-cni capability = %+v", cni)
+	}
+	if len(cni.Evidence) < 2 || !strings.Contains(cni.Evidence[1].Value, "target=1.32 compatible=v2 status=WARNING") {
+		t.Fatalf("vpc-cni evidence = %+v", cni.Evidence)
+	}
+	coredns := scopedCapability(t, r, "eks.addon", "coredns")
+	if coredns.Assessment != "unsupported" || !strings.Contains(coredns.Summary, "health issue") {
+		t.Fatalf("coredns capability = %+v", coredns)
+	}
+	if !strings.Contains(r.Summary, "2 EKS managed add-ons") {
 		t.Fatal(r.Summary)
 	}
 }
