@@ -152,6 +152,55 @@ func TestFleetSummaryIncludesDashboardSignals(t *testing.T) {
 	}
 }
 
+func TestSearchIndexesFleetResources(t *testing.T) {
+	store := &Store{}
+	env := testEnvelope("prod-a", 1)
+	env.Snapshot.Kubernetes.Namespaces = []inventory.Namespace{{ObjectRef: inventory.ObjectRef{Kind: "Namespace", Name: "app"}, Phase: "Active"}}
+	env.Snapshot.Kubernetes.Workloads = []inventory.Workload{{
+		ObjectRef:          inventory.ObjectRef{APIVersion: "apps/v1", Kind: "Deployment", Namespace: "app", Name: "web"},
+		ServiceAccountName: "web",
+		Containers:         []inventory.Container{{Name: "web", Image: "repo/web:v1"}},
+	}}
+	env.Snapshot.Kubernetes.RunningImages = []inventory.RunningImage{{Image: "repo/web:v1", PodCount: 1, ContainerCount: 1, Namespaces: []string{"app"}}}
+	env.Snapshot.Kubernetes.Services = []inventory.Service{{ObjectRef: inventory.ObjectRef{Kind: "Service", Namespace: "app", Name: "web"}, Type: "ClusterIP"}}
+	env.Snapshot.Kubernetes.Gateways = []inventory.Gateway{{ObjectRef: inventory.ObjectRef{APIVersion: "gateway.networking.k8s.io/v1", Kind: "Gateway", Namespace: "app", Name: "public"}, ClassName: "alb"}}
+	env.Snapshot.Kubernetes.GatewayRoutes = []inventory.GatewayRoute{{ObjectRef: inventory.ObjectRef{APIVersion: "gateway.networking.k8s.io/v1", Kind: "HTTPRoute", Namespace: "app", Name: "web"}, Hostnames: []string{"example.com"}}}
+	env.Snapshot.Kubernetes.PersistentVolumeClaims = []inventory.PersistentVolumeClaim{{ObjectRef: inventory.ObjectRef{Kind: "PersistentVolumeClaim", Namespace: "app", Name: "cache"}, StorageClassName: "gp3"}}
+	env.Snapshot.EKS.PodIdentityAssociations = []inventory.PodIdentityAssociation{{Namespace: "app", ServiceAccount: "web", RoleARN: "arn:aws:iam::123456789012:role/web"}}
+	if accepted, _, err := store.Put(env); err != nil || !accepted {
+		t.Fatalf("put accepted=%v err=%v", accepted, err)
+	}
+
+	cases := []struct {
+		name      string
+		query     string
+		kind      string
+		namespace string
+		image     string
+		wantKind  string
+		wantName  string
+	}{
+		{name: "name query", query: "public", wantKind: "Gateway", wantName: "public"},
+		{name: "namespace query", query: "app", kind: "service", wantKind: "Service", wantName: "web"},
+		{name: "image query", image: "repo/web", wantKind: "Deployment", wantName: "web"},
+		{name: "pvc kind query", kind: "persistentvolumeclaim", wantKind: "PersistentVolumeClaim", wantName: "cache"},
+		{name: "iam role query", query: "role/web", wantKind: "IAMRole", wantName: "arn:aws:iam::123456789012:role/web"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := store.Search(tc.query, tc.kind, tc.namespace, tc.image)
+			if !hasSearchResult(got.Results, tc.wantKind, tc.wantName) {
+				t.Fatalf("search results = %+v, want %s %s", got.Results, tc.wantKind, tc.wantName)
+			}
+			for _, result := range got.Results {
+				if result.ClusterURL == "" || !strings.Contains(result.ClusterURL, "/cluster?id=") {
+					t.Fatalf("result missing cluster drilldown link: %+v", result)
+				}
+			}
+		})
+	}
+}
+
 func TestFleetCarriesWatchFreshness(t *testing.T) {
 	store := &Store{}
 	env := testEnvelope("prod-a", 1)
@@ -191,7 +240,7 @@ func TestFleetCarriesWatchFreshness(t *testing.T) {
 
 func TestHubHTMLUsesEmbeddedTeleskopeIcon(t *testing.T) {
 	html := HubHTML()
-	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`, "providerFilter", "regionFilter", "versionDist", "riskCounts", "sourceHealth", "addonRisks", "nodegroupRisks", "watch reconnecting", "full resync", "reconnects", "eventKind(event)"} {
+	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`, "providerFilter", "regionFilter", "versionDist", "riskCounts", "sourceHealth", "searchInput", "runFleetSearch", "/api/search?q=", "addonRisks", "nodegroupRisks", "watch reconnecting", "full resync", "reconnects", "eventKind(event)"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("hub html missing %q", want)
 		}
@@ -224,6 +273,12 @@ func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 	handler.ServeHTTP(fleet, httptest.NewRequest(http.MethodGet, "/api/clusters", nil))
 	if fleet.Code != http.StatusOK || !strings.Contains(fleet.Body.String(), `"clusters"`) {
 		t.Fatalf("fleet = %d: %s", fleet.Code, fleet.Body.String())
+	}
+
+	search := httptest.NewRecorder()
+	handler.ServeHTTP(search, httptest.NewRequest(http.MethodGet, "/api/search?q=repo%2Fweb", nil))
+	if search.Code != http.StatusOK || !strings.Contains(search.Body.String(), `"kind": "Image"`) || !strings.Contains(search.Body.String(), `"/cluster?id=prod-a"`) {
+		t.Fatalf("search = %d: %s", search.Code, search.Body.String())
 	}
 
 	drilldown := httptest.NewRecorder()
@@ -389,6 +444,15 @@ func formatLog(format string, args ...any) string {
 func containsLog(logs []string, want string) bool {
 	for _, log := range logs {
 		if strings.Contains(log, want) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasSearchResult(results []SearchResult, kind, name string) bool {
+	for _, result := range results {
+		if result.Kind == kind && result.Name == name {
 			return true
 		}
 	}

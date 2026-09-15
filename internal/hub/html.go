@@ -39,8 +39,10 @@ func HubHTML() string {
     h2 { margin:4px 0 8px; font-size:34px; letter-spacing:-.04em; }
     .sub, .muted { color:var(--muted); }
     .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    button, select { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; height:42px; padding:0 12px; cursor:pointer; font:inherit; font-size:14px; }
+    button, select, input { background:var(--control-bg); color:var(--text); border:1px solid var(--line); border-radius:12px; height:42px; padding:0 12px; font:inherit; font-size:14px; }
+    button, select { cursor:pointer; }
     button:hover, select:hover { background:var(--nav-hover); }
+    input { min-width:280px; }
     .cards { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:16px; margin-bottom:18px; }
     .card { background:var(--card-bg); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
     .label { color:var(--muted); font-size:12px; }
@@ -97,11 +99,14 @@ func HubHTML() string {
     <section class="section" data-section="events">
       <div class="panel"><h3>Recent events</h3><div class="scroll"><table><thead><tr><th>Time</th><th>Cluster</th><th>Kind</th><th>Source</th><th>Level</th><th>Message</th></tr></thead><tbody id="events"><tr><td colspan="6" class="muted">No events have reported yet.</td></tr></tbody></table></div></div>
     </section>
+    <section class="section" data-section="search">
+      <div class="panel"><h3>Fleet search</h3><div class="toolbar" style="padding:16px 18px;border-bottom:1px solid var(--line);"><input id="searchInput" type="search" placeholder="Search kind, name, namespace, image, or IAM role" aria-label="Fleet search query" /><button id="runSearch" type="button">Search</button><span class="muted" id="searchStatus">Search stored cluster envelopes.</span></div><div class="scroll"><table><thead><tr><th>Cluster</th><th>Kind</th><th>Namespace</th><th>Name</th><th>Image</th><th>Detail</th></tr></thead><tbody id="searchResults"><tr><td colspan="6" class="muted">Enter a query to search workloads, images, namespaces, services, gateways, PVCs, and IAM roles.</td></tr></tbody></table></div></div>
+    </section>
   </main>
 </div>
 <script>
 let etag = "", fleet = {revision:0, clusters:[], events:[]};
-const navItems = [["fleet","Fleet"],["events","Events"]];
+const navItems = [["fleet","Fleet"],["search","Search"],["events","Events"]];
 const byId = id => document.getElementById(id);
 const esc = v => String(v ?? "-").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stateClass = s => ['ready','partial','stale','error'].includes(s) ? s : 'partial';
@@ -134,6 +139,23 @@ function watchStateLabel(status) { if (status.mode !== 'watch') return status.st
 function sourceDetail(status) { if (status.mode !== 'watch') return status.lastSuccess ? 'published ' + shortTime(status.lastSuccess) : 'not published'; return (status.lastEventAt ? 'event ' + shortTime(status.lastEventAt) : 'event none') + ' · ' + (status.lastFullSyncAt ? 'full resync ' + shortTime(status.lastFullSyncAt) : 'full resync none') + ' · reconnects ' + (status.reconnects || 0); }
 function sourceBadges(sources) { const entries = Object.entries(sources || {}); return entries.length ? '<div class="sources">' + entries.map(([name, status]) => '<span class="badge ' + stateClass(status.state) + '" title="' + esc(sourceDetail(status)) + '"><span>' + esc(name + ': ' + watchStateLabel(status)) + '</span><small>' + esc(sourceDetail(status)) + '</small></span>').join('') + '</div>' : '<span class="muted">-</span>'; }
 function eventKind(event) { const source = event.source || '', message = event.message || ''; if (source === 'analysis' || message.includes('analysis')) return 'analysis'; if (message.includes('watch ')) return 'watch'; if (message.includes('published') || message.includes('retained previous data')) return 'publication'; if (message.includes('refresh starting') || message.includes('collect')) return 'collection'; return 'event'; }
+function renderSearchResults(data) {
+  const rows = data.results || [];
+  const status = data.truncated ? data.total + ' matches, showing first ' + rows.length : rows.length + ' matches';
+  byId('searchStatus').textContent = status;
+  byId('searchResults').innerHTML = rows.length ? rows.map(r => {
+    const cluster = r.cluster || {};
+    const clusterName = cluster.name || cluster.id || '-';
+    return '<tr><td><a href="' + esc(r.clusterUrl || '#') + '"><strong>' + esc(clusterName) + '</strong></a><div class="muted">' + esc(cluster.id || '') + '</div></td><td>' + esc(r.kind) + '</td><td>' + esc(r.namespace || '-') + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.image || '-') + '</td><td>' + esc(r.detail || '-') + '</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="muted">No resources match this query.</td></tr>';
+}
+async function runFleetSearch() {
+  const q = byId('searchInput').value.trim();
+  byId('searchStatus').textContent = q ? 'Searching stored envelopes...' : 'Showing all indexed resources...';
+  const response = await fetch('/api/search?q=' + encodeURIComponent(q), {cache:'no-store'});
+  if (!response.ok) throw new Error('HTTP ' + response.status);
+  renderSearchResults(await response.json());
+}
 function render() {
   const rows = filtered(), total = totals(rows), risks = riskTotals(rows), health = sourceHealth(rows), versions = versionDistribution(rows);
   const sourceIssues = (health.partial || 0) + (health.stale || 0) + (health.error || 0);
@@ -172,6 +194,8 @@ async function refresh() {
 }
 function download(name, text, type) { const blob = new Blob([text], {type}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 ['providerFilter','regionFilter','stateFilter'].forEach(id => byId(id).addEventListener('change', render));
+byId('runSearch').addEventListener('click', () => runFleetSearch().catch(error => { byId('searchStatus').textContent = 'Search failed: ' + error.message; }));
+byId('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') runFleetSearch().catch(error => { byId('searchStatus').textContent = 'Search failed: ' + error.message; }); });
 byId('exportJSON').onclick = async () => download('teleskope-fleet.json', await (await fetch('/api/export/fleet.json')).text(), 'application/json;charset=utf-8');
 byId('exportMarkdown').onclick = async () => download('teleskope-fleet-summary.md', await (await fetch('/api/export/summary.md')).text(), 'text/markdown;charset=utf-8');
 renderNav(); render(); refresh();

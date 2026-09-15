@@ -81,6 +81,11 @@ func (s *Store) Handler(opts HandlerOptions) http.Handler {
 				return
 			}
 			s.handleAnalyze(w, r, r.URL.Query().Get("id"), opts)
+		case r.URL.Path == "/api/search":
+			if !allow(w, r, http.MethodGet, http.MethodHead) {
+				return
+			}
+			s.writeSearch(w, r)
 		case strings.HasPrefix(r.URL.Path, "/clusters/"):
 			if !allow(w, r, http.MethodGet, http.MethodHead) {
 				return
@@ -151,6 +156,17 @@ func (s *Store) Handler(opts HandlerOptions) http.Handler {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+func (s *Store) writeSearch(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	out := s.Search(query.Get("q"), query.Get("kind"), query.Get("namespace"), query.Get("image"))
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodGet {
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		_ = encoder.Encode(out)
+	}
 }
 
 func (s *Store) writeEnvelope(w http.ResponseWriter, r *http.Request, id string) {
