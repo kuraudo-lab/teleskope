@@ -499,7 +499,7 @@ func TestAdvisorArtifactAndHTML(t *testing.T) {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(artifact.Dir, "advisor.json"))
-	if err != nil || !strings.Contains(string(data), `"assessment": "unknown"`) {
+	if err != nil || !strings.Contains(string(data), `"assessment": "unknown"`) || !strings.Contains(string(data), `"key": "eks.insight"`) {
 		t.Fatalf("advisor artifact: %s %v", data, err)
 	}
 	page, err := HTML(s)

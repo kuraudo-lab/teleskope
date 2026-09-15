@@ -74,6 +74,20 @@ func TestMarkdownRendersComparison(t *testing.T) {
 	}
 }
 
+func TestCompareConsumesEKSInsightAdvisorFindings(t *testing.T) {
+	source := comparisonSnapshot("source", "v1.31.0")
+	target := comparisonSnapshot("target", "v1.31.0")
+	source.EKS.Insights = []inventory.EKSInsight{{Name: "Deprecated APIs", Category: "UPGRADE_READINESS", KubernetesVersion: "1.33", Status: "WARNING", Reason: "deprecated API observed"}}
+	target.EKS.Insights = []inventory.EKSInsight{{Name: "Deprecated APIs", Category: "UPGRADE_READINESS", KubernetesVersion: "1.33", Status: "PASSING"}}
+	source.Coverage = append(source.Coverage, inventory.CoverageItem{Area: "eks", Resource: "Insights", Status: "complete"})
+	target.Coverage = append(target.Coverage, inventory.CoverageItem{Area: "eks", Resource: "Insights", Status: "complete"})
+
+	report := Analyze(source, target)
+	if !hasCapabilityDiff(report, "eks.insight", "UPGRADE_READINESS/Deprecated APIs/1.33") {
+		t.Fatalf("missing EKS insight capability diff: %#v", report.CapabilityDiffs)
+	}
+}
+
 func comparisonSnapshot(name, version string) *inventory.Snapshot {
 	allowExpansion := true
 	return &inventory.Snapshot{
@@ -147,6 +161,15 @@ func comparisonSnapshot(name, version string) *inventory.Snapshot {
 func hasFinding(report Report, want string) bool {
 	for _, finding := range report.Findings {
 		if strings.Contains(finding.Summary, want) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasCapabilityDiff(report Report, key, scope string) bool {
+	for _, diff := range report.CapabilityDiffs {
+		if diff.Key == key && diff.Scope == scope {
 			return true
 		}
 	}

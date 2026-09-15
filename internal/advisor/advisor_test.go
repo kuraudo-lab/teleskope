@@ -159,6 +159,68 @@ func TestEKSAddonAdvisorFindings(t *testing.T) {
 	}
 }
 
+func TestEKSInsightAdvisorFindings(t *testing.T) {
+	s := &inventory.Snapshot{
+		EKS: inventory.EKSInventory{Insights: []inventory.EKSInsight{
+			{Name: "Deprecated APIs", Category: "UPGRADE_READINESS", KubernetesVersion: "1.32", Status: "PASSING"},
+			{
+				Name:              "Deprecated APIs",
+				Category:          "UPGRADE_READINESS",
+				KubernetesVersion: "1.33",
+				Status:            "WARNING",
+				Reason:            "deprecated API observed",
+				Recommendation:    "Migrate API versions.",
+				Resources:         []inventory.EKSInsightResource{{KubernetesResourceURI: "/apis/extensions/v1beta1/ingresses", Status: "WARNING", Reason: "served deprecated API"}},
+				DeprecationDetails: []inventory.DeprecationDetail{{
+					Usage:                          "extensions/v1beta1 ingresses",
+					ReplacedWith:                   "networking.k8s.io/v1 ingresses",
+					StartServingReplacementVersion: "1.19",
+					StopServingVersion:             "1.22",
+					UserAgents:                     []string{"legacy-controller"},
+				}},
+				AdditionalInfo: map[string]string{"docs": "https://example.com/deprecations"},
+			},
+			{Name: "Cluster health", Category: "UPGRADE_READINESS", KubernetesVersion: "1.33", Status: "ERROR", Reason: "blocking issue"},
+			{Name: "Ambiguous", Category: "UPGRADE_READINESS", KubernetesVersion: "1.33"},
+		}},
+		Coverage: []inventory.CoverageItem{{Area: "eks", Resource: "Insights", Status: "complete"}},
+	}
+
+	r := Analyze(s)
+	healthy := scopedCapability(t, r, "eks.insight", "UPGRADE_READINESS/Deprecated APIs/1.32")
+	if healthy.Assessment != "supported" || healthy.Basis != "aws-reported" || !strings.Contains(healthy.Summary, "PASSING") {
+		t.Fatalf("healthy insight = %+v", healthy)
+	}
+	warning := scopedCapability(t, r, "eks.insight", "UPGRADE_READINESS/Deprecated APIs/1.33")
+	if warning.Assessment != "unsupported" || !strings.Contains(warning.Summary, "deprecated API observed") {
+		t.Fatalf("warning insight = %+v", warning)
+	}
+	for _, want := range []string{"replacementStarts=1.19", "/apis/extensions/v1beta1/ingresses", "docs=https://example.com/deprecations"} {
+		if !evidenceContains(warning.Evidence, want) {
+			t.Fatalf("warning evidence missing %q: %+v", want, warning.Evidence)
+		}
+	}
+	errorInsight := scopedCapability(t, r, "eks.insight", "UPGRADE_READINESS/Cluster health/1.33")
+	if errorInsight.Assessment != "unsupported" || !strings.Contains(errorInsight.Summary, "ERROR") {
+		t.Fatalf("error insight = %+v", errorInsight)
+	}
+	unknown := scopedCapability(t, r, "eks.insight", "UPGRADE_READINESS/Ambiguous/1.33")
+	if unknown.Assessment != "unknown" || unknown.Basis != "aws-reported" {
+		t.Fatalf("unknown insight = %+v", unknown)
+	}
+	if !strings.Contains(r.Summary, "4 EKS insights") {
+		t.Fatal(r.Summary)
+	}
+}
+
+func TestMissingEKSInsightsRemainUnknown(t *testing.T) {
+	r := Analyze(&inventory.Snapshot{})
+	c := scopedCapability(t, r, "eks.insight", "cluster")
+	if c.Assessment != "unknown" || c.Basis != "none" || c.Coverage != "partial" {
+		t.Fatalf("missing insight capability = %+v", c)
+	}
+}
+
 func TestEKSNodegroupAdvisorFindings(t *testing.T) {
 	s := &inventory.Snapshot{
 		EKS: inventory.EKSInventory{Nodegroups: []inventory.Nodegroup{

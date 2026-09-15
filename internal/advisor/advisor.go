@@ -148,6 +148,24 @@ func Analyze(s *inventory.Snapshot) Report {
 	if len(k.CustomResourceDefinitions) == 0 {
 		add("extensions.api", "cluster", "", "unknown", "none", "No custom API definitions observed.", "Review collection coverage before drawing conclusions about extensions.", inventory.ObjectRef{}, "", "", "CustomResourceDefinitions")
 	}
+	for _, insight := range sortedEKSInsights(s.EKS.Insights) {
+		r.Capabilities = append(r.Capabilities, eksInsightCapability(insight, s.Coverage))
+	}
+	if len(s.EKS.Insights) == 0 {
+		cov, _ := coverageArea(s.Coverage, "eks", "Insights")
+		r.Capabilities = append(r.Capabilities, Capability{
+			Key:         "eks.insight",
+			Scope:       "cluster",
+			Assessment:  "unknown",
+			Basis:       "none",
+			Summary:     "No EKS upgrade or readiness insights were observed in the snapshot.",
+			Constraints: []string{"Missing insight evidence is not proof that the cluster is upgrade-ready."},
+			Collection:  collectionFor(s.Coverage, "eks", "Insights"),
+			Coverage:    cov,
+			Freshness:   "snapshot",
+			RuleID:      "eks.insight/v1",
+		})
+	}
 	addonCompatibility := addonCompatibilityByName(s.EKS.Insights)
 	for _, addon := range s.EKS.Addons {
 		assessment, basis := "supported", "observed"
@@ -272,7 +290,7 @@ func Analyze(s *inventory.Snapshot) Report {
 			return x.Resource.Kind+"/"+x.Resource.Namespace+"/"+x.Resource.Name < y.Resource.Kind+"/"+y.Resource.Namespace+"/"+y.Resource.Name
 		})
 	}
-	r.Summary = fmt.Sprintf("%d Ingress classes, %d Gateway classes, %d StorageClasses, %d custom API definitions, %d EKS managed add-ons and %d EKS managed nodegroups observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified.", len(k.IngressClasses), len(k.GatewayClasses), len(k.StorageClasses), len(k.CustomResourceDefinitions), len(s.EKS.Addons), len(s.EKS.Nodegroups))
+	r.Summary = fmt.Sprintf("%d Ingress classes, %d Gateway classes, %d StorageClasses, %d custom API definitions, %d EKS insights, %d EKS managed add-ons and %d EKS managed nodegroups observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified.", len(k.IngressClasses), len(k.GatewayClasses), len(k.StorageClasses), len(k.CustomResourceDefinitions), len(s.EKS.Insights), len(s.EKS.Addons), len(s.EKS.Nodegroups))
 	unknown, incomplete, rwx := 0, 0, 0
 	for _, c := range r.Capabilities {
 		if c.Assessment == "unknown" {
@@ -293,6 +311,156 @@ type addonCompatibility struct {
 	TargetKubernetes   []string
 	CompatibleVersions []string
 	Statuses           []string
+}
+
+func eksInsightCapability(insight inventory.EKSInsight, coverage []inventory.CoverageItem) Capability {
+	cov, at := coverageArea(coverage, "eks", "Insights")
+	assessment, summary := insightAssessment(insight)
+	ref := inventory.ObjectRef{Kind: "EKSInsight", Name: insightScope(insight)}
+	capability := Capability{
+		Key:            "eks.insight",
+		Scope:          insightScope(insight),
+		Implementation: insight.KubernetesVersion,
+		Assessment:     assessment,
+		Basis:          "aws-reported",
+		Summary:        summary,
+		Constraints:    []string{"EKS insights are AWS-reported point-in-time readiness signals; verify workload behavior and remediation before upgrading."},
+		Collection:     collectionFor(coverage, "eks", "Insights"),
+		Coverage:       cov,
+		Freshness:      "snapshot",
+		RuleID:         "eks.insight/v1",
+	}
+	capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "status/category/target", Value: strings.Join([]string{displayInsightValue(insight.Status), displayInsightValue(insight.Category), displayInsightValue(insight.KubernetesVersion)}, "/"), CollectedAt: at})
+	if insight.Reason != "" {
+		capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "reason", Value: insight.Reason, CollectedAt: at})
+	}
+	if insight.Recommendation != "" {
+		capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "recommendation", Value: strings.Join(strings.Fields(insight.Recommendation), " "), CollectedAt: at})
+	}
+	for _, detail := range insight.DeprecationDetails {
+		capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "deprecation.detail", Value: deprecationDetailValue(detail), CollectedAt: at})
+	}
+	for _, resource := range insight.Resources {
+		capability.Evidence = append(capability.Evidence, Evidence{Resource: insightResourceRef(resource), Field: "insight.resource", Value: insightResourceValue(resource), CollectedAt: at})
+	}
+	for _, item := range additionalInfoValues(insight.AdditionalInfo) {
+		capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "additionalInfo", Value: item, CollectedAt: at})
+	}
+	return capability
+}
+
+func insightAssessment(insight inventory.EKSInsight) (string, string) {
+	status := strings.ToUpper(strings.TrimSpace(insight.Status))
+	name := insightScope(insight)
+	switch status {
+	case "PASSING", "PASSED", "OK", "RESOLVED":
+		return "supported", fmt.Sprintf("EKS reports insight %q as %s.", name, insight.Status)
+	case "WARNING", "ERROR", "FAILING", "FAILED":
+		if insight.Reason != "" {
+			return "unsupported", fmt.Sprintf("EKS reports insight %q as %s: %s", name, insight.Status, insight.Reason)
+		}
+		return "unsupported", fmt.Sprintf("EKS reports insight %q as %s.", name, insight.Status)
+	default:
+		return "unknown", fmt.Sprintf("EKS insight %q has unknown status evidence.", name)
+	}
+}
+
+func insightScope(insight inventory.EKSInsight) string {
+	parts := nonEmpty(insight.Category, insight.Name, insight.KubernetesVersion)
+	if len(parts) == 0 {
+		return "cluster"
+	}
+	return strings.Join(parts, "/")
+}
+
+func nonEmpty(values ...string) []string {
+	out := []string{}
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
+func displayInsightValue(value string) string {
+	if value == "" {
+		return "-"
+	}
+	return value
+}
+
+func deprecationDetailValue(detail inventory.DeprecationDetail) string {
+	parts := []string{}
+	if detail.Usage != "" {
+		parts = append(parts, "usage="+detail.Usage)
+	}
+	if detail.ReplacedWith != "" {
+		parts = append(parts, "replacedWith="+detail.ReplacedWith)
+	}
+	if detail.StartServingReplacementVersion != "" {
+		parts = append(parts, "replacementStarts="+detail.StartServingReplacementVersion)
+	}
+	if detail.StopServingVersion != "" {
+		parts = append(parts, "stopsServing="+detail.StopServingVersion)
+	}
+	if len(detail.UserAgents) > 0 {
+		agents := append([]string(nil), detail.UserAgents...)
+		sort.Strings(agents)
+		parts = append(parts, "userAgents="+strings.Join(agents, ","))
+	}
+	return strings.Join(parts, " ")
+}
+
+func insightResourceRef(resource inventory.EKSInsightResource) inventory.ObjectRef {
+	name := resource.KubernetesResourceURI
+	if name == "" {
+		name = resource.ARN
+	}
+	if name == "" {
+		name = "unknown"
+	}
+	return inventory.ObjectRef{Kind: "EKSInsightResource", Name: name}
+}
+
+func insightResourceValue(resource inventory.EKSInsightResource) string {
+	parts := []string{}
+	if resource.Status != "" {
+		parts = append(parts, "status="+resource.Status)
+	}
+	if resource.Reason != "" {
+		parts = append(parts, "reason="+resource.Reason)
+	}
+	if resource.ARN != "" {
+		parts = append(parts, "arn="+resource.ARN)
+	}
+	if resource.KubernetesResourceURI != "" {
+		parts = append(parts, "uri="+resource.KubernetesResourceURI)
+	}
+	return strings.Join(parts, " ")
+}
+
+func additionalInfoValues(items map[string]string) []string {
+	keys := make([]string, 0, len(items))
+	for key := range items {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	out := make([]string, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, key+"="+items[key])
+	}
+	return out
+}
+
+func sortedEKSInsights(items []inventory.EKSInsight) []inventory.EKSInsight {
+	out := append([]inventory.EKSInsight(nil), items...)
+	sort.Slice(out, func(i, j int) bool {
+		left := strings.Join([]string{out[i].Category, out[i].Name, out[i].KubernetesVersion, out[i].ID}, "\x00")
+		right := strings.Join([]string{out[j].Category, out[j].Name, out[j].KubernetesVersion, out[j].ID}, "\x00")
+		return left < right
+	})
+	return out
 }
 
 func addonCompatibilityByName(insights []inventory.EKSInsight) map[string]addonCompatibility {
