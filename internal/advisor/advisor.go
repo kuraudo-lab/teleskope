@@ -194,6 +194,74 @@ func Analyze(s *inventory.Snapshot) Report {
 		}
 		r.Capabilities = append(r.Capabilities, capability)
 	}
+	nodegroups := map[string]inventory.Nodegroup{}
+	for _, nodegroup := range s.EKS.Nodegroups {
+		if nodegroup.Name != "" {
+			nodegroups[nodegroup.Name] = nodegroup
+		}
+	}
+	for _, nodegroup := range sortedNodegroups(s.EKS.Nodegroups) {
+		nodes := nodesForNodegroup(s.Kubernetes.Nodes, nodegroup.Name)
+		assessment, basis := "supported", "observed"
+		summary := fmt.Sprintf("Managed nodegroup has %d observed Kubernetes node(s).", len(nodes))
+		constraint := "EKS nodegroup configuration and Kubernetes node status do not prove AMI patch freshness or workload safety."
+		if len(nodes) == 0 {
+			assessment, basis = "unknown", "declared"
+			summary = "Managed nodegroup has no matching Kubernetes node evidence."
+		}
+		if strings.Contains(strings.ToUpper(nodegroup.AMIType), "CUSTOM") {
+			assessment = "unknown"
+			summary = "Managed nodegroup uses a custom AMI; runtime compatibility cannot be inferred from EKS AMI type."
+		}
+		if nodegroup.Status != "" && nodegroup.Status != "ACTIVE" {
+			assessment = "unsupported"
+			summary = "Managed nodegroup is not ACTIVE."
+		}
+		_, at := coverageArea(s.Coverage, "eks", "Nodegroups")
+		capability := Capability{
+			Key:            "eks.nodegroup",
+			Scope:          nodegroup.Name,
+			Implementation: nodegroup.ReleaseVersion,
+			Assessment:     assessment,
+			Basis:          basis,
+			Summary:        summary,
+			Constraints:    []string{constraint},
+			Collection:     nodegroupCollection(s.Coverage),
+			Coverage:       combinedCoverage(s.Coverage, [][2]string{{"eks", "Nodegroups"}, {"kubernetes", "Nodes"}}),
+			Freshness:      "snapshot",
+			RuleID:         "eks.nodegroup/v1",
+		}
+		ref := inventory.ObjectRef{Kind: "Nodegroup", Name: nodegroup.Name}
+		capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "version/release/ami/status", Value: strings.Join([]string{nodegroup.Version, nodegroup.ReleaseVersion, nodegroup.AMIType, nodegroup.Status}, "/"), CollectedAt: at})
+		if lt := launchTemplateValue(nodegroup); lt != "" {
+			capability.Evidence = append(capability.Evidence, Evidence{Resource: ref, Field: "launchTemplate", Value: lt, CollectedAt: at})
+		}
+		_, nodeAt := coverageArea(s.Coverage, "kubernetes", "Nodes")
+		for _, node := range nodes {
+			capability.Evidence = append(capability.Evidence, Evidence{Resource: node.ObjectRef, Field: "node.runtime", Value: fmt.Sprintf("zone=%s kubelet=%s os=%s runtime=%s instance=%s", node.Labels["topology.kubernetes.io/zone"], node.KubeletVersion, node.OSImage, node.ContainerRuntime, node.Labels["node.kubernetes.io/instance-type"]), CollectedAt: nodeAt})
+		}
+		r.Capabilities = append(r.Capabilities, capability)
+	}
+	for _, group := range unmanagedNodeGroups(s.Kubernetes.Nodes, nodegroups) {
+		capability := Capability{
+			Key:            "eks.nodegroup",
+			Scope:          group.Scope,
+			Implementation: "",
+			Assessment:     "unknown",
+			Basis:          "observed",
+			Summary:        group.Summary,
+			Constraints:    []string{"Node ownership is observed from Kubernetes labels only; EKS managed nodegroup configuration was not available for this group."},
+			Collection:     nodegroupCollection(s.Coverage),
+			Coverage:       "partial",
+			Freshness:      "snapshot",
+			RuleID:         "eks.nodegroup/v1",
+		}
+		_, nodeAt := coverageArea(s.Coverage, "kubernetes", "Nodes")
+		for _, node := range group.Nodes {
+			capability.Evidence = append(capability.Evidence, Evidence{Resource: node.ObjectRef, Field: "node.runtime", Value: fmt.Sprintf("zone=%s kubelet=%s os=%s runtime=%s instance=%s", node.Labels["topology.kubernetes.io/zone"], node.KubeletVersion, node.OSImage, node.ContainerRuntime, node.Labels["node.kubernetes.io/instance-type"]), CollectedAt: nodeAt})
+		}
+		r.Capabilities = append(r.Capabilities, capability)
+	}
 	sort.Slice(r.Capabilities, func(i, j int) bool {
 		a, b := r.Capabilities[i], r.Capabilities[j]
 		return a.Key+"/"+a.Scope < b.Key+"/"+b.Scope
@@ -204,7 +272,7 @@ func Analyze(s *inventory.Snapshot) Report {
 			return x.Resource.Kind+"/"+x.Resource.Namespace+"/"+x.Resource.Name < y.Resource.Kind+"/"+y.Resource.Namespace+"/"+y.Resource.Name
 		})
 	}
-	r.Summary = fmt.Sprintf("%d Ingress classes, %d Gateway classes, %d StorageClasses, %d custom API definitions and %d EKS managed add-ons observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified.", len(k.IngressClasses), len(k.GatewayClasses), len(k.StorageClasses), len(k.CustomResourceDefinitions), len(s.EKS.Addons))
+	r.Summary = fmt.Sprintf("%d Ingress classes, %d Gateway classes, %d StorageClasses, %d custom API definitions, %d EKS managed add-ons and %d EKS managed nodegroups observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified.", len(k.IngressClasses), len(k.GatewayClasses), len(k.StorageClasses), len(k.CustomResourceDefinitions), len(s.EKS.Addons), len(s.EKS.Nodegroups))
 	unknown, incomplete, rwx := 0, 0, 0
 	for _, c := range r.Capabilities {
 		if c.Assessment == "unknown" {
@@ -271,6 +339,88 @@ func appendUnique(values []string, additions ...string) []string {
 	return values
 }
 
+type unmanagedNodeGroup struct {
+	Scope   string
+	Summary string
+	Nodes   []inventory.Node
+}
+
+func sortedNodegroups(items []inventory.Nodegroup) []inventory.Nodegroup {
+	out := append([]inventory.Nodegroup(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func sortedNodes(items []inventory.Node) []inventory.Node {
+	out := append([]inventory.Node(nil), items...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func nodesForNodegroup(nodes []inventory.Node, name string) []inventory.Node {
+	var out []inventory.Node
+	for _, node := range sortedNodes(nodes) {
+		if node.Labels["eks.amazonaws.com/nodegroup"] == name {
+			out = append(out, node)
+		}
+	}
+	return out
+}
+
+func unmanagedNodeGroups(nodes []inventory.Node, managed map[string]inventory.Nodegroup) []unmanagedNodeGroup {
+	groups := map[string]*unmanagedNodeGroup{}
+	for _, node := range sortedNodes(nodes) {
+		scope, summary := unmanagedNodeScope(node, managed)
+		if scope == "" {
+			continue
+		}
+		group := groups[scope]
+		if group == nil {
+			group = &unmanagedNodeGroup{Scope: scope, Summary: summary}
+			groups[scope] = group
+		}
+		group.Nodes = append(group.Nodes, node)
+	}
+	out := make([]unmanagedNodeGroup, 0, len(groups))
+	for _, group := range groups {
+		out = append(out, *group)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Scope < out[j].Scope })
+	return out
+}
+
+func unmanagedNodeScope(node inventory.Node, managed map[string]inventory.Nodegroup) (string, string) {
+	if name := strings.TrimSpace(node.Labels["eks.amazonaws.com/nodegroup"]); name != "" {
+		if _, ok := managed[name]; ok {
+			return "", ""
+		}
+		return name, "Node has a nodegroup label, but no matching EKS managed nodegroup was collected."
+	}
+	if nodepool := strings.TrimSpace(node.Labels["karpenter.sh/nodepool"]); nodepool != "" {
+		return "karpenter/" + nodepool, "Karpenter nodepool observed; EKS managed nodegroup readiness is unknown."
+	}
+	if provisioner := strings.TrimSpace(node.Labels["karpenter.sh/provisioner-name"]); provisioner != "" {
+		return "karpenter/" + provisioner, "Karpenter provisioner observed; EKS managed nodegroup readiness is unknown."
+	}
+	if computeType := strings.TrimSpace(node.Labels["eks.amazonaws.com/compute-type"]); computeType != "" {
+		return computeType, "EKS compute type observed without managed nodegroup evidence."
+	}
+	return "self-managed/unknown", "Node has no EKS managed nodegroup evidence; self-managed readiness is unknown."
+}
+
+func launchTemplateValue(nodegroup inventory.Nodegroup) string {
+	parts := []string{}
+	if nodegroup.LaunchTemplateName != "" {
+		parts = append(parts, nodegroup.LaunchTemplateName)
+	} else if nodegroup.LaunchTemplateID != "" {
+		parts = append(parts, nodegroup.LaunchTemplateID)
+	}
+	if nodegroup.LaunchTemplateVersion != "" {
+		parts = append(parts, "version="+nodegroup.LaunchTemplateVersion)
+	}
+	return strings.Join(parts, " ")
+}
+
 func coverageArea(items []inventory.CoverageItem, area, resource string) (string, time.Time) {
 	state := "partial"
 	var at time.Time
@@ -283,6 +433,32 @@ func coverageArea(items []inventory.CoverageItem, area, resource string) (string
 		break
 	}
 	return state, at
+}
+
+func combinedCoverage(items []inventory.CoverageItem, refs [][2]string) string {
+	state := "complete"
+	for _, ref := range refs {
+		found := false
+		for _, item := range items {
+			if item.Area != ref[0] || item.Resource != ref[1] {
+				continue
+			}
+			found = true
+			if item.Status != "complete" {
+				state = "partial"
+			}
+		}
+		if !found {
+			state = "partial"
+		}
+	}
+	return state
+}
+
+func nodegroupCollection(items []inventory.CoverageItem) []inventory.CoverageItem {
+	out := collectionFor(items, "eks", "Nodegroups")
+	out = append(out, collectionFor(items, "kubernetes", "Nodes")...)
+	return out
 }
 
 func collectionFor(items []inventory.CoverageItem, area string, resources ...string) []inventory.CoverageItem {

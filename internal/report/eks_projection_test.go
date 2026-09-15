@@ -74,20 +74,45 @@ func TestBuildEKSProjectionPartialSnapshots(t *testing.T) {
 		},
 		{
 			name: "nodegroups only",
-			snap: &inventory.Snapshot{EKS: inventory.EKSInventory{Nodegroups: []inventory.Nodegroup{
-				{Name: "workers-b", Version: "1.31"},
-				{Name: "workers-a", Version: "1.31", ReleaseVersion: "1.31.1-20260901", Status: "ACTIVE", AMIType: "AL2023_x86_64_STANDARD", CapacityType: "ON_DEMAND", InstanceTypes: []string{"m7i.large"}, Subnets: []string{"subnet-a", "subnet-b"}, NodeRoleARN: "arn:aws:iam::123456789012:role/node", DesiredSize: &desired, MinSize: &minSize, MaxSize: &maxSize},
-			}}},
+			snap: &inventory.Snapshot{
+				EKS: inventory.EKSInventory{Nodegroups: []inventory.Nodegroup{
+					{Name: "workers-b", Version: "1.31"},
+					{Name: "workers-a", Version: "1.31", ReleaseVersion: "1.31.1-20260901", Status: "ACTIVE", AMIType: "AL2023_x86_64_STANDARD", CapacityType: "ON_DEMAND", InstanceTypes: []string{"m7i.large"}, Subnets: []string{"subnet-a", "subnet-b"}, NodeRoleARN: "arn:aws:iam::123456789012:role/node", DesiredSize: &desired, MinSize: &minSize, MaxSize: &maxSize, LaunchTemplateName: "lt-workers", LaunchTemplateVersion: "7"},
+					{Name: "custom", Version: "1.31", ReleaseVersion: "custom-20260901", Status: "ACTIVE", AMIType: "CUSTOM"},
+				}},
+				Kubernetes: inventory.Kubernetes{Nodes: []inventory.Node{
+					{ObjectRef: inventory.ObjectRef{Name: "node-a"}, KubeletVersion: "v1.31.1-eks", OSImage: "Amazon Linux 2023", ContainerRuntime: "containerd://1.7.27", Labels: map[string]string{"eks.amazonaws.com/nodegroup": "workers-a", "topology.kubernetes.io/zone": "ap-northeast-1a", "node.kubernetes.io/instance-type": "m7i.large"}},
+					{ObjectRef: inventory.ObjectRef{Name: "custom-a"}, KubeletVersion: "v1.31.1-eks", OSImage: "Custom Linux", ContainerRuntime: "containerd://1.7.27", Labels: map[string]string{"eks.amazonaws.com/nodegroup": "custom", "topology.kubernetes.io/zone": "ap-northeast-1b", "node.kubernetes.io/instance-type": "m7i.large"}},
+					{ObjectRef: inventory.ObjectRef{Name: "karpenter-a"}, KubeletVersion: "v1.31.1-eks", OSImage: "Amazon Linux 2023", ContainerRuntime: "containerd://1.7.27", Labels: map[string]string{"karpenter.sh/nodepool": "spot", "topology.kubernetes.io/zone": "ap-northeast-1c", "node.kubernetes.io/instance-type": "c7g.large"}},
+					{ObjectRef: inventory.ObjectRef{Name: "self-a"}, KubeletVersion: "v1.30.9", OSImage: "Ubuntu", ContainerRuntime: "containerd://1.7.20", Labels: map[string]string{"topology.kubernetes.io/zone": "ap-northeast-1a", "node.kubernetes.io/instance-type": "m5.large"}},
+				}},
+			},
 			assert: func(t *testing.T, got EKSProjection) {
 				t.Helper()
 				if !got.Visible {
 					t.Fatal("nodegroups-only snapshot should be visible")
 				}
-				if len(got.Nodegroups) != 2 || got.Nodegroups[0].Name != "workers-a" || got.Nodegroups[0].Size != "desired=2 min=1 max=4" || got.Nodegroups[0].CapacityType != "ON_DEMAND" {
+				workers := nodegroupRow(got.Nodegroups, "workers-a")
+				if len(got.Nodegroups) != 3 || workers.Size != "desired=2 min=1 max=4" || workers.CapacityType != "ON_DEMAND" {
 					t.Fatalf("nodegroups = %#v", got.Nodegroups)
 				}
-				if !containsField(got.Network, "Nodegroup subnets", "workers-a:subnet-a,subnet-b<br>workers-b:") {
+				if !containsField(got.Network, "Nodegroup subnets", "custom:<br>workers-a:subnet-a,subnet-b<br>workers-b:") {
 					t.Fatalf("network = %#v, want nodegroup subnet projection", got.Network)
+				}
+				if !containsReadiness(got.NodegroupReadiness, "workers-a", "ap-northeast-1a", "observed: runtime evidence linked to managed nodegroup") {
+					t.Fatalf("readiness = %#v, want workers-a observed row", got.NodegroupReadiness)
+				}
+				if !containsReadiness(got.NodegroupReadiness, "custom", "ap-northeast-1b", "unknown: custom AMI requires node runtime verification") {
+					t.Fatalf("readiness = %#v, want custom AMI unknown row", got.NodegroupReadiness)
+				}
+				if !containsReadiness(got.NodegroupReadiness, "karpenter/spot", "ap-northeast-1c", "unknown: Karpenter nodepool") {
+					t.Fatalf("readiness = %#v, want Karpenter unknown row", got.NodegroupReadiness)
+				}
+				if !containsReadiness(got.NodegroupReadiness, "self-managed/unknown", "ap-northeast-1a", "unknown: no managed nodegroup evidence") {
+					t.Fatalf("readiness = %#v, want self-managed unknown row", got.NodegroupReadiness)
+				}
+				if !containsReadiness(got.NodegroupReadiness, "workers-b", "-", "unknown: no Kubernetes node evidence for managed nodegroup") {
+					t.Fatalf("readiness = %#v, want workers-b no-node row", got.NodegroupReadiness)
 				}
 			},
 		},
@@ -117,4 +142,22 @@ func containsField(rows []FieldValueRow, field, value string) bool {
 		}
 	}
 	return false
+}
+
+func containsReadiness(rows []EKSNodegroupReadinessRow, group, zone, readiness string) bool {
+	for _, row := range rows {
+		if row.Group == group && row.Zone == zone && row.Readiness == readiness {
+			return true
+		}
+	}
+	return false
+}
+
+func nodegroupRow(rows []EKSNodegroupRow, name string) EKSNodegroupRow {
+	for _, row := range rows {
+		if row.Name == name {
+			return row
+		}
+	}
+	return EKSNodegroupRow{}
 }

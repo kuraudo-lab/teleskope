@@ -158,3 +158,55 @@ func TestEKSAddonAdvisorFindings(t *testing.T) {
 		t.Fatal(r.Summary)
 	}
 }
+
+func TestEKSNodegroupAdvisorFindings(t *testing.T) {
+	s := &inventory.Snapshot{
+		EKS: inventory.EKSInventory{Nodegroups: []inventory.Nodegroup{
+			{Name: "system", Version: "1.31", ReleaseVersion: "1.31.1-20260901", Status: "ACTIVE", AMIType: "AL2023_x86_64_STANDARD", LaunchTemplateName: "lt-system", LaunchTemplateVersion: "3"},
+			{Name: "custom", Version: "1.31", ReleaseVersion: "custom-20260901", Status: "ACTIVE", AMIType: "CUSTOM"},
+		}},
+		Kubernetes: inventory.Kubernetes{Nodes: []inventory.Node{
+			{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "node-a"}, KubeletVersion: "v1.31.1-eks", OSImage: "Amazon Linux 2023", ContainerRuntime: "containerd://1.7.27", Labels: map[string]string{"eks.amazonaws.com/nodegroup": "system", "topology.kubernetes.io/zone": "ap-northeast-1a", "node.kubernetes.io/instance-type": "m7i.large"}},
+			{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "custom-a"}, KubeletVersion: "v1.31.1-eks", OSImage: "Custom Linux", ContainerRuntime: "containerd://1.7.27", Labels: map[string]string{"eks.amazonaws.com/nodegroup": "custom", "topology.kubernetes.io/zone": "ap-northeast-1b", "node.kubernetes.io/instance-type": "m7i.large"}},
+			{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "karpenter-a"}, KubeletVersion: "v1.31.1-eks", OSImage: "Amazon Linux 2023", ContainerRuntime: "containerd://1.7.27", Labels: map[string]string{"karpenter.sh/nodepool": "spot", "topology.kubernetes.io/zone": "ap-northeast-1c", "node.kubernetes.io/instance-type": "c7g.large"}},
+			{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "self-a"}, KubeletVersion: "v1.30.9", OSImage: "Ubuntu", ContainerRuntime: "containerd://1.7.20", Labels: map[string]string{"topology.kubernetes.io/zone": "ap-northeast-1a", "node.kubernetes.io/instance-type": "m5.large"}},
+		}},
+		Coverage: []inventory.CoverageItem{
+			{Area: "eks", Resource: "Nodegroups", Status: "complete"},
+			{Area: "kubernetes", Resource: "Nodes", Status: "complete"},
+		},
+	}
+
+	r := Analyze(s)
+	system := scopedCapability(t, r, "eks.nodegroup", "system")
+	if system.Assessment != "supported" || system.Basis != "observed" || !strings.Contains(system.Summary, "1 observed Kubernetes node") {
+		t.Fatalf("system capability = %+v", system)
+	}
+	if !evidenceContains(system.Evidence, "lt-system version=3") || !evidenceContains(system.Evidence, "kubelet=v1.31.1-eks") {
+		t.Fatalf("system evidence = %+v", system.Evidence)
+	}
+	custom := scopedCapability(t, r, "eks.nodegroup", "custom")
+	if custom.Assessment != "unknown" || !strings.Contains(custom.Summary, "custom AMI") {
+		t.Fatalf("custom capability = %+v", custom)
+	}
+	karpenter := scopedCapability(t, r, "eks.nodegroup", "karpenter/spot")
+	if karpenter.Assessment != "unknown" || !strings.Contains(karpenter.Summary, "Karpenter") {
+		t.Fatalf("karpenter capability = %+v", karpenter)
+	}
+	selfManaged := scopedCapability(t, r, "eks.nodegroup", "self-managed/unknown")
+	if selfManaged.Assessment != "unknown" || !strings.Contains(selfManaged.Summary, "self-managed readiness is unknown") {
+		t.Fatalf("self-managed capability = %+v", selfManaged)
+	}
+	if !strings.Contains(r.Summary, "2 EKS managed nodegroups") {
+		t.Fatal(r.Summary)
+	}
+}
+
+func evidenceContains(items []Evidence, value string) bool {
+	for _, item := range items {
+		if strings.Contains(item.Value, value) {
+			return true
+		}
+	}
+	return false
+}

@@ -194,6 +194,7 @@ func writeEKS(b *strings.Builder, snapshot *inventory.Snapshot) {
 	writePodIdentityRows(b, view.PodIdentities)
 	writeEKSAddonRows(b, view.Addons)
 	writeEKSNodegroupRows(b, view.Nodegroups)
+	writeEKSNodegroupReadinessRows(b, view.NodegroupReadiness)
 }
 
 func writeFieldRows(b *strings.Builder, rows []FieldValueRow) {
@@ -285,6 +286,19 @@ func writeEKSNodegroupRows(b *strings.Builder, rows []EKSNodegroupRow) {
 	fmt.Fprintf(b, "| Name | Version | Release | Status | AMI | Capacity | Size | Subnets | IAM | Issues |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, row := range rows {
 		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", mdCell(row.Name), mdCell(row.Version), mdCell(row.Release), mdCell(row.Status), mdCell(row.AMI), mdCell(row.Capacity), mdCell(row.Size), mdCell(row.Subnets), mdCell(row.IAM), mdCell(row.Issues))
+	}
+	fmt.Fprintln(b)
+}
+
+func writeEKSNodegroupReadinessRows(b *strings.Builder, rows []EKSNodegroupReadinessRow) {
+	if len(rows) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "### Nodegroup runtime readiness\n\n")
+	fmt.Fprintf(b, "| Group | Evidence | AZ | Expected version | Expected release | Expected AMI | Launch template | Nodes | Kubelet | OS image | Runtime | Instance types | Readiness |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
+	for _, row := range rows {
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n",
+			mdCell(row.Group), mdCell(row.Evidence), mdCell(row.Zone), mdCell(row.ExpectedVersion), mdCell(row.ExpectedRelease), mdCell(row.ExpectedAMI), mdCell(row.LaunchTemplate), mdCell(row.Nodes), mdCell(row.ObservedKubelet), mdCell(row.ObservedOS), mdCell(row.ObservedRuntime), mdCell(row.ObservedInstances), mdCell(row.Readiness))
 	}
 	fmt.Fprintln(b)
 }

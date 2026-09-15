@@ -78,6 +78,23 @@ func Human(w io.Writer, snapshot *inventory.Snapshot) error {
 		}
 		fmt.Fprintln(w)
 
+		fmt.Fprintf(w, "nodegroup readiness %d\n", len(eksView.NodegroupReadiness))
+		for _, row := range eksView.NodegroupReadiness {
+			fmt.Fprintf(w, "  %s  %s  zone=%s expected=%s/%s ami=%s nodes=%s kubelet=%s os=%s",
+				marker(row.Readiness), row.Group, value(row.Zone), value(row.ExpectedVersion), value(row.ExpectedRelease), value(row.ExpectedAMI), value(row.Nodes), value(row.ObservedKubelet), value(row.ObservedOS))
+			if row.LaunchTemplate != "-" {
+				fmt.Fprintf(w, "  launchTemplate=%s", row.LaunchTemplate)
+			}
+			if row.Evidence != "-" {
+				fmt.Fprintf(w, "  evidence=%s", row.Evidence)
+			}
+			if row.Readiness != "-" {
+				fmt.Fprintf(w, "  readiness=%s", row.Readiness)
+			}
+			fmt.Fprintln(w)
+		}
+		fmt.Fprintln(w)
+
 		fmt.Fprintf(w, "identity   accessEntries=%d podIdentity=%d\n", len(eksView.AccessEntries), len(eksView.PodIdentities))
 		fmt.Fprintln(w)
 	}
