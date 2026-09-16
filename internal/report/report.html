@@ -1476,7 +1476,6 @@ function applyMockShell() {
   legacyAside.innerHTML = `<div class="pane-head"><p class="eyebrow">Topology controls</p><h1>Map by relationship, not by color</h1></div>
     <div class="controls">
       <div class="control-group"><label class="control-title" for="topology-search">Search</label><input id="topology-search" class="search" type="search" placeholder="Search topology objects" aria-label="Search topology objects"></div>
-      <div class="control-group"><div class="control-title">Density</div><div class="segmented" aria-label="Topology density"><button type="button">Relaxed</button><button type="button" class="active">Compact</button><button type="button">Inventory</button></div></div>
       <div class="control-group"><div class="control-title">Object types</div>
         <label class="check"><span>${iconUse('icon-gateway')}Ingress / Gateway</span><span class="count" id="topologyGatewayCount">0</span></label>
         <label class="check"><span>${iconUse('icon-service')}Services</span><span class="count" id="topologyServiceCount">0</span></label>
@@ -1738,11 +1737,11 @@ function renderTopology() {
   const showGatewayRoutes = topologyResourceFilter === 'all' || topologyResourceFilter === 'gatewayRoute';
   const showPods = topologyResourceFilter === 'pod';
   const showContainers = topologyResourceFilter === 'container';
-  const visibleWorkloads = arr(k.workloads).filter(namespaceMatches).slice(0, 80);
-  const visibleServices = arr(k.services).filter(namespaceMatches).slice(0, 60);
+  const visibleWorkloads = arr(k.workloads).filter(namespaceMatches);
+  const visibleServices = arr(k.services).filter(namespaceMatches);
   const visibleImages = arr(k.runningImages).filter(namespaceMatches);
-  const visiblePods = arr(k.pods).filter(namespaceMatches).slice(0, 100);
-  const visibleContainers = arr(k.runningContainers).filter(namespaceMatches).slice(0, 140);
+  const visiblePods = arr(k.pods).filter(namespaceMatches);
+  const visibleContainers = arr(k.runningContainers).filter(namespaceMatches);
   const imageNames = new Set(visibleImages.map(i => i.image));
   visibleWorkloads.forEach(w => { const wid = 'w:' + ref(w); if (showWorkloads) add(wid, ref(w), 'workload', w); [...arr(w.containers), ...arr(w.initContainers)].map(c => c.image).filter(Boolean).forEach(image => { if (!showImages || (imageNames.size && !imageNames.has(image))) return; const id = 'i:' + image; add(id, image, 'image', visibleImages.find(i => i.image === image) || {image}); if (showWorkloads) link(wid, id); }); arr(w.volumes).filter(v => v.persistentVolumeClaim).forEach(v => { if (!showStorage) return; const pvc = arr(k.persistentVolumeClaims).find(p => p.namespace === w.namespace && p.name === v.persistentVolumeClaim) || {kind:'PersistentVolumeClaim', namespace:w.namespace, name:v.persistentVolumeClaim}; const id = 'pvc:' + ref(pvc); add(id, ref(pvc), 'storage', pvc); if (showWorkloads) link(wid, id); if (pvc.storageClassName && (topologyResourceFilter === 'all' || topologyResourceFilter === 'storage')) { const sc = arr(k.storageClasses).find(s => s.name === pvc.storageClassName) || {kind:'StorageClass', name:pvc.storageClassName}; const sid = 'sc:' + pvc.storageClassName; add(sid, pvc.storageClassName, 'storage', sc); link(id, sid); } }); });
   visibleServices.forEach(s => { const sid = 's:' + ref(s); if (showServices) add(sid, ref(s), 'service', s); if (showServices && showWorkloads) visibleWorkloads.filter(w => (!s.namespace || !w.namespace || s.namespace === w.namespace) && Object.entries(s.selector || {}).every(([a,b]) => (w.selector || {})[a] === b)).forEach(w => link(sid, 'w:' + ref(w))); });
@@ -1819,28 +1818,41 @@ function renderTopology() {
     };
     return paths[t] || paths.workload;
   };
-  const label = (value, max = 24) => { const s = String(value || '-'); return s.length > max ? s.slice(0, Math.max(1, max - 3)) + '...' : s; };
+  const objectText = value => String(value || '-');
+  const textWidth = (value, size = 12) => Math.ceil(objectText(value).length * size * .58);
   const laneNodes = new Map(lanes.map(l => [l.id, []]));
   nodes.forEach(n => laneNodes.get(laneFor(n.type).id).push(n));
   const activeLanes = lanes.filter(l => laneNodes.get(l.id).length);
   const W = byId('topology').clientWidth || 900, H = byId('topology').clientHeight || 560;
   const gap = 22, nodeH = 54, rowGap = 10, top = 54, margin = 22;
-  const laneW = Math.max(230, Math.min(300, Math.floor((W - margin * 2 - gap * Math.max(0, activeLanes.length - 1)) / Math.max(1, activeLanes.length))));
-  const visibleLimit = topologyResourceFilter === 'all' ? 12 : 80;
-  const drawn = new Map(), hidden = new Map();
-  activeLanes.forEach((lane, laneIndex) => {
-    const laneX = margin + laneIndex * (laneW + gap);
+  const laneChrome = 78;
+  const laneWidth = lane => Math.max(230, textWidth(lane.label + ' (' + laneNodes.get(lane.id).length + ')', 11) + 24, ...laneNodes.get(lane.id).map(n => Math.max(textWidth(n.label, 12) + laneChrome, textWidth(meta(n), 11) + laneChrome)));
+  const laneWidths = new Map(activeLanes.map(lane => [lane.id, laneWidth(lane)]));
+  const laneXs = new Map();
+  let nextLaneX = margin;
+  activeLanes.forEach(lane => {
+    laneXs.set(lane.id, nextLaneX);
+    nextLaneX += laneWidths.get(lane.id) + gap;
+  });
+  const contentW = Math.max(W, nextLaneX - gap + margin);
+  const drawn = new Map();
+  activeLanes.forEach(lane => {
+    const laneW = laneWidths.get(lane.id);
+    const laneX = laneXs.get(lane.id);
     const items = laneNodes.get(lane.id);
-    items.slice(0, visibleLimit).forEach((n, i) => {
+    items.forEach((n, i) => {
       n.x = laneX + 12; n.y = top + i * (nodeH + rowGap); n.w = laneW - 24; n.h = nodeH;
       drawn.set(n.id, n);
     });
-    hidden.set(lane.id, Math.max(0, items.length - visibleLimit));
   });
-  const maxVisibleRows = Math.max(1, ...activeLanes.map(l => Math.min(laneNodes.get(l.id).length, visibleLimit) + (hidden.get(l.id) ? 1 : 0)));
+  const maxVisibleRows = Math.max(1, ...activeLanes.map(l => laneNodes.get(l.id).length));
   const contentH = Math.max(H, top + maxVisibleRows * (nodeH + rowGap) + 54);
-  const laneSvg = activeLanes.map((lane, laneIndex) => {
-    const x = margin + laneIndex * (laneW + gap);
+  const topology = byId('topology');
+  topology.style.minWidth = (contentW + 36) + 'px';
+  topology.style.minHeight = (contentH + 36) + 'px';
+  const laneSvg = activeLanes.map(lane => {
+    const x = laneXs.get(lane.id);
+    const laneW = laneWidths.get(lane.id);
     const count = laneNodes.get(lane.id).length;
     return `<g class="topology-lane"><rect x="${x}" y="18" width="${laneW}" height="${contentH - 42}"/><text x="${x + 12}" y="40">${esc(lane.label)} (${count})</text></g>`;
   }).join('');
@@ -1858,20 +1870,13 @@ function renderTopology() {
       <rect class="node-card" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"/>
       <rect class="node-icon-box" x="${n.x + 8}" y="${n.y + 10}" width="32" height="32" rx="8"/>
       <g style="color:${color(n.type)}" transform="translate(${n.x + 14} ${n.y + 16})">${icon(n.type)}</g>
-      <text class="node-label" x="${n.x + 48}" y="${n.y + 23}">${esc(label(n.label, 27))}</text>
-      <text class="node-meta" x="${n.x + 48}" y="${n.y + 40}">${esc(label(meta(n), 35))}</text>
+      <text class="node-label" x="${n.x + 48}" y="${n.y + 23}">${esc(objectText(n.label))}</text>
+      <text class="node-meta" x="${n.x + 48}" y="${n.y + 40}">${esc(objectText(meta(n)))}</text>
       <circle class="node-status" cx="${n.x + n.w - 14}" cy="${n.y + 16}" r="5" fill="${statusColor}"/>
     </g>`;
   }).join('');
-  const moreSvg = activeLanes.map((lane, laneIndex) => {
-    const extra = hidden.get(lane.id);
-    if (!extra) return '';
-    const shown = Math.min(laneNodes.get(lane.id).length, visibleLimit);
-    const x = margin + laneIndex * (laneW + gap) + 12, y = top + shown * (nodeH + rowGap);
-    return `<g class="topology-more"><rect x="${x}" y="${y}" width="${laneW - 24}" height="38"/><text x="${x + 12}" y="${y + 24}">+${extra} grouped ${esc(lane.label.toLowerCase())} objects</text></g>`;
-  }).join('');
   const legendIcon = (type, text) => `<span><i style="--legend-color:${color(type)}"><svg viewBox="0 0 20 20">${icon(type)}</svg></i>${text}</span>`;
-  byId('topology').innerHTML = `<svg id="topologySvg" viewBox="0 0 ${W} ${H}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}${moreSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${links.length} edges</span></div>`;
+  topology.innerHTML = `<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${links.length} edges</span></div>`;
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
 let selectedDetail = null;
