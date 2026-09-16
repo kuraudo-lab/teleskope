@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teleskope Topology View Mock</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09111d;
+      --panel: #101b2b;
+      --panel-2: #0c1624;
+      --panel-3: #142237;
+      --line: rgba(148, 163, 184, .22);
+      --line-strong: rgba(203, 213, 225, .34);
+      --text: #e5eefb;
+      --muted: #95a7bd;
+      --blue: #60a5fa;
+      --cyan: #22d3ee;
+      --green: #34d399;
+      --amber: #f59e0b;
+      --red: #fb7185;
+      --purple: #a78bfa;
+      --pink: #f472b6;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .38);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --panel-2: #f8fafc;
+      --panel-3: #eef4fb;
+      --line: rgba(15, 23, 42, .13);
+      --line-strong: rgba(15, 23, 42, .22);
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #2563eb;
+      --cyan: #0891b2;
+      --green: #059669;
+      --amber: #d97706;
+      --red: #e11d48;
+      --purple: #7c3aed;
+      --pink: #db2777;
+      --shadow: 0 24px 80px rgba(15, 23, 42, .12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(12, 22, 36, .96), rgba(6, 12, 22, .98)),
+        var(--bg);
+      color: var(--text);
+    }
+
+    :root[data-theme="light"] body {
+      background:
+        linear-gradient(180deg, rgba(248, 250, 252, .96), rgba(226, 232, 240, .72)),
+        var(--bg);
+    }
+
+    button, input, select { font: inherit; }
+
+    .shell {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 14px;
+      height: 100vh;
+      min-height: 720px;
+      padding: 14px;
+    }
+
+    .app-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(20, 34, 55, .88), rgba(10, 20, 34, .82));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    :root[data-theme="light"] .app-topbar,
+    :root[data-theme="light"] .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(241, 245, 249, .9));
+    }
+
+    .brand {
+      display: grid;
+      gap: 1px;
+      min-width: 178px;
+      margin-right: 6px;
+    }
+
+    .brand strong {
+      color: var(--text);
+      font-size: 15px;
+      letter-spacing: .01em;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .app-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      margin-right: auto;
+      overflow: hidden;
+    }
+
+    .tab {
+      flex: 0 0 auto;
+      height: 32px;
+      padding: 0 10px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tab.active {
+      color: var(--text);
+      background: rgba(96, 165, 250, .14);
+      border-color: var(--line);
+    }
+
+    .global-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .select {
+      height: 34px;
+      max-width: 156px;
+      color: var(--text);
+      background: rgba(8, 17, 31, .5);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0 28px 0 10px;
+    }
+
+    :root[data-theme="light"] .select,
+    :root[data-theme="light"] .action-button,
+    :root[data-theme="light"] .icon-button,
+    :root[data-theme="light"] .search {
+      background: rgba(255, 255, 255, .92);
+    }
+
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 34px;
+      padding: 0 10px;
+      color: var(--text);
+      background: rgba(8, 17, 31, .48);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .action-button:hover,
+    .tab:hover,
+    .icon-button:hover { background: rgba(96, 165, 250, .14); }
+
+    .export { position: relative; }
+
+    .export-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      display: grid;
+      gap: 4px;
+      min-width: 160px;
+      padding: 6px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      z-index: 20;
+    }
+
+    .export-menu button {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 9px;
+      color: var(--text);
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .export-menu button:hover { background: rgba(96, 165, 250, .14); }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 4px 8px;
+      color: var(--green);
+      background: rgba(52, 211, 153, .11);
+      border: 1px solid rgba(52, 211, 153, .28);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 284px minmax(760px, 1fr) 328px;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .panel {
+      min-width: 0;
+      background: linear-gradient(180deg, rgba(20, 34, 55, .88), rgba(10, 20, 34, .9));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar, .inspector {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pane-head {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 18px; line-height: 1.25; }
+    h2 { font-size: 14px; }
+    h3 { font-size: 12px; }
+    p { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .controls {
+      display: grid;
+      gap: 16px;
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 9px;
+    }
+
+    .control-title {
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .search {
+      width: 100%;
+      height: 34px;
+      padding: 0 11px;
+      color: var(--text);
+      background: rgba(8, 17, 31, .7);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .search:focus { border-color: rgba(96, 165, 250, .72); }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 3px;
+      background: rgba(8, 17, 31, .62);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .segmented button {
+      min-width: 0;
+      height: 28px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .segmented button.active {
+      color: #eff6ff;
+      background: rgba(96, 165, 250, .18);
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 34px;
+      padding: 7px 8px;
+      background: rgba(8, 17, 31, .38);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: #dbe7f7;
+      font-size: 12px;
+    }
+
+    .check span {
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+      gap: 8px;
+    }
+
+    .count {
+      flex: 0 0 auto;
+      min-width: 24px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      color: #dbeafe;
+      background: rgba(96, 165, 250, .16);
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      color: currentColor;
+    }
+
+    .legend-item.service { color: var(--cyan); }
+    .legend-item.workload { color: var(--blue); }
+    .legend-item.pod { color: var(--amber); }
+    .legend-item.node { color: var(--green); }
+    .legend-item.storage { color: var(--purple); }
+    .legend-item.image { color: var(--pink); }
+
+    .topology {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 58px;
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-title {
+      min-width: 0;
+      margin-right: auto;
+    }
+
+    .toolbar-title h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .stat {
+      display: grid;
+      gap: 1px;
+      min-width: 82px;
+      padding: 6px 9px;
+      background: rgba(8, 17, 31, .46);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .stat strong { font-size: 13px; }
+    .stat span { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      color: #dbeafe;
+      background: rgba(8, 17, 31, .48);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    .map {
+      position: relative;
+      min-height: 0;
+      overflow: auto;
+      background:
+        linear-gradient(rgba(148, 163, 184, .05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, .05) 1px, transparent 1px),
+        var(--panel-2);
+      background-size: 28px 28px;
+    }
+
+    .map-inner {
+      position: relative;
+      min-width: 1180px;
+      min-height: 760px;
+      padding: 18px;
+    }
+
+    .columns {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 180px 210px 270px 230px 210px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .lane {
+      min-height: 660px;
+      padding: 10px;
+      background: rgba(9, 17, 29, .58);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .lane-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: #dbeafe;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .lane-head span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .stack-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .group {
+      display: grid;
+      gap: 6px;
+      padding: 8px;
+      background: rgba(20, 34, 55, .72);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .node-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      min-height: 42px;
+      padding: 7px 8px;
+      background: rgba(8, 17, 31, .75);
+      border: 1px solid rgba(148, 163, 184, .19);
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    .node-card.selected {
+      background: rgba(96, 165, 250, .16);
+      border-color: rgba(96, 165, 250, .72);
+    }
+
+    .node-card.warning { border-color: rgba(245, 158, 11, .5); }
+
+    .glyph {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(148, 163, 184, .1);
+    }
+
+    .node-card.service .glyph { color: var(--cyan); background: rgba(34, 211, 238, .12); }
+    .node-card.workload .glyph { color: var(--blue); background: rgba(96, 165, 250, .13); }
+    .node-card.pod .glyph { color: var(--amber); background: rgba(245, 158, 11, .13); }
+    .node-card.compute .glyph { color: var(--green); background: rgba(52, 211, 153, .12); }
+    .node-card.storage .glyph { color: var(--purple); background: rgba(167, 139, 250, .13); }
+    .node-card.image .glyph { color: var(--pink); background: rgba(244, 114, 182, .12); }
+    .node-card.gateway .glyph { color: #38bdf8; background: rgba(56, 189, 248, .13); }
+
+    .node-main {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+    }
+
+    .node-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #eff6ff;
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .node-meta {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .health {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .health.warn { background: var(--amber); }
+    .health.bad { background: var(--red); }
+
+    .collapsed {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 34px;
+      padding: 6px 8px;
+      color: #dbeafe;
+      background: rgba(96, 165, 250, .09);
+      border: 1px dashed rgba(96, 165, 250, .36);
+      border-radius: 7px;
+      font-size: 12px;
+    }
+
+    .links {
+      position: absolute;
+      inset: 0;
+      width: 1180px;
+      height: 760px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .links path {
+      fill: none;
+      stroke: rgba(148, 163, 184, .36);
+      stroke-width: 1.2;
+    }
+
+    .links path.hot {
+      stroke: rgba(96, 165, 250, .8);
+      stroke-width: 2;
+    }
+
+    .links path.warn {
+      stroke: rgba(245, 158, 11, .78);
+      stroke-dasharray: 5 5;
+    }
+
+    .inspector-body {
+      display: grid;
+      gap: 14px;
+      padding: 14px;
+      overflow: auto;
+    }
+
+    .summary-card {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(8, 17, 31, .5);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .summary-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .summary-title strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 6px 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .kv strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #e5eefb;
+      font-weight: 650;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .chip {
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 4px 7px;
+      color: #dbeafe;
+      background: rgba(96, 165, 250, .12);
+      border: 1px solid rgba(96, 165, 250, .22);
+      border-radius: 999px;
+      font-size: 11px;
+    }
+
+    .issue {
+      display: grid;
+      gap: 4px;
+      padding: 9px;
+      background: rgba(245, 158, 11, .1);
+      border: 1px solid rgba(245, 158, 11, .28);
+      border-radius: 7px;
+      color: #fde68a;
+      font-size: 12px;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .mini-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, .11);
+      color: #dbeafe;
+      font-size: 12px;
+    }
+
+    .mini-row:last-child { border-bottom: 0; }
+    .mini-row span { color: var(--muted); }
+
+    .event-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .event {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+      padding: 8px;
+      background: rgba(8, 17, 31, .36);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    :root[data-theme="light"] .event,
+    :root[data-theme="light"] .summary-card,
+    :root[data-theme="light"] .check,
+    :root[data-theme="light"] .stat,
+    :root[data-theme="light"] .lane,
+    :root[data-theme="light"] .group,
+    :root[data-theme="light"] .node-card {
+      background: rgba(255, 255, 255, .76);
+    }
+
+    :root[data-theme="light"] .control-title,
+    :root[data-theme="light"] .group-head,
+    :root[data-theme="light"] .lane-head,
+    :root[data-theme="light"] .node-label,
+    :root[data-theme="light"] .collapsed,
+    :root[data-theme="light"] .chip,
+    :root[data-theme="light"] .mini-row {
+      color: var(--text);
+    }
+
+    :root[data-theme="light"] .export-menu {
+      background: #ffffff;
+    }
+
+    .event-dot {
+      width: 8px;
+      height: 8px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    .event.warn .event-dot { background: var(--amber); }
+
+    .event strong {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .event span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .mobile-hint { display: none; }
+
+    @media (max-width: 1180px) {
+      .shell { height: auto; }
+      .app-topbar { flex-wrap: wrap; }
+      .app-tabs { order: 3; width: 100%; overflow: auto; }
+      .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+      .sidebar, .inspector { max-height: none; }
+      .map { min-height: 640px; }
+      .mobile-hint { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="icon-gateway" viewBox="0 0 24 24">
+      <path d="M4 7h16M6 7v10h12V7M9 11h6M9 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-service" viewBox="0 0 24 24">
+      <path d="M5 8h14v8H5zM9 8V5h6v3M9 16v3h6v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-workload" viewBox="0 0 24 24">
+      <path d="M5 7l7-4 7 4v10l-7 4-7-4zM12 11l7-4M12 11v10M12 11L5 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-pod" viewBox="0 0 24 24">
+      <path d="M8 5h8l4 7-4 7H8l-4-7zM9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-node" viewBox="0 0 24 24">
+      <path d="M6 5h12v14H6zM9 9h6M9 13h6M9 17h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-storage" viewBox="0 0 24 24">
+      <path d="M5 7c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-image" viewBox="0 0 24 24">
+      <path d="M5 5h14v14H5zM8 9h8M8 13h5M8 17h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-filter" viewBox="0 0 24 24">
+      <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-fit" viewBox="0 0 24 24">
+      <path d="M8 4H4v4M16 4h4v4M8 20H4v-4M20 16v4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-export" viewBox="0 0 24 24">
+      <path d="M12 4v10M8 8l4-4 4 4M5 14v5h14v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-theme" viewBox="0 0 24 24">
+      <path d="M12 3a9 9 0 1 0 9 9 6 6 0 0 1-9-9z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="icon-event" viewBox="0 0 24 24">
+      <path d="M7 4v3M17 4v3M5 8h14M6 6h12v14H6zM9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+  </svg>
+
+  <main class="shell">
+    <header class="app-topbar" aria-label="Report controls">
+      <div class="brand">
+        <strong>Teleskope report</strong>
+        <span>demo-eks / collected 2026-09-16 14:28</span>
+      </div>
+      <nav class="app-tabs" aria-label="Report sections">
+        <button class="tab">Overview</button>
+        <button class="tab">Advisory</button>
+        <button class="tab active">Topology</button>
+        <button class="tab">Workloads</button>
+        <button class="tab">Storage</button>
+        <button class="tab">Security</button>
+        <button class="tab">Events</button>
+      </nav>
+      <div class="global-actions">
+        <select class="select" aria-label="Namespace">
+          <option>commerce namespace</option>
+          <option>All namespaces</option>
+          <option>kube-system</option>
+        </select>
+        <select class="select" aria-label="Resource type">
+          <option>All resource types</option>
+          <option>Workloads</option>
+          <option>Storage</option>
+        </select>
+        <span class="live-pill"><svg class="icon"><use href="#icon-event"/></svg>Live events</span>
+        <div class="export">
+          <button class="action-button" aria-haspopup="menu" aria-expanded="true">
+            <svg class="icon"><use href="#icon-export"/></svg>Export
+          </button>
+          <div class="export-menu" role="menu" aria-label="Export format">
+            <button role="menuitem">JSON <span>.json</span></button>
+            <button role="menuitem">Markdown <span>.md</span></button>
+            <button role="menuitem">Topology view <span>.svg</span></button>
+          </div>
+        </div>
+        <button id="theme-toggle" class="action-button" aria-label="Switch theme">
+          <svg class="icon"><use href="#icon-theme"/></svg><span>Light</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="app">
+    <aside class="panel sidebar">
+      <div class="pane-head">
+        <p class="eyebrow">Topology controls</p>
+        <h1>Map by relationship, not by color</h1>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label class="control-title" for="topology-search">Search</label>
+          <input id="topology-search" class="search" value="checkout" aria-label="Search topology objects">
+        </div>
+
+        <div class="control-group">
+          <div class="control-title">Density</div>
+          <div class="segmented" aria-label="Topology density">
+            <button>Relaxed</button>
+            <button class="active">Compact</button>
+            <button>Inventory</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-title">Object types</div>
+          <label class="check"><span><svg class="icon"><use href="#icon-gateway"/></svg>Ingress / Gateway</span><span class="count">4</span></label>
+          <label class="check"><span><svg class="icon"><use href="#icon-service"/></svg>Services</span><span class="count">12</span></label>
+          <label class="check"><span><svg class="icon"><use href="#icon-workload"/></svg>Workloads</span><span class="count">38</span></label>
+          <label class="check"><span><svg class="icon"><use href="#icon-pod"/></svg>Pods</span><span class="count">96</span></label>
+          <label class="check"><span><svg class="icon"><use href="#icon-storage"/></svg>Storage</span><span class="count">9</span></label>
+          <label class="check"><span><svg class="icon"><use href="#icon-image"/></svg>Images</span><span class="count">41</span></label>
+        </div>
+
+        <div class="control-group">
+          <div class="control-title">Legend</div>
+          <div class="legend" aria-label="Topology icon legend">
+            <div class="legend-item gateway"><svg class="icon"><use href="#icon-gateway"/></svg>Gateway</div>
+            <div class="legend-item service"><svg class="icon"><use href="#icon-service"/></svg>Service</div>
+            <div class="legend-item workload"><svg class="icon"><use href="#icon-workload"/></svg>Workload</div>
+            <div class="legend-item pod"><svg class="icon"><use href="#icon-pod"/></svg>Pod</div>
+            <div class="legend-item node"><svg class="icon"><use href="#icon-node"/></svg>Node</div>
+            <div class="legend-item image"><svg class="icon"><use href="#icon-image"/></svg>Image</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel topology" aria-label="Topology mock">
+      <div class="toolbar">
+        <div class="toolbar-title">
+          <p class="eyebrow">Namespace: commerce</p>
+          <h1>Topology map, grouped into swimlanes</h1>
+        </div>
+        <div class="stat"><strong>159</strong><span>objects</span></div>
+        <div class="stat"><strong>214</strong><span>edges</span></div>
+        <div class="stat"><strong>3</strong><span>warnings</span></div>
+        <button class="icon-button" aria-label="Filter topology"><svg class="icon"><use href="#icon-filter"/></svg></button>
+        <button class="icon-button" aria-label="Fit topology to screen"><svg class="icon"><use href="#icon-fit"/></svg></button>
+      </div>
+
+      <div class="map">
+        <div class="map-inner">
+          <svg class="links" viewBox="0 0 1180 760" aria-hidden="true">
+            <path class="hot" d="M150 92 C215 92 220 88 286 88"/>
+            <path class="hot" d="M496 86 C558 86 562 88 624 88"/>
+            <path class="hot" d="M496 140 C558 140 562 128 624 128"/>
+            <path d="M496 196 C558 196 562 176 624 176"/>
+            <path d="M850 89 C908 89 914 102 970 102"/>
+            <path class="warn" d="M850 139 C908 139 914 148 970 148"/>
+            <path d="M850 187 C908 187 914 196 970 196"/>
+            <path d="M150 146 C215 146 220 142 286 142"/>
+            <path d="M150 200 C215 200 220 250 286 250"/>
+            <path d="M496 250 C558 250 562 254 624 254"/>
+            <path d="M496 304 C558 304 562 302 624 302"/>
+            <path d="M496 358 C558 358 562 350 624 350"/>
+          </svg>
+
+          <div class="columns">
+            <section class="lane">
+              <div class="lane-head">Entry <span>4</span></div>
+              <div class="stack-list">
+                <article class="node-card gateway selected" aria-label="Gateway public commerce">
+                  <div class="glyph"><svg class="icon"><use href="#icon-gateway"/></svg></div>
+                  <div class="node-main"><div class="node-label">public-commerce</div><div class="node-meta">gateway/networking</div></div>
+                  <i class="health"></i>
+                </article>
+                <article class="node-card gateway">
+                  <div class="glyph"><svg class="icon"><use href="#icon-gateway"/></svg></div>
+                  <div class="node-main"><div class="node-label">internal-api</div><div class="node-meta">ingress/nginx</div></div>
+                  <i class="health"></i>
+                </article>
+                <article class="node-card gateway">
+                  <div class="glyph"><svg class="icon"><use href="#icon-gateway"/></svg></div>
+                  <div class="node-main"><div class="node-label">payments-webhook</div><div class="node-meta">gateway/https</div></div>
+                  <i class="health warn"></i>
+                </article>
+              </div>
+            </section>
+
+            <section class="lane">
+              <div class="lane-head">Service <span>12</span></div>
+              <div class="stack-list">
+                <article class="node-card service selected">
+                  <div class="glyph"><svg class="icon"><use href="#icon-service"/></svg></div>
+                  <div class="node-main"><div class="node-label">checkout-api</div><div class="node-meta">ClusterIP :8080</div></div>
+                  <i class="health"></i>
+                </article>
+                <article class="node-card service">
+                  <div class="glyph"><svg class="icon"><use href="#icon-service"/></svg></div>
+                  <div class="node-main"><div class="node-label">cart-api</div><div class="node-meta">ClusterIP :8080</div></div>
+                  <i class="health"></i>
+                </article>
+                <article class="node-card service">
+                  <div class="glyph"><svg class="icon"><use href="#icon-service"/></svg></div>
+                  <div class="node-main"><div class="node-label">inventory-api</div><div class="node-meta">ClusterIP :9090</div></div>
+                  <i class="health"></i>
+                </article>
+                <article class="collapsed"><span>9 more services</span><strong>expand</strong></article>
+              </div>
+            </section>
+
+            <section class="lane">
+              <div class="lane-head">Workload <span>38</span></div>
+              <div class="stack-list">
+                <div class="group">
+                  <div class="group-head">commerce <span>8 workloads</span></div>
+                  <article class="node-card workload selected">
+                    <div class="glyph"><svg class="icon"><use href="#icon-workload"/></svg></div>
+                    <div class="node-main"><div class="node-label">deployment/checkout-api</div><div class="node-meta">4/4 ready, selector app=checkout</div></div>
+                    <i class="health"></i>
+                  </article>
+                  <article class="node-card workload">
+                    <div class="glyph"><svg class="icon"><use href="#icon-workload"/></svg></div>
+                    <div class="node-main"><div class="node-label">deployment/cart-api</div><div class="node-meta">6/6 ready, hpa enabled</div></div>
+                    <i class="health"></i>
+                  </article>
+                  <article class="node-card workload warning">
+                    <div class="glyph"><svg class="icon"><use href="#icon-workload"/></svg></div>
+                    <div class="node-main"><div class="node-label">deployment/payments-worker</div><div class="node-meta">2/3 ready, image drift</div></div>
+                    <i class="health warn"></i>
+                  </article>
+                </div>
+                <div class="group">
+                  <div class="group-head">platform <span>14 workloads</span></div>
+                  <article class="node-card workload">
+                    <div class="glyph"><svg class="icon"><use href="#icon-workload"/></svg></div>
+                    <div class="node-main"><div class="node-label">daemonset/aws-node</div><div class="node-meta">runs on 12 nodes</div></div>
+                    <i class="health"></i>
+                  </article>
+                  <article class="collapsed"><span>13 grouped platform workloads</span><strong>show</strong></article>
+                </div>
+              </div>
+            </section>
+
+            <section class="lane">
+              <div class="lane-head">Pod / Node <span>96 / 12</span></div>
+              <div class="stack-list">
+                <div class="group">
+                  <div class="group-head">checkout-api pods <span>4</span></div>
+                  <article class="node-card pod">
+                    <div class="glyph"><svg class="icon"><use href="#icon-pod"/></svg></div>
+                    <div class="node-main"><div class="node-label">checkout-api-7d9c8d4c9-x2lqf</div><div class="node-meta">demo-node-4, running</div></div>
+                    <i class="health"></i>
+                  </article>
+                  <article class="node-card pod warning">
+                    <div class="glyph"><svg class="icon"><use href="#icon-pod"/></svg></div>
+                    <div class="node-main"><div class="node-label">checkout-api-7d9c8d4c9-kp8mz</div><div class="node-meta">demo-node-7, restart 3</div></div>
+                    <i class="health warn"></i>
+                  </article>
+                  <article class="collapsed"><span>2 more healthy pods</span><strong>show</strong></article>
+                </div>
+                <div class="group">
+                  <div class="group-head">nodes <span>12</span></div>
+                  <article class="node-card compute">
+                    <div class="glyph"><svg class="icon"><use href="#icon-node"/></svg></div>
+                    <div class="node-main"><div class="node-label">demo-node-4</div><div class="node-meta">m6i.large, eu-west-1b</div></div>
+                    <i class="health"></i>
+                  </article>
+                  <article class="node-card compute">
+                    <div class="glyph"><svg class="icon"><use href="#icon-node"/></svg></div>
+                    <div class="node-main"><div class="node-label">demo-node-7</div><div class="node-meta">m6i.large, eu-west-1c</div></div>
+                    <i class="health"></i>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="lane">
+              <div class="lane-head">Artifacts <span>50</span></div>
+              <div class="stack-list">
+                <article class="node-card storage selected">
+                  <div class="glyph"><svg class="icon"><use href="#icon-storage"/></svg></div>
+                  <div class="node-main"><div class="node-label">pvc/checkout-cache</div><div class="node-meta">gp3, 20Gi, Bound</div></div>
+                  <i class="health"></i>
+                </article>
+                <article class="node-card storage warning">
+                  <div class="glyph"><svg class="icon"><use href="#icon-storage"/></svg></div>
+                  <div class="node-main"><div class="node-label">pvc/payment-events</div><div class="node-meta">gp2, expansion off</div></div>
+                  <i class="health warn"></i>
+                </article>
+                <article class="node-card image">
+                  <div class="glyph"><svg class="icon"><use href="#icon-image"/></svg></div>
+                  <div class="node-main"><div class="node-label">registry/app/checkout:v1.42.0</div><div class="node-meta">4 pods, amd64</div></div>
+                  <i class="health"></i>
+                </article>
+                <article class="node-card image warning">
+                  <div class="glyph"><svg class="icon"><use href="#icon-image"/></svg></div>
+                  <div class="node-main"><div class="node-label">registry/app/payments:v1.39.1</div><div class="node-meta">mixed with v1.38.8</div></div>
+                  <i class="health warn"></i>
+                </article>
+                <article class="collapsed"><span>46 grouped artifacts</span><strong>expand</strong></article>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel inspector">
+      <div class="pane-head">
+        <p class="eyebrow">Selection</p>
+        <h1>deployment/checkout-api</h1>
+      </div>
+      <div class="inspector-body">
+        <section class="summary-card">
+          <div class="summary-title">
+            <div class="glyph" style="color:var(--blue);background:rgba(96,165,250,.13)"><svg class="icon"><use href="#icon-workload"/></svg></div>
+            <strong>checkout-api</strong>
+          </div>
+          <div class="kv">
+            <span>Namespace</span><strong>commerce</strong>
+            <span>Ready</span><strong>4 / 4 replicas</strong>
+            <span>Runtime</span><strong>containerd, amd64</strong>
+            <span>Node spread</span><strong>2 zones, 4 nodes</strong>
+          </div>
+        </section>
+
+        <section class="summary-card">
+          <h2>Connected objects</h2>
+          <div class="chip-row">
+            <span class="chip">service/checkout-api</span>
+            <span class="chip">gateway/public-commerce</span>
+            <span class="chip">pvc/checkout-cache</span>
+            <span class="chip">image checkout:v1.42.0</span>
+            <span class="chip">nodegroup/demo-nodegroup</span>
+          </div>
+        </section>
+
+        <section class="issue">
+          <strong>Design intent</strong>
+          <span>Keep the topology useful at high cardinality by grouping repeated pods, platform workloads, images, and storage into expandable stacks instead of drawing every object as a separate bubble.</span>
+        </section>
+
+        <section class="summary-card">
+          <h2>Relationship trace</h2>
+          <div class="mini-list">
+            <div class="mini-row"><strong>Gateway</strong><span>public-commerce</span></div>
+            <div class="mini-row"><strong>Service</strong><span>checkout-api :8080</span></div>
+            <div class="mini-row"><strong>Workload</strong><span>deployment/checkout-api</span></div>
+            <div class="mini-row"><strong>Pods</strong><span>4 running</span></div>
+            <div class="mini-row"><strong>Artifacts</strong><span>1 PVC, 1 image</span></div>
+          </div>
+        </section>
+
+        <section class="summary-card">
+          <h2>Recent events</h2>
+          <div class="event-list" aria-label="Recent live events">
+            <div class="event">
+              <i class="event-dot"></i>
+              <div><strong>Snapshot refreshed</strong><span>18 objects changed; topology diff is highlighted in blue.</span></div>
+            </div>
+            <div class="event warn">
+              <i class="event-dot"></i>
+              <div><strong>payments-worker image drift</strong><span>2 pods still run v1.38.8 while deployment expects v1.39.1.</span></div>
+            </div>
+            <div class="event">
+              <i class="event-dot"></i>
+              <div><strong>checkout-api scaled</strong><span>Replica count moved from 3 to 4 and all pods are Ready.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <p class="mobile-hint">On narrow screens the map becomes horizontally scrollable, preserving lane geometry instead of crushing labels.</p>
+      </div>
+    </aside>
+    </div>
+  </main>
+  <script>
+    const themeToggle = document.getElementById('theme-toggle');
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      const next = theme === 'dark' ? 'Light' : 'Dark';
+      themeToggle.querySelector('span').textContent = next;
+      themeToggle.setAttribute('aria-label', `Switch to ${next.toLowerCase()} theme`);
+    }
+    setTheme('dark');
+    themeToggle.addEventListener('click', () => {
+      setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
+  </script>
+</body>
+</html>

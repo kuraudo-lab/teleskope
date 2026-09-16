@@ -103,16 +103,27 @@
     .stack { gap:16px; }
     .topology-shell { height:calc(100vh - 190px); min-height:560px; }
     .topology-shell .panel, .topology { height:100%; }
-    .topology { position:relative; overflow:hidden; background:radial-gradient(circle at center,var(--topology-glow),transparent 45%),var(--panel-2); cursor:grab; user-select:none; }
+    .topology { position:relative; overflow:hidden; background:linear-gradient(rgba(148,163,184,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.045) 1px,transparent 1px),radial-gradient(circle at center,var(--topology-glow),transparent 45%),var(--panel-2); background-size:28px 28px,28px 28px,100% 100%,100% 100%; cursor:grab; user-select:none; }
     .topology.panning { cursor:grabbing; }
     svg { width:100%; height:100%; touch-action:none; }
     .node { cursor:pointer; }
-    .node circle { stroke:var(--node-stroke); stroke-width:1.2; filter:drop-shadow(0 8px 18px rgba(0,0,0,.35)); }
-    .node text { fill:var(--text); font-size:11px; pointer-events:none; }
-    .link { stroke:var(--link); stroke-width:1.2; }
-    .legend { position:absolute; left:16px; bottom:14px; display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+    .node rect.node-card { fill:var(--panel); stroke:var(--table-line); stroke-width:1; rx:9; filter:drop-shadow(0 8px 18px rgba(0,0,0,.18)); }
+    .node.selected rect.node-card { stroke:var(--blue); stroke-width:1.5; fill:var(--control-bg); }
+    .node .node-label { fill:var(--text); font-size:12px; font-weight:700; pointer-events:none; }
+    .node .node-meta { fill:var(--muted); font-size:10.5px; pointer-events:none; }
+    .node .node-icon-box { fill:var(--chip); stroke:rgba(96,165,250,.18); }
+    .node .node-status { stroke:var(--panel); stroke-width:2; }
+    .node .node-count { fill:var(--chip-text); font-size:10px; font-weight:800; pointer-events:none; }
+    .topology-lane rect { fill:rgba(148,163,184,.045); stroke:var(--line); rx:14; }
+    .topology-lane text { fill:var(--muted); font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .topology-more rect { fill:rgba(96,165,250,.08); stroke:rgba(96,165,250,.32); stroke-dasharray:5 4; rx:9; }
+    .topology-more text { fill:var(--chip-text); font-size:12px; font-weight:700; }
+    .link { stroke:var(--link); stroke-width:1.2; fill:none; }
+    .link.hot { stroke:var(--blue); stroke-width:1.8; }
+    .legend { position:absolute; left:16px; bottom:14px; right:16px; display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px; pointer-events:none; }
     .legend span { display:inline-flex; align-items:center; gap:6px; background:var(--legend-bg); border:1px solid var(--line); padding:5px 8px; border-radius:999px; }
-    .legend i { width:9px; height:9px; border-radius:999px; display:inline-block; }
+    .legend i { width:16px; height:16px; color:var(--legend-color); display:inline-grid; place-items:center; }
+    .legend i svg { width:16px; height:16px; }
     .drawer { position:fixed; right:22px; top:22px; width:640px; max-width:calc(100vw - 44px); max-height:calc(100vh - 44px); overflow:auto; background:var(--drawer-bg); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:16px; transform:translateX(690px); transition:transform .2s ease; z-index:10; }
     .drawer.open { transform:translateX(0); }
     .drawer header { margin:0 0 10px; align-items:center; }
@@ -366,9 +377,9 @@ function renderTables() {
   table('runtimeTable', ['RuntimeClass','Handler'], k.runtimeClasses, 'runtime', r => [esc(ref(r)), esc(r.handler)]);
 }
 function renderTopology() {
-  const nodes = [], links = [];
-  const add = (id,label,type,data) => { if (!nodes.find(n => n.id === id)) nodes.push({id,label,type,data}); };
-  const link = (a,b) => { if (nodes.find(n => n.id === a) && nodes.find(n => n.id === b)) links.push([a,b]); };
+  const nodes = [], links = [], nodeById = new Map(), linkKeys = new Set();
+  const add = (id,label,type,data) => { if (!nodeById.has(id)) { const node = {id,label,type,data,index:nodes.length}; nodes.push(node); nodeById.set(id,node); } };
+  const link = (a,b) => { if (nodeById.has(a) && nodeById.has(b)) { const key = a + '->' + b; if (!linkKeys.has(key)) { linkKeys.add(key); links.push([a,b]); } } };
   const topologyResourceFilter = currentTopologyResourceFilter();
   const showWorkloads = topologyResourceFilter === 'all' || topologyResourceFilter === 'workload';
   const showServices = topologyResourceFilter === 'all' || topologyResourceFilter === 'service';
@@ -397,10 +408,104 @@ function renderTopology() {
   if (topologyResourceFilter === 'csi') arr(k.csiDrivers).forEach(c => add('csi:' + c.name, c.name, 'csi', c));
   if (topologyResourceFilter === 'runtime') arr(k.runtimeClasses).forEach(r => add('rt:' + ref(r), ref(r), 'runtime', r));
   if (nodes.length === 0) { byId('topology').innerHTML = '<div class="body muted">No topology nodes match the current filter.</div>'; return; }
-  const W = byId('topology').clientWidth || 900, H = byId('topology').clientHeight || 560, cx = W / 2, cy = H / 2;
-  nodes.forEach((n,i) => { const ring = n.type === 'service' ? Math.min(W,H)*.27 : n.type === 'image' ? Math.min(W,H)*.39 : n.type === 'storage' ? Math.min(W,H)*.48 : n.type === 'workload' ? Math.min(W,H)*.15 : Math.min(W,H)*.34; const a = i / nodes.length * Math.PI * 2; n.x = cx + Math.cos(a) * ring; n.y = cy + Math.sin(a) * ring; });
   const color = t => ({service:'#22d3ee', image:'#a78bfa', storage:'#34d399', pod:'#f59e0b', container:'#fb7185', crd:'#818cf8', ingress:'#38bdf8', endpoint:'#2dd4bf', gateway:'#facc15', gatewayRoute:'#fb923c', csi:'#4ade80', runtime:'#f472b6'}[t] || '#60a5fa');
-  byId('topology').innerHTML = `<svg id="topologySvg" viewBox="0 0 ${W} ${H}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${links.map(([a,b]) => { const A = nodes.find(n => n.id === a), B = nodes.find(n => n.id === b); return A && B ? `<line class="link" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>` : ''; }).join('')}${nodes.map(n => `<g class="node" data-detail="${esc(JSON.stringify(n.data))}"><circle cx="${n.x}" cy="${n.y}" r="${n.type === 'image' ? 18 : 22}" fill="${color(n.type)}"/><text x="${n.x + 26}" y="${n.y + 4}">${esc(n.label).slice(0,42)}</text></g>`).join('')}</g></svg><div class="legend"><span><i style="background:#22d3ee"></i>Service</span><span><i style="background:#60a5fa"></i>Workload</span><span><i style="background:#a78bfa"></i>Image</span><span><i style="background:#34d399"></i>Storage</span><span><i style="background:#facc15"></i>Gateway</span><span>Wheel to zoom</span><span>Drag to pan</span></div>`;
+  const lanes = [
+    {id:'entry', label:'Entry', types:['gateway','gatewayRoute','ingress']},
+    {id:'service', label:'Service', types:['service','endpoint']},
+    {id:'workload', label:'Workload', types:['workload']},
+    {id:'compute', label:'Pod / runtime', types:['pod','container','runtime','csi']},
+    {id:'artifact', label:'Storage / image', types:['storage','image','crd']},
+  ];
+  const laneFor = type => lanes.find(l => l.types.includes(type)) || lanes[2];
+  const meta = n => {
+    const d = n.data || {};
+    if (n.type === 'workload') return [d.namespace || 'cluster', d.readyReplicas !== undefined ? `ready ${d.readyReplicas || 0}/${d.replicas ?? d.desiredScheduled ?? '-'}` : '', d.kind || ''].filter(Boolean).join(' · ');
+    if (n.type === 'service') return [d.namespace || 'cluster', d.type || '', arr(d.ports).map(p => p.port || p.targetPort).filter(Boolean).join(',')].filter(Boolean).join(' · ');
+    if (n.type === 'pod') return [d.namespace || 'cluster', d.phase || '', d.nodeName || ''].filter(Boolean).join(' · ');
+    if (n.type === 'container') return [d.namespace || '', d.runtime || '', d.nodeName || ''].filter(Boolean).join(' · ');
+    if (n.type === 'image') return [d.namespace || '', d.architecture || '', d.os || ''].filter(Boolean).join(' · ') || 'running image';
+    if (n.type === 'storage') return [d.namespace || 'cluster', d.status || d.storageClassName || d.provisioner || ''].filter(Boolean).join(' · ');
+    if (n.type === 'gateway' || n.type === 'gatewayRoute' || n.type === 'ingress') return [d.namespace || 'cluster', d.kind || n.type].filter(Boolean).join(' · ');
+    return d.kind || n.type;
+  };
+  const health = n => {
+    const d = n.data || {};
+    if (n.type === 'pod' && d.phase && d.phase !== 'Running' && d.phase !== 'Succeeded') return 'warn';
+    if (n.type === 'workload' && d.replicas !== undefined && (d.readyReplicas || 0) < d.replicas) return 'warn';
+    if (n.type === 'storage' && d.status && d.status !== 'Bound') return 'warn';
+    return 'ok';
+  };
+  const icon = t => {
+    const common = 'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"';
+    const paths = {
+      gateway:`<path d="M3 6h14M5 6v10h10V6M8 10h4M8 14h2" ${common}/>`,
+      gatewayRoute:`<path d="M3 6h14M5 6v10h10V6M8 10h4M8 14h2" ${common}/>`,
+      ingress:`<path d="M3 6h14M5 6v10h10V6M8 10h4M8 14h2" ${common}/>`,
+      service:`<path d="M4 7h12v7H4zM7 7V4h6v3M7 14v3h6v-3" ${common}/>`,
+      workload:`<path d="M4 6l6-3 6 3v8l-6 4-6-4zM10 9l6-3M10 9v9M10 9L4 6" ${common}/>`,
+      pod:`<path d="M6 4h8l4 6-4 7H6l-4-7zM7 10h6" ${common}/>`,
+      container:`<path d="M3 5h14v12H3zM6 8h8M6 12h5" ${common}/>`,
+      runtime:`<path d="M5 5h10v10H5zM3 9h2M15 9h2M9 3v2M9 15v2" ${common}/>`,
+      csi:`<path d="M4 6c0-1.4 2.7-2.5 6-2.5s6 1.1 6 2.5-2.7 2.5-6 2.5S4 7.4 4 6zM4 6v8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V6" ${common}/>`,
+      storage:`<path d="M4 6c0-1.4 2.7-2.5 6-2.5s6 1.1 6 2.5-2.7 2.5-6 2.5S4 7.4 4 6zM4 6v8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V6" ${common}/>`,
+      image:`<path d="M4 4h12v12H4zM7 8h6M7 11h4M7 14h6" ${common}/>`,
+      crd:`<path d="M5 4h8l3 3v9H5zM12 4v4h4M8 11h5M8 14h4" ${common}/>`
+    };
+    return paths[t] || paths.workload;
+  };
+  const label = (value, max = 24) => { const s = String(value || '-'); return s.length > max ? s.slice(0, Math.max(1, max - 3)) + '...' : s; };
+  const laneNodes = new Map(lanes.map(l => [l.id, []]));
+  nodes.forEach(n => laneNodes.get(laneFor(n.type).id).push(n));
+  const activeLanes = lanes.filter(l => laneNodes.get(l.id).length);
+  const W = byId('topology').clientWidth || 900, H = byId('topology').clientHeight || 560;
+  const gap = 22, nodeH = 54, rowGap = 10, top = 54, margin = 22;
+  const laneW = Math.max(230, Math.min(300, Math.floor((W - margin * 2 - gap * Math.max(0, activeLanes.length - 1)) / Math.max(1, activeLanes.length))));
+  const visibleLimit = topologyResourceFilter === 'all' ? 12 : 80;
+  const drawn = new Map(), hidden = new Map();
+  activeLanes.forEach((lane, laneIndex) => {
+    const laneX = margin + laneIndex * (laneW + gap);
+    const items = laneNodes.get(lane.id);
+    items.slice(0, visibleLimit).forEach((n, i) => {
+      n.x = laneX + 12; n.y = top + i * (nodeH + rowGap); n.w = laneW - 24; n.h = nodeH;
+      drawn.set(n.id, n);
+    });
+    hidden.set(lane.id, Math.max(0, items.length - visibleLimit));
+  });
+  const maxVisibleRows = Math.max(1, ...activeLanes.map(l => Math.min(laneNodes.get(l.id).length, visibleLimit) + (hidden.get(l.id) ? 1 : 0)));
+  const contentH = Math.max(H, top + maxVisibleRows * (nodeH + rowGap) + 54);
+  const laneSvg = activeLanes.map((lane, laneIndex) => {
+    const x = margin + laneIndex * (laneW + gap);
+    const count = laneNodes.get(lane.id).length;
+    return `<g class="topology-lane"><rect x="${x}" y="18" width="${laneW}" height="${contentH - 42}"/><text x="${x + 12}" y="40">${esc(lane.label)} (${count})</text></g>`;
+  }).join('');
+  const linkSvg = links.map(([a,b]) => {
+    const A = drawn.get(a), B = drawn.get(b);
+    if (!A || !B) return '';
+    const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x, y2 = B.y + B.h / 2;
+    const mid = Math.max(24, Math.abs(x2 - x1) / 2);
+    const hot = A.type === 'service' || B.type === 'service' || A.type === 'workload' || B.type === 'workload';
+    return `<path class="link ${hot ? 'hot' : ''}" d="M${x1} ${y1} C${x1 + mid} ${y1} ${x2 - mid} ${y2} ${x2} ${y2}"/>`;
+  }).join('');
+  const nodeSvg = Array.from(drawn.values()).map(n => {
+    const status = health(n), statusColor = status === 'warn' ? 'var(--amber)' : status === 'bad' ? 'var(--red)' : 'var(--green)';
+    return `<g class="node" data-detail="${esc(JSON.stringify(n.data))}">
+      <rect class="node-card" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"/>
+      <rect class="node-icon-box" x="${n.x + 8}" y="${n.y + 10}" width="32" height="32" rx="8"/>
+      <g style="color:${color(n.type)}" transform="translate(${n.x + 14} ${n.y + 16})">${icon(n.type)}</g>
+      <text class="node-label" x="${n.x + 48}" y="${n.y + 23}">${esc(label(n.label, 27))}</text>
+      <text class="node-meta" x="${n.x + 48}" y="${n.y + 40}">${esc(label(meta(n), 35))}</text>
+      <circle class="node-status" cx="${n.x + n.w - 14}" cy="${n.y + 16}" r="5" fill="${statusColor}"/>
+    </g>`;
+  }).join('');
+  const moreSvg = activeLanes.map((lane, laneIndex) => {
+    const extra = hidden.get(lane.id);
+    if (!extra) return '';
+    const shown = Math.min(laneNodes.get(lane.id).length, visibleLimit);
+    const x = margin + laneIndex * (laneW + gap) + 12, y = top + shown * (nodeH + rowGap);
+    return `<g class="topology-more"><rect x="${x}" y="${y}" width="${laneW - 24}" height="38"/><text x="${x + 12}" y="${y + 24}">+${extra} grouped ${esc(lane.label.toLowerCase())} objects</text></g>`;
+  }).join('');
+  const legendIcon = (type, text) => `<span><i style="--legend-color:${color(type)}"><svg viewBox="0 0 20 20">${icon(type)}</svg></i>${text}</span>`;
+  byId('topology').innerHTML = `<svg id="topologySvg" viewBox="0 0 ${W} ${H}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}${moreSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${links.length} edges</span></div>`;
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
 let selectedDetail = null;
