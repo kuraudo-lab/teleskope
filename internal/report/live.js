@@ -132,7 +132,7 @@ function renderLiveStatus(sources, events) {
   const hasPartial = entries.some(([, s]) => s.state === 'partial');
   const icon = hasRefreshing ? '⟳' : hasError ? '×' : hasStale || hasPartial ? '!' : '✓';
   updateLiveProgress(icon, lines.join(' | ') || 'Waiting for first snapshot…', hasRefreshing);
-  byId('live-event-list').innerHTML = arr(events).slice(-80).reverse().map(event => {
+  const eventHTML = arr(events).slice(-80).reverse().map(event => {
     const at = event.at ? new Date(event.at).toLocaleTimeString() : '-';
     const level = event.level || 'info';
     const kind = eventKind(event);
@@ -144,6 +144,9 @@ function renderLiveStatus(sources, events) {
       '<span class="live-event-message">' + esc(event.message || '-') + '</span>' +
       '</div>';
   }).join('') || '<p class="muted">No events yet</p>';
+  byId('live-event-list').innerHTML = eventHTML;
+  const inspectorEventPreview = byId('inspector-event-preview');
+  if (inspectorEventPreview) inspectorEventPreview.innerHTML = eventHTML;
 }
 function renderSourceFreshness() {
   const target = byId('sourceFreshness');

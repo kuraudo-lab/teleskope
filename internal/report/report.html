@@ -1264,7 +1264,9 @@
     .section.stack { display:none; }
     .section.active,
     .section.stack.active { display:grid; }
-    .report-section.active {
+    .section.report-section.active,
+    .section.stack.report-section.active {
+      display:block;
       gap:14px;
       align-content:start;
       padding:14px;
@@ -1272,7 +1274,23 @@
       border:1px solid var(--line);
       border-radius:8px;
     }
-    .report-section .panel { box-shadow:none; }
+    .report-section.active > .panel {
+      margin-bottom:14px;
+    }
+    .report-section.active > .panel:last-child {
+      margin-bottom:0;
+    }
+    .report-section .panel {
+      box-shadow:none;
+      overflow:visible;
+    }
+    .report-section .scroll {
+      max-width:100%;
+      overflow:auto;
+    }
+    .report-section table {
+      min-width:760px;
+    }
     .live-event-list {
       display:grid;
       gap:8px;
@@ -1502,7 +1520,11 @@ function applyMockShell() {
     const events = document.createElement('div');
     events.className = 'summary-card';
     events.innerHTML = `<div class="summary-title"><div class="glyph pod">${iconUse('icon-event')}</div><strong>Recent events</strong></div>`;
-    events.appendChild(eventsList);
+    const eventsPreview = document.createElement('div');
+    eventsPreview.id = 'inspector-event-preview';
+    eventsPreview.className = 'live-event-list inspector-event-preview';
+    eventsPreview.innerHTML = '<p class="muted">No events yet</p>';
+    events.appendChild(eventsPreview);
     inspectorBody.appendChild(events);
   }
   workspace.appendChild(inspector);
