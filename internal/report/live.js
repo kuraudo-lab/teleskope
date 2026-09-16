@@ -1,13 +1,5 @@
 // Same-origin browser updates read the shared snapshot; they never trigger scans.
 let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1, lastAnalyzedRequestKey = '', liveSources = {};
-document.querySelectorAll('.section').forEach(section => {
-  const progress = document.createElement('div');
-  progress.className = 'live-progress';
-  progress.setAttribute('role', 'status');
-  progress.setAttribute('aria-live', 'polite');
-  progress.innerHTML = '<span class="live-progress-icon spinning"></span><span>Waiting for first snapshot…</span>';
-  section.prepend(progress);
-});
 document.querySelector('.toolbar').insertAdjacentHTML('beforeend', '<button id="pause-updates" class="export-button" type="button">Pause updates</button>');
 const analyzeButton = byId('analyzeSnapshot');
 analyzeButton.hidden = false;
@@ -145,8 +137,6 @@ function renderLiveStatus(sources, events) {
       '</div>';
   }).join('') || '<p class="muted">No events yet</p>';
   byId('live-event-list').innerHTML = eventHTML;
-  const inspectorEventPreview = byId('inspector-event-preview');
-  if (inspectorEventPreview) inspectorEventPreview.innerHTML = eventHTML;
 }
 function renderSourceFreshness() {
   const target = byId('sourceFreshness');
@@ -190,9 +180,12 @@ function eventKind(event) {
   return 'event';
 }
 function updateLiveProgress(icon, message, spinning) {
-  document.querySelectorAll('.live-progress').forEach(progress => {
-    progress.innerHTML = '<span class="live-progress-icon' + (spinning ? ' spinning' : '') + '">' + (spinning ? '' : esc(icon)) + '</span><span>' + esc(message) + '</span>';
-  });
+  const status = byId('eventsNavStatus');
+  if (!status) return;
+  const normalized = spinning ? 'loading' : icon === '×' || icon === '!' ? 'bad' : icon === '⏸' ? 'warn' : 'ready';
+  status.className = 'nav-status ' + normalized;
+  status.textContent = spinning ? 'Updating' : icon === '×' ? 'Error' : icon === '!' ? 'Partial' : icon === '⏸' ? 'Paused' : 'Ready';
+  status.title = message;
 }
 async function refreshLivePage() {
   try {

@@ -419,15 +419,14 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		`<script id="boot-config" type="application/json">`,
 		"Recent events",
 		"live-event-list",
-		"live-progress",
+		"eventsNavStatus",
+		"nav-status",
 		"sourceFreshness",
 		"source-freshness",
 		"function renderSourceFreshness",
 		"lastFullSyncAt",
 		"watch reconnecting",
 		"eventKind(event)",
-		"spinning",
-		"@keyframes teleskope-spin",
 		"updateLiveProgress",
 		"background:var(--live-event-bg)",
 		"renderLiveStatus(data.sources, data.events)",
@@ -459,7 +458,7 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 			t.Fatalf("live HTML missing %q", want)
 		}
 	}
-	for _, old := range []string{`id="live-status"`, `id="live-events"`, "Collection details"} {
+	for _, old := range []string{`id="live-status"`, `id="live-events"`, "live-progress", "Collection details"} {
 		if strings.Contains(html, old) {
 			t.Fatalf("live HTML should not include top-level live status artifact %q", old)
 		}

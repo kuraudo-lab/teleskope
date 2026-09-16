@@ -76,11 +76,7 @@ func escapeScriptText(value string) string {
 	return strings.ReplaceAll(value, "</", "<\\/")
 }
 
-const liveStyles = `.live-progress { display:flex; align-items:flex-start; gap:8px; margin-bottom:14px; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:var(--panel-2); color:var(--muted); overflow-wrap:anywhere; font-size:12px; }
-.live-progress-icon { color:var(--cyan); font-weight:800; flex:none; display:inline-grid; place-items:center; width:16px; height:16px; line-height:16px; }
-.live-progress-icon.spinning { border:2px solid var(--line); border-top-color:var(--cyan); border-radius:999px; color:transparent; animation:teleskope-spin .8s linear infinite; }
-@keyframes teleskope-spin { to { transform:rotate(360deg); } }
-.live-event-list { display:grid; gap:6px; max-height:calc(100vh - 190px); overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:11px; }
+const liveStyles = `.live-event-list { display:grid; gap:6px; max-height:calc(100vh - 190px); overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:11px; }
 .live-event { display:grid; grid-template-columns:78px 78px 86px 50px minmax(0,1fr); gap:8px; align-items:start; padding:7px 8px; border:1px solid var(--table-line); border-radius:7px; background:var(--live-event-bg); }
 .live-event-time, .live-event-kind, .live-event-source { color:var(--muted); }
 .live-event-kind { text-transform:uppercase; font-size:10px; font-weight:800; letter-spacing:.04em; }

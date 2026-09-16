@@ -658,12 +658,28 @@
       background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(241,245,249,.9));
     }
     .app-topbar .brand {
-      display:grid;
-      gap:1px;
+      display:flex;
+      align-items:center;
+      gap:9px;
       flex:0 0 190px;
       min-width:0;
       margin:0 6px 0 0;
       padding:0;
+    }
+    .app-topbar .brand > div {
+      display:grid;
+      gap:1px;
+      min-width:0;
+    }
+    .app-topbar .logo,
+    .app-topbar .logo img {
+      width:30px;
+      height:30px;
+      border-radius:7px;
+    }
+    .app-topbar .logo {
+      flex:0 0 auto;
+      box-shadow:0 0 18px rgba(34,211,238,.18);
     }
     .app-topbar .brand strong,
     .app-topbar .brand h2 {
@@ -718,6 +734,52 @@
       cursor:pointer;
       font-size:12px;
       font-weight:700;
+    }
+    .app-tabs button[data-target="events"] {
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+    }
+    .nav-status {
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      margin-left:2px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:750;
+    }
+    .nav-status::before {
+      content:"";
+      width:7px;
+      height:7px;
+      border-radius:999px;
+      background:var(--muted);
+    }
+    .nav-status.ready {
+      color:var(--green);
+    }
+    .nav-status.ready::before {
+      background:var(--green);
+    }
+    .nav-status.warn {
+      color:var(--amber);
+    }
+    .nav-status.warn::before {
+      background:var(--amber);
+    }
+    .nav-status.bad {
+      color:var(--red);
+    }
+    .nav-status.bad::before {
+      background:var(--red);
+    }
+    .nav-status.loading::before {
+      background:var(--cyan);
+      animation:teleskope-pulse 1s ease-in-out infinite;
+    }
+    @keyframes teleskope-pulse {
+      50% { opacity:.35; }
     }
     .nav-menu {
       position:relative;
@@ -821,20 +883,6 @@
       flex:0 0 auto;
       color:currentColor;
     }
-    .live-pill {
-      display:inline-flex;
-      align-items:center;
-      gap:7px;
-      min-height:28px;
-      padding:4px 8px;
-      color:var(--green);
-      background:rgba(52,211,153,.11);
-      border:1px solid rgba(52,211,153,.28);
-      border-radius:999px;
-      font-size:12px;
-      font-weight:750;
-      white-space:nowrap;
-    }
     .export-menu {
       min-width:160px;
       padding:6px;
@@ -923,7 +971,8 @@
     :root[data-theme="light"] .node-label,
     :root[data-theme="light"] .mini-row,
     :root[data-theme="light"] .chip,
-    :root[data-theme="light"] .check {
+    :root[data-theme="light"] .check,
+    :root[data-theme="light"] .count {
       color:var(--text);
     }
     .search {
@@ -1017,9 +1066,6 @@
       overflow:hidden;
       height:100%;
     }
-    .topology-workspace > .live-progress {
-      display:none;
-    }
     .toolbar {
       display:flex;
       align-items:center;
@@ -1060,7 +1106,7 @@
       place-items:center;
       width:34px;
       height:34px;
-      color:#dbeafe;
+      color:var(--text);
       background:rgba(8,17,31,.48);
       border:1px solid var(--line);
       border-radius:7px;
@@ -1103,28 +1149,43 @@
       rx:7;
       filter:none;
     }
-    :root[data-theme="light"] .topology-lane rect,
-    :root[data-theme="light"] .node rect.node-card,
     :root[data-theme="light"] .check,
-    :root[data-theme="light"] .stat,
-    :root[data-theme="light"] .summary-card {
+    :root[data-theme="light"] .stat {
       background:rgba(255,255,255,.76);
-      fill:rgba(255,255,255,.76);
     }
     .node .node-label {
-      fill:#eff6ff;
+      fill:var(--text);
       font-size:12px;
       font-weight:760;
     }
-    :root[data-theme="light"] .node .node-label { fill:var(--text); }
     .node .node-meta {
       fill:var(--muted);
       font-size:11px;
     }
     .node .node-icon-box {
-      fill:rgba(148,163,184,.1);
+      fill:var(--chip);
       stroke:transparent;
       rx:6;
+    }
+    :root[data-theme="light"] .map {
+      background:linear-gradient(rgba(100,116,139,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(100,116,139,.1) 1px,transparent 1px),var(--panel-2);
+      background-size:28px 28px;
+    }
+    :root[data-theme="light"] .node rect.node-card {
+      fill:rgba(255,255,255,.94);
+      stroke:rgba(15,23,42,.16);
+    }
+    :root[data-theme="light"] .topology-lane rect {
+      fill:rgba(248,250,252,.78);
+      stroke:rgba(15,23,42,.14);
+    }
+    :root[data-theme="light"] .summary-card {
+      background:rgba(255,255,255,.84);
+    }
+    :root[data-theme="light"] .global-actions button,
+    :root[data-theme="light"] .icon-button {
+      color:var(--text);
+      background:rgba(255,255,255,.92);
     }
     .link {
       stroke:rgba(148,163,184,.36);
@@ -1436,7 +1497,6 @@ function applyMockShell() {
   const topology = byId('topology');
   const cards = byId('cards');
   const freshness = byId('sourceFreshness');
-  const eventsList = byId('live-event-list');
   if (!legacyAside || !legacyMain || !header || !nav || !toolbar || !overview || !topology || !cards || !freshness) return;
 
   shell.className = 'shell';
@@ -1444,8 +1504,10 @@ function applyMockShell() {
   shell.insertBefore(header, legacyAside);
 
   const brand = document.createElement('div');
+  const logo = legacyAside.querySelector('.logo');
   brand.className = 'brand';
-  brand.innerHTML = `<strong id="title">Loading</strong><p id="subtitle"></p>`;
+  brand.innerHTML = `<div><strong id="title">Loading</strong><p id="subtitle"></p></div>`;
+  if (logo) brand.prepend(logo);
   const oldTitle = byId('title');
   const oldSubtitle = byId('subtitle');
   if (oldTitle) oldTitle.remove();
@@ -1461,9 +1523,6 @@ function applyMockShell() {
   byId('themeToggle').className = 'action-button';
   byId('analyzeSnapshot').className = 'action-button ai-button';
   byId('analyzeSnapshot').innerHTML = '<span>Analyze with AI</span>';
-  if (!header.querySelector('.live-pill')) {
-    byId('exportMenu').insertAdjacentHTML('beforebegin', `<span class="live-pill">${iconUse('icon-event')}Live events</span>`);
-  }
 
   const workspace = document.createElement('div');
   workspace.className = 'app';
@@ -1490,6 +1549,10 @@ function applyMockShell() {
         <div class="legend-item node">${iconUse('icon-node')}Node</div><div class="legend-item image">${iconUse('icon-image')}Image</div>
       </div></div>
     </div>`;
+  byId('topology-search')?.addEventListener('input', event => {
+    topologySearch = event.target.value.trim().toLowerCase();
+    renderTopology();
+  });
 
   overview.className = 'section active panel topology-workspace';
   overview.innerHTML = `<div class="toolbar"><div class="toolbar-title"><p class="eyebrow" id="topologyScope">Namespace: all</p><h1>Topology map, grouped into swimlanes</h1></div><div class="stat"><strong id="topologyObjectStat">0</strong><span>objects</span></div><div class="stat"><strong id="topologyEdgeStat">0</strong><span>edges</span></div><div class="stat"><strong id="topologyWarningStat">0</strong><span>warnings</span></div><button type="button" class="icon-button" aria-label="Filter topology">${iconUse('icon-filter')}</button><button type="button" class="icon-button" aria-label="Fit topology to screen">${iconUse('icon-fit')}</button></div><div class="map"></div>`;
@@ -1515,17 +1578,6 @@ function applyMockShell() {
   selected.className = 'summary-card';
   selected.innerHTML = `<div class="summary-title"><div class="glyph gateway">${iconUse('icon-gateway')}</div><strong>Selected object</strong></div><div class="kv"><span>State</span><strong>Click a topology card</strong><span>Layout</span><strong>Swimlanes</strong><span>Mode</span><strong>Relationship map</strong></div>`;
   inspectorBody.append(inventory, freshnessCard, selected);
-  if (eventsList) {
-    const events = document.createElement('div');
-    events.className = 'summary-card';
-    events.innerHTML = `<div class="summary-title"><div class="glyph pod">${iconUse('icon-event')}</div><strong>Recent events</strong></div>`;
-    const eventsPreview = document.createElement('div');
-    eventsPreview.id = 'inspector-event-preview';
-    eventsPreview.className = 'live-event-list inspector-event-preview';
-    eventsPreview.innerHTML = '<p class="muted">No events yet</p>';
-    events.appendChild(eventsPreview);
-    inspectorBody.appendChild(events);
-  }
   workspace.appendChild(inspector);
 }
 
@@ -1563,7 +1615,7 @@ function webhookClient(w) { return w.clientUrl || ref(w.clientService); }
 function limitItems(v) { return Array.isArray(v) && v.length ? v.map(i => `${i.type || '-'} default=${kv(i.default)} request=${kv(i.defaultRequest)} min=${kv(i.min)} max=${kv(i.max)}`).join(' | ') : '-'; }
 
 function namespacesOf(row) { const found = new Set(); const visit = value => { if (!value) return; if (Array.isArray(value)) { value.forEach(visit); return; } if (typeof value !== 'object') return; if (typeof value.namespace === 'string' && value.namespace) found.add(value.namespace); if (Array.isArray(value.namespaces)) value.namespaces.filter(Boolean).forEach(ns => found.add(ns)); for (const child of Object.values(value)) visit(child); }; visit(row); return [...found]; }
-let activeSection = 'overview', nsFilter = 'all', resourceFilter = 'all', topologyView = {scale:1, x:0, y:0};
+let activeSection = 'overview', nsFilter = 'all', resourceFilter = 'all', topologySearch = '', topologyView = {scale:1, x:0, y:0};
 let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0};
 const resourceTypes = [
   ['all','All resource types'], ['workload','Workloads'], ['pod','Pods'], ['service','Services'], ['endpoint','EndpointSlices'],
@@ -1573,6 +1625,12 @@ const resourceTypes = [
 function namespaceMatches(row) { const namespaces = namespacesOf(row); return nsFilter === 'all' || namespaces.includes(nsFilter) || namespaces.length === 0; }
 function currentTopologyResourceFilter() { return activeSection === 'overview' ? resourceFilter : 'all'; }
 function filtered(rows) { return arr(rows).filter(namespaceMatches); }
+function topologySearchMatches(node) {
+  if (!topologySearch) return true;
+  const data = node.data || {};
+  const haystack = [node.label, node.type, data.apiVersion, data.kind, data.namespace, data.name, data.image, data.nodeName, data.serviceAccountName, data.runtimeClassName, data.phase].filter(Boolean).join(' ').toLowerCase();
+  return haystack.includes(topologySearch);
+}
 function syncResourceFilterState() { byId('focus').disabled = activeSection === 'advisor' || activeSection === 'events'; byId('resourceType').disabled = activeSection !== 'overview'; }
 function closeKubernetesMenu() { document.querySelector('#nav .nav-menu')?.classList.remove('open'); document.querySelector('#nav .nav-menu-button')?.setAttribute('aria-expanded', 'false'); }
 function syncNavActive() {
@@ -1592,7 +1650,7 @@ function selectSection(id) { activeSection = id; syncNavActive(); document.query
 function renderNav() {
   const primary = primaryNavItems.map(([id,label],i) => `<button class="tab ${i===0?'active':''}" data-target="${id}">${label}</button>`).join('');
   const kubernetes = `<div class="nav-menu"><button type="button" class="tab nav-menu-button" aria-haspopup="menu" aria-expanded="false">Kubernetes</button><div class="nav-menu-items" role="menu">${kubernetesNavItems.map(([id,label]) => `<button type="button" role="menuitem" class="tab" data-target="${id}">${label}</button>`).join('')}</div></div>`;
-  const trailing = trailingNavItems.map(([id,label]) => `<button class="tab" data-target="${id}">${label}</button>`).join('');
+  const trailing = trailingNavItems.map(([id,label]) => `<button class="tab" data-target="${id}"><span>${label}</span>${id === 'events' ? '<span id="eventsNavStatus" class="nav-status loading">Waiting</span>' : ''}</button>`).join('');
   byId('nav').innerHTML = primary + kubernetes + trailing;
   byId('nav').onclick = e => {
     const menuButton = e.target.closest('.nav-menu-button');
@@ -1755,7 +1813,10 @@ function renderTopology() {
   if (topologyResourceFilter === 'crd') { arr(k.customResourceCounts).forEach(c => add('crdt:' + c.crdName, (c.group ? c.group + '/' : '') + (c.kind || c.crdName), 'crd', c)); arr(k.customResourceInstances).filter(namespaceMatches).forEach(c => add('crdi:' + ref(c), ref(c), 'crd', c)); }
   if (topologyResourceFilter === 'csi') arr(k.csiDrivers).forEach(c => add('csi:' + c.name, c.name, 'csi', c));
   if (topologyResourceFilter === 'runtime') arr(k.runtimeClasses).forEach(r => add('rt:' + ref(r), ref(r), 'runtime', r));
-  const warningCount = nodes.filter(n => {
+  const topologyNodes = topologySearch ? nodes.filter(topologySearchMatches) : nodes;
+  const topologyNodeIds = new Set(topologyNodes.map(n => n.id));
+  const topologyLinks = links.filter(([a,b]) => topologyNodeIds.has(a) && topologyNodeIds.has(b));
+  const warningCount = topologyNodes.filter(n => {
     const d = n.data || {};
     return (n.type === 'pod' && d.phase && d.phase !== 'Running' && d.phase !== 'Succeeded') ||
       (n.type === 'workload' && d.replicas !== undefined && (d.readyReplicas || 0) < d.replicas) ||
@@ -1768,11 +1829,11 @@ function renderTopology() {
   setText('topologyPodCount', arr(k.pods).filter(namespaceMatches).length);
   setText('topologyStorageCount', arr(k.persistentVolumeClaims).filter(namespaceMatches).length + arr(k.storageClasses).length);
   setText('topologyImageCount', arr(k.runningImages).filter(namespaceMatches).length);
-  setText('topologyObjectStat', nodes.length);
-  setText('topologyEdgeStat', links.length);
+  setText('topologyObjectStat', topologyNodes.length);
+  setText('topologyEdgeStat', topologyLinks.length);
   setText('topologyWarningStat', warningCount);
   setText('topologyScope', nsFilter === 'all' ? 'Namespace: all' : `Namespace: ${nsFilter}`);
-  if (nodes.length === 0) { byId('topology').innerHTML = '<div class="body muted">No topology nodes match the current filter.</div>'; return; }
+  if (topologyNodes.length === 0) { byId('topology').innerHTML = '<div class="body muted">No topology nodes match the current filter.</div>'; return; }
   const color = t => ({service:'#22d3ee', image:'#a78bfa', storage:'#34d399', pod:'#f59e0b', container:'#fb7185', crd:'#818cf8', ingress:'#38bdf8', endpoint:'#2dd4bf', gateway:'#facc15', gatewayRoute:'#fb923c', csi:'#4ade80', runtime:'#f472b6'}[t] || '#60a5fa');
   const lanes = [
     {id:'entry', label:'Entry', types:['gateway','gatewayRoute','ingress']},
@@ -1821,7 +1882,7 @@ function renderTopology() {
   const objectText = value => String(value || '-');
   const textWidth = (value, size = 12) => Math.ceil(objectText(value).length * size * .58);
   const laneNodes = new Map(lanes.map(l => [l.id, []]));
-  nodes.forEach(n => laneNodes.get(laneFor(n.type).id).push(n));
+  topologyNodes.forEach(n => laneNodes.get(laneFor(n.type).id).push(n));
   const activeLanes = lanes.filter(l => laneNodes.get(l.id).length);
   const W = byId('topology').clientWidth || 900, H = byId('topology').clientHeight || 560;
   const gap = 22, nodeH = 54, rowGap = 10, top = 54, margin = 22;
@@ -1856,7 +1917,7 @@ function renderTopology() {
     const count = laneNodes.get(lane.id).length;
     return `<g class="topology-lane"><rect x="${x}" y="18" width="${laneW}" height="${contentH - 42}"/><text x="${x + 12}" y="40">${esc(lane.label)} (${count})</text></g>`;
   }).join('');
-  const linkSvg = links.map(([a,b]) => {
+  const linkSvg = topologyLinks.map(([a,b]) => {
     const A = drawn.get(a), B = drawn.get(b);
     if (!A || !B) return '';
     const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x, y2 = B.y + B.h / 2;
@@ -1876,7 +1937,7 @@ function renderTopology() {
     </g>`;
   }).join('');
   const legendIcon = (type, text) => `<span><i style="--legend-color:${color(type)}"><svg viewBox="0 0 20 20">${icon(type)}</svg></i>${text}</span>`;
-  topology.innerHTML = `<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${links.length} edges</span></div>`;
+  topology.innerHTML = `<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${topologyNodes.length} objects · ${topologyLinks.length} edges</span></div>`;
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
 let selectedDetail = null;
