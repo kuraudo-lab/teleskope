@@ -443,9 +443,14 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		"bootConfig.endpoints?.exportSnapshot",
 		"function renderAnalysis",
 		"analysisInFlight",
-		"analysisKey === lastAnalyzedRequestKey",
+		"analysisKey === lastKey",
 		"function currentAnalysisRequest",
 		"function currentAnalysisKey",
+		"revision: liveRevision",
+		"function analysisResourceType",
+		"Observed facts",
+		"Inference",
+		"Limitations",
 		"Analyze is available after the first scan completes.",
 		"cursor:not-allowed",
 		"font:inherit; font-size:14px",
@@ -456,6 +461,11 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("live HTML missing %q", want)
+		}
+	}
+	for _, page := range []string{"eks", "nodes", "workloads", "network", "storage", "security"} {
+		if !strings.Contains(html, `data-analysis-page="`+page+`"`) || !strings.Contains(html, `data-analyze-page="`+page+`"`) {
+			t.Fatalf("live HTML missing scoped analysis controls for %s", page)
 		}
 	}
 	for _, old := range []string{`id="live-status"`, `id="live-events"`, "live-progress", "Collection details"} {

@@ -1,7 +1,10 @@
 // Same-origin browser updates read the shared snapshot; they never trigger scans.
-let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1, lastAnalyzedRequestKey = '', liveSources = {};
+let liveRevision = -1, liveETag = '', updatesPaused = false, analysisInFlight = false, lastAnalyzedRevision = -1, lastAnalyzedRequestKey = '', lastAnalyzedRequestKeys = {}, liveSources = {};
 document.querySelector('.toolbar').insertAdjacentHTML('beforeend', '<button id="pause-updates" class="export-button" type="button">Pause updates</button>');
 const analyzeButton = byId('analyzeSnapshot');
+const pageAnalysisButtons = [...document.querySelectorAll('[data-analyze-page]')];
+const scopedAnalysisPages = new Set(['eks','nodes','workloads','network','storage','security']);
+document.querySelectorAll('[data-analysis-page]').forEach(panel => { panel.hidden = false; });
 analyzeButton.hidden = false;
 syncAnalyzeButtonState();
 document.querySelector('.brand p').textContent = 'live cluster inventory';
@@ -16,55 +19,73 @@ byId('pause-updates').onclick = () => {
 };
 function syncAnalyzeButtonState() {
   if (!analyzeButton) return;
+  syncOneAnalyzeButton(analyzeButton, activeSection, 'Analyze with AI', lastAnalyzedRequestKey);
+  pageAnalysisButtons.forEach(button => {
+    const page = button.dataset.analyzePage;
+    const label = 'Analyze ' + page[0].toUpperCase() + page.slice(1);
+    syncOneAnalyzeButton(button, page, label, lastAnalyzedRequestKeys[page] || '');
+  });
+}
+function syncOneAnalyzeButton(button, page, label, lastKey) {
   if (document.body.classList.contains('live-loading') || liveRevision < 0) {
-    analyzeButton.disabled = true;
-    analyzeButton.innerHTML = '<span>Analyze with AI</span>';
-    analyzeButton.title = 'Analyze is available after the first scan completes.';
+    button.disabled = true;
+    button.innerHTML = `<span>${label}</span>`;
+    button.title = 'Analyze is available after the first scan completes.';
   } else if (analysisInFlight) {
-    analyzeButton.disabled = true;
-    analyzeButton.innerHTML = '<span>Analyzing…</span>';
-    analyzeButton.title = 'Analysis is running.';
-  } else if (currentAnalysisKey() === lastAnalyzedRequestKey) {
-    analyzeButton.disabled = true;
-    analyzeButton.innerHTML = '<span>Analyzed</span>';
-    analyzeButton.title = 'The current snapshot has already been analyzed.';
+    button.disabled = true;
+    button.innerHTML = '<span>Analyzing…</span>';
+    button.title = 'Analysis is running.';
+  } else if (currentAnalysisKey(currentAnalysisRequest(page)) === lastKey) {
+    button.disabled = true;
+    button.innerHTML = '<span>Analyzed</span>';
+    button.title = 'This page scope has already been analyzed.';
   } else {
-    analyzeButton.disabled = false;
-    analyzeButton.innerHTML = '<span>Analyze with AI</span>';
-    analyzeButton.title = 'Analyze the current live snapshot.';
+    button.disabled = false;
+    button.innerHTML = `<span>${label}</span>`;
+    button.title = `Analyze the current ${page} scope.`;
   }
 }
-analyzeButton.onclick = async () => {
-  const analysisRequest = currentAnalysisRequest();
+analyzeButton.onclick = () => runScopedAnalysis(activeSection, true);
+pageAnalysisButtons.forEach(button => { button.onclick = () => runScopedAnalysis(button.dataset.analyzePage, false); });
+async function runScopedAnalysis(pageId, fromToolbar) {
+  const resultPage = scopedAnalysisPages.has(pageId) ? pageId : 'advisor';
+  const analysisRequest = currentAnalysisRequest(pageId);
   const analysisKey = currentAnalysisKey(analysisRequest);
-  if (analysisInFlight || analysisKey === lastAnalyzedRequestKey || liveRevision < 0 || document.body.classList.contains('live-loading')) return;
+  const lastKey = fromToolbar ? lastAnalyzedRequestKey : (lastAnalyzedRequestKeys[pageId] || '');
+  if (analysisInFlight || analysisKey === lastKey || liveRevision < 0 || document.body.classList.contains('live-loading')) return;
   analysisInFlight = true;
   syncAnalyzeButtonState();
-  setAnalysisMessage('Requesting AI analysis for the current live snapshot…');
-  selectSection('advisor');
+  setAnalysisMessage(`Requesting AI analysis for the current ${pageId} scope…`, 'empty', resultPage);
+  if (fromToolbar && resultPage === 'advisor') selectSection('advisor');
   try {
     const result = await fetch(bootConfig.endpoints?.analyze, {method:'POST', cache:'no-store', headers:{'Content-Type':'application/json'}, body:JSON.stringify(analysisRequest)});
     if (!result.ok) throw new Error((await result.text()).trim() || ('HTTP ' + result.status));
     const data = await result.json();
-    llmAnalysis = data.analysis || null;
+    if (resultPage === 'advisor') llmAnalysis = data.analysis || null;
+    else llmAnalyses[resultPage] = data.analysis || null;
     lastAnalyzedRevision = liveRevision;
     lastAnalyzedRequestKey = analysisKey;
-    renderAnalysis();
+    lastAnalyzedRequestKeys[pageId] = analysisKey;
+    renderAnalysis(resultPage);
   } catch (error) {
-    setAnalysisMessage('AI analysis failed: ' + error.message, 'error');
+    setAnalysisMessage('AI analysis failed: ' + error.message, 'error', resultPage);
   } finally {
     analysisInFlight = false;
     syncAnalyzeButtonState();
   }
-};
-function currentAnalysisRequest() {
+}
+function analysisResourceType(pageId) {
+  if (scopedAnalysisPages.has(pageId)) return pageId;
+  return pageId === 'overview' && resourceFilter !== 'all' ? resourceFilter : '';
+}
+function currentAnalysisRequest(pageId=activeSection) {
   const scope = {
-    pageId: activeSection || '',
+    pageId: pageId || '',
     namespace: nsFilter === 'all' ? '' : nsFilter,
-    resourceType: activeSection === 'overview' && resourceFilter !== 'all' ? resourceFilter : '',
+    resourceType: analysisResourceType(pageId),
     selectedRefs: selectedDetail ? [selectedDetail].filter(refLike) : []
   };
-  return {scope};
+  return {revision: liveRevision, scope};
 }
 function currentAnalysisKey(request=currentAnalysisRequest()) {
   return liveRevision + ':' + JSON.stringify(request);

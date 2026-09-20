@@ -352,7 +352,7 @@ func TestHTTPClusterScopedSnapshotAndAnalyze(t *testing.T) {
 	}
 
 	analysisResponse := httptest.NewRecorder()
-	body := `{"scope":{"pageId":"overview","namespace":"default","resourceType":"workloads"},"customPrompt":"focus prod-a"}`
+	body := `{"revision":3,"scope":{"pageId":"overview","namespace":"default","resourceType":"workloads"},"customPrompt":"focus prod-a"}`
 	handler.ServeHTTP(analysisResponse, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", strings.NewReader(body)))
 	if analysisResponse.Code != http.StatusOK || !strings.Contains(analysisResponse.Body.String(), "hub cluster analysis") {
 		t.Fatalf("analyze = %d: %s", analysisResponse.Code, analysisResponse.Body.String())
@@ -362,6 +362,11 @@ func TestHTTPClusterScopedSnapshotAndAnalyze(t *testing.T) {
 	}
 	if analyzer.got.Scope.Namespace != "default" || analyzer.got.CustomPrompt != "focus prod-a" {
 		t.Fatalf("analysis scope not applied: %+v", analyzer.got)
+	}
+	stale := httptest.NewRecorder()
+	handler.ServeHTTP(stale, httptest.NewRequest(http.MethodPost, "/api/cluster/analyze?id=prod-a", strings.NewReader(`{"revision":2}`)))
+	if stale.Code != http.StatusConflict || !strings.Contains(stale.Body.String(), "current revision is 3") || analyzer.calls != 1 {
+		t.Fatalf("stale analyze = %d calls=%d: %s", stale.Code, analyzer.calls, stale.Body.String())
 	}
 
 	cached := httptest.NewRecorder()

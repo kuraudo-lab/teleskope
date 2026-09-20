@@ -328,7 +328,7 @@ func TestHTTPAnalyzeUsesCurrentSnapshot(t *testing.T) {
 
 	s.finish("kubernetes", podSnapshot(1, "complete"), nil, time.Now())
 	w := httptest.NewRecorder()
-	body := `{"scope":{"pageId":"overview","namespace":"app","resourceType":"workloads","selectedRefs":[{"kind":"Pod","namespace":"app","name":"web","uid":"ignored"}]},"customPrompt":"focus on app namespace","conversation":[{"role":"assistant","content":"previous answer"}]}`
+	body := `{"revision":1,"scope":{"pageId":"overview","namespace":"app","resourceType":"workloads","selectedRefs":[{"kind":"Pod","namespace":"app","name":"web","uid":"ignored"}]},"customPrompt":"focus on app namespace","conversation":[{"role":"assistant","content":"previous answer"}]}`
 	h.ServeHTTP(w, httptest.NewRequest("POST", "/api/analyze", strings.NewReader(body)))
 	if w.Code != 200 {
 		t.Fatalf("analyze = %d: %s", w.Code, w.Body.String())
@@ -364,6 +364,11 @@ func TestHTTPAnalyzeUsesCurrentSnapshot(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("analysis events missing %q:\n%s", want, joined)
 		}
+	}
+	stale := httptest.NewRecorder()
+	h.ServeHTTP(stale, httptest.NewRequest("POST", "/api/analyze", strings.NewReader(`{"revision":99}`)))
+	if stale.Code != http.StatusConflict || !strings.Contains(stale.Body.String(), "current revision is 1") || fake.calls != 1 {
+		t.Fatalf("stale analyze = %d calls=%d: %s", stale.Code, fake.calls, stale.Body.String())
 	}
 
 	cached := httptest.NewRecorder()

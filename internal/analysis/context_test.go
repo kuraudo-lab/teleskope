@@ -126,3 +126,61 @@ func TestBuildContextIncludesScopeAndFiltersScanContext(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildContextIncludesEvidenceForEachScopedPage(t *testing.T) {
+	snapshot := &inventory.Snapshot{
+		EKS: inventory.EKSInventory{
+			Cluster:    inventory.Cluster{Name: "prod"},
+			Addons:     []inventory.Addon{{Name: "vpc-cni"}},
+			Nodegroups: []inventory.Nodegroup{{Name: "system"}},
+		},
+		Kubernetes: inventory.Kubernetes{
+			Nodes:     []inventory.Node{{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "node-a", UID: "remove-me"}, Ready: "True"}},
+			Workloads: []inventory.Workload{{ObjectRef: inventory.ObjectRef{Kind: "Deployment", Namespace: "payments", Name: "api"}}},
+			Pods:      []inventory.Pod{{ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "payments", Name: "api-123", UID: "remove-me"}}},
+			Services: []inventory.Service{
+				{ObjectRef: inventory.ObjectRef{Kind: "Service", Namespace: "payments", Name: "api"}},
+				{ObjectRef: inventory.ObjectRef{Kind: "Service", Namespace: "platform", Name: "metrics"}},
+			},
+			PersistentVolumeClaims: []inventory.PersistentVolumeClaim{{ObjectRef: inventory.ObjectRef{Kind: "PersistentVolumeClaim", Namespace: "payments", Name: "data"}, RequestedStorage: "20Gi"}},
+			StorageClasses:         []inventory.StorageClass{{ObjectRef: inventory.ObjectRef{Kind: "StorageClass", Name: "gp3"}, Provisioner: "ebs.csi.aws.com"}},
+			RBAC: inventory.RBAC{
+				RoleDetails:        []inventory.Role{{ObjectRef: inventory.ObjectRef{Kind: "Role", Namespace: "payments", Name: "reader"}}},
+				ClusterRoleDetails: []inventory.Role{{ObjectRef: inventory.ObjectRef{Kind: "ClusterRole", Name: "view"}}},
+			},
+			AdmissionWebhooks: []inventory.AdmissionWebhookConfig{{ObjectRef: inventory.ObjectRef{Kind: "ValidatingWebhookConfiguration", Name: "policy"}}},
+		},
+	}
+	tests := []struct {
+		page string
+		want []string
+	}{
+		{page: "eks", want: []string{`"eks"`, "vpc-cni", "system"}},
+		{page: "nodes", want: []string{`"nodes"`, "node-a", `"ready": "True"`}},
+		{page: "workloads", want: []string{`"workloads"`, "api-123", `"pods"`}},
+		{page: "network", want: []string{`"network"`, `"services"`, `"name": "api"`}},
+		{page: "storage", want: []string{`"storage"`, "20Gi", "ebs.csi.aws.com"}},
+		{page: "security", want: []string{`"security"`, "reader", "policy"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.page, func(t *testing.T) {
+			scope := Scope{PageID: tt.page, ResourceType: tt.page, Namespace: "payments"}
+			if tt.page == "network" {
+				scope.SelectedRefs = []inventory.ObjectRef{{Kind: "Service", Namespace: "payments", Name: "api"}}
+			}
+			data, err := BuildContext(Request{UseCase: UseCaseScan, Snapshot: snapshot, Scope: scope})
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := string(data)
+			for _, want := range tt.want {
+				if !strings.Contains(text, want) {
+					t.Fatalf("%s context missing %q:\n%s", tt.page, want, text)
+				}
+			}
+			if strings.Contains(text, "remove-me") || (tt.page == "network" && strings.Contains(text, "metrics")) {
+				t.Fatalf("%s context leaked UID or out-of-scope resource:\n%s", tt.page, text)
+			}
+		})
+	}
+}

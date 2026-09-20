@@ -599,6 +599,11 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, opts Handl
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if err := clientReq.ValidateRevision(revision); err != nil {
+		s.addAnalysisEvent(opts, "warn", "LLM analysis rejected id=%s phase=revision error=%s", requestID, err)
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
 	req := analysis.ApplyClientRequest(analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: snapshot}, clientReq)
 	out, err := analysis.Runner{
 		Analyzer:   opts.Analyzer,

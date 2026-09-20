@@ -9,10 +9,21 @@ import (
 
 // ClientRequest is the browser-provided part of an analysis request.
 type ClientRequest struct {
+	Revision     uint64    `json:"revision,omitempty"`
 	WebSearch    bool      `json:"webSearch,omitempty"`
 	Scope        Scope     `json:"scope,omitempty"`
 	CustomPrompt string    `json:"customPrompt,omitempty"`
 	Conversation []Message `json:"conversation,omitempty"`
+}
+
+// ValidateRevision rejects analysis of a browser view that is older than the
+// server-owned snapshot. A zero revision preserves compatibility with callers
+// that predate revision-aware scoped analysis.
+func (r ClientRequest) ValidateRevision(current uint64) error {
+	if r.Revision != 0 && r.Revision != current {
+		return fmt.Errorf("analysis revision %d is stale; current revision is %d", r.Revision, current)
+	}
+	return nil
 }
 
 // DecodeClientRequest reads an optional JSON analysis request body.

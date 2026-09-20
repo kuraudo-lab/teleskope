@@ -241,6 +241,11 @@ func (s *Store) handleAnalyze(w http.ResponseWriter, r *http.Request, id string,
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if err := clientReq.ValidateRevision(env.Revision); err != nil {
+		s.logf(opts, "[analysis] hub cluster analysis rejected id=%s cluster=%s phase=revision error=%s", requestID, id, err)
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
 	req := analysis.ApplyClientRequest(analysis.Request{UseCase: analysis.UseCaseScan, Snapshot: env.Snapshot}, clientReq)
 	s.mu.Lock()
 	s.ensure()

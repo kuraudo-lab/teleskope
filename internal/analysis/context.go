@@ -20,6 +20,7 @@ const (
 	maxCoverageItems   = 80
 	maxAdvisorItems    = 80
 	maxCompareFindings = 120
+	maxPageItems       = 80
 )
 
 type modelContext struct {
@@ -44,10 +45,53 @@ type scanContext struct {
 	KubernetesServer    string                   `json:"kubernetesServer,omitempty"`
 	KubernetesVersion   string                   `json:"kubernetesVersion,omitempty"`
 	Advisor             advisor.Report           `json:"advisor,omitempty"`
+	EKS                 *eksPageContext          `json:"eks,omitempty"`
+	Nodes               []inventory.Node         `json:"nodes,omitempty"`
 	Workloads           []workloadContext        `json:"workloads,omitempty"`
+	Pods                []inventory.Pod          `json:"pods,omitempty"`
 	RunningImages       []runningImageContext    `json:"runningImages,omitempty"`
+	Network             *networkPageContext      `json:"network,omitempty"`
+	Storage             *storagePageContext      `json:"storage,omitempty"`
+	Security            *securityPageContext     `json:"security,omitempty"`
 	CoreResourceSummary coreResourceSummary      `json:"coreResourceSummary,omitempty"`
 	Coverage            []inventory.CoverageItem `json:"coverage,omitempty"`
+}
+
+type eksPageContext struct {
+	Cluster                 inventory.Cluster                  `json:"cluster"`
+	Addons                  []inventory.Addon                  `json:"addons,omitempty"`
+	Nodegroups              []inventory.Nodegroup              `json:"nodegroups,omitempty"`
+	Insights                []inventory.EKSInsight             `json:"insights,omitempty"`
+	AccessEntries           []inventory.AccessEntry            `json:"accessEntries,omitempty"`
+	PodIdentityAssociations []inventory.PodIdentityAssociation `json:"podIdentityAssociations,omitempty"`
+}
+
+type networkPageContext struct {
+	Services        []inventory.Service        `json:"services,omitempty"`
+	EndpointSlices  []inventory.EndpointSlice  `json:"endpointSlices,omitempty"`
+	IngressClasses  []inventory.IngressClass   `json:"ingressClasses,omitempty"`
+	Ingresses       []inventory.Ingress        `json:"ingresses,omitempty"`
+	GatewayClasses  []inventory.GatewayClass   `json:"gatewayClasses,omitempty"`
+	Gateways        []inventory.Gateway        `json:"gateways,omitempty"`
+	GatewayRoutes   []inventory.GatewayRoute   `json:"gatewayRoutes,omitempty"`
+	ReferenceGrants []inventory.ReferenceGrant `json:"referenceGrants,omitempty"`
+	GatewayPolicies []inventory.GatewayPolicy  `json:"gatewayPolicies,omitempty"`
+}
+
+type storagePageContext struct {
+	StorageClasses         []inventory.StorageClass          `json:"storageClasses,omitempty"`
+	PersistentVolumes      []inventory.PersistentVolume      `json:"persistentVolumes,omitempty"`
+	PersistentVolumeClaims []inventory.PersistentVolumeClaim `json:"persistentVolumeClaims,omitempty"`
+	CSIDrivers             []inventory.CSIDriver             `json:"csiDrivers,omitempty"`
+	CSINodes               []inventory.CSINode               `json:"csiNodes,omitempty"`
+	VolumeAttachments      []inventory.VolumeAttachment      `json:"volumeAttachments,omitempty"`
+	RuntimeClasses         []inventory.RuntimeClass          `json:"runtimeClasses,omitempty"`
+}
+
+type securityPageContext struct {
+	Roles             []inventory.Role                   `json:"roles,omitempty"`
+	Bindings          []inventory.RoleBinding            `json:"bindings,omitempty"`
+	AdmissionWebhooks []inventory.AdmissionWebhookConfig `json:"admissionWebhooks,omitempty"`
 }
 
 type workloadContext struct {
@@ -178,15 +222,202 @@ func buildScanContext(s *inventory.Snapshot, scope Scope, omitted *[]string) sca
 		})
 	}
 	analysis := advisor.Analyze(s)
+	for i := range analysis.Capabilities {
+		for j := range analysis.Capabilities[i].Evidence {
+			analysis.Capabilities[i].Evidence[j].Resource = cleanRef(analysis.Capabilities[i].Evidence[j].Resource)
+		}
+	}
 	if len(analysis.Capabilities) > maxAdvisorItems {
 		*omitted = append(*omitted, "advisor capabilities truncated")
 		analysis.Capabilities = analysis.Capabilities[:maxAdvisorItems]
 	}
-	return scanContext{
+	out := scanContext{
 		SchemaVersion: s.SchemaVersion, CollectedAt: s.CollectedAt, Source: s.Source, AWS: s.AWS, EKSCluster: s.EKS.Cluster,
 		KubernetesContext: k.Context, KubernetesServer: k.Server, KubernetesVersion: k.Version.GitVersion, Advisor: analysis,
 		Workloads: workloadItems, RunningImages: takeSortedImages(filterRunningImages(k.RunningImages, scope), omitted), CoreResourceSummary: summarizeCoreResources(k), Coverage: takeCoverage(k, s.Coverage, omitted),
 	}
+	switch scopedPageType(scope) {
+	case "eks":
+		out.EKS = buildEKSPageContext(s.EKS, scope, omitted)
+	case "nodes":
+		out.Nodes = filterNodes(k.Nodes, scope, omitted)
+	case "workloads":
+		out.Pods = filterPods(k.Pods, scope, omitted)
+	case "network":
+		out.Network = buildNetworkPageContext(k, scope, omitted)
+	case "storage":
+		out.Storage = buildStoragePageContext(k, scope, omitted)
+	case "security":
+		out.Security = buildSecurityPageContext(k, scope, omitted)
+	}
+	return out
+}
+
+func scopedPageType(scope Scope) string {
+	value := strings.ToLower(strings.TrimSpace(scope.ResourceType))
+	if value == "" {
+		value = strings.ToLower(strings.TrimSpace(scope.PageID))
+	}
+	return value
+}
+
+func buildEKSPageContext(eks inventory.EKSInventory, scope Scope, omitted *[]string) *eksPageContext {
+	selected := selectedNames(scope.SelectedRefs)
+	return &eksPageContext{
+		Cluster:                 eks.Cluster,
+		Addons:                  take(filterNamed(eks.Addons, selected, func(v inventory.Addon) string { return v.Name }), maxPageItems, omitted, "EKS add-ons truncated"),
+		Nodegroups:              take(filterNamed(eks.Nodegroups, selected, func(v inventory.Nodegroup) string { return v.Name }), maxPageItems, omitted, "EKS nodegroups truncated"),
+		Insights:                take(filterNamed(eks.Insights, selected, func(v inventory.EKSInsight) string { return firstContextValue(v.Name, v.ID) }), maxPageItems, omitted, "EKS insights truncated"),
+		AccessEntries:           take(filterNamed(eks.AccessEntries, selected, func(v inventory.AccessEntry) string { return firstContextValue(v.Username, v.PrincipalARN) }), maxPageItems, omitted, "EKS access entries truncated"),
+		PodIdentityAssociations: take(filterNamed(eks.PodIdentityAssociations, selected, func(v inventory.PodIdentityAssociation) string { return firstContextValue(v.ServiceAccount, v.ID) }), maxPageItems, omitted, "EKS pod identity associations truncated"),
+	}
+}
+
+func filterNodes(values []inventory.Node, scope Scope, omitted *[]string) []inventory.Node {
+	out := make([]inventory.Node, 0, len(values))
+	for _, value := range values {
+		if !scopeRefMatches(value.ObjectRef, scope) {
+			continue
+		}
+		value.ObjectRef = cleanRef(value.ObjectRef)
+		out = append(out, value)
+	}
+	return take(out, maxPageItems, omitted, "nodes truncated")
+}
+
+func filterPods(values []inventory.Pod, scope Scope, omitted *[]string) []inventory.Pod {
+	out := make([]inventory.Pod, 0, len(values))
+	for _, value := range values {
+		if !scopeRefMatches(value.ObjectRef, scope) {
+			continue
+		}
+		value.ObjectRef = cleanRef(value.ObjectRef)
+		value.OwnerReferences = cleanRefs(value.OwnerReferences)
+		value.Containers = trimContainers(value.Containers)
+		value.InitContainers = trimContainers(value.InitContainers)
+		value.EphemeralContainers = trimContainers(value.EphemeralContainers)
+		out = append(out, value)
+	}
+	return take(out, maxPageItems, omitted, "pods truncated")
+}
+
+func buildNetworkPageContext(k inventory.Kubernetes, scope Scope, omitted *[]string) *networkPageContext {
+	out := &networkPageContext{
+		Services:        filterRefItems(k.Services, scope, omitted, "services truncated", func(v *inventory.Service) *inventory.ObjectRef { return &v.ObjectRef }),
+		EndpointSlices:  filterRefItems(k.EndpointSlices, scope, omitted, "endpoint slices truncated", func(v *inventory.EndpointSlice) *inventory.ObjectRef { return &v.ObjectRef }),
+		IngressClasses:  filterRefItems(k.IngressClasses, scope, omitted, "ingress classes truncated", func(v *inventory.IngressClass) *inventory.ObjectRef { return &v.ObjectRef }),
+		Ingresses:       filterRefItems(k.Ingresses, scope, omitted, "ingresses truncated", func(v *inventory.Ingress) *inventory.ObjectRef { return &v.ObjectRef }),
+		GatewayClasses:  filterRefItems(k.GatewayClasses, scope, omitted, "gateway classes truncated", func(v *inventory.GatewayClass) *inventory.ObjectRef { return &v.ObjectRef }),
+		Gateways:        filterRefItems(k.Gateways, scope, omitted, "gateways truncated", func(v *inventory.Gateway) *inventory.ObjectRef { return &v.ObjectRef }),
+		GatewayRoutes:   filterRefItems(k.GatewayRoutes, scope, omitted, "gateway routes truncated", func(v *inventory.GatewayRoute) *inventory.ObjectRef { return &v.ObjectRef }),
+		ReferenceGrants: filterRefItems(k.ReferenceGrants, scope, omitted, "reference grants truncated", func(v *inventory.ReferenceGrant) *inventory.ObjectRef { return &v.ObjectRef }),
+		GatewayPolicies: filterRefItems(k.GatewayPolicies, scope, omitted, "gateway policies truncated", func(v *inventory.GatewayPolicy) *inventory.ObjectRef { return &v.ObjectRef }),
+	}
+	for i := range out.EndpointSlices {
+		for j := range out.EndpointSlices[i].Endpoints {
+			out.EndpointSlices[i].Endpoints[j].TargetRef = cleanRef(out.EndpointSlices[i].Endpoints[j].TargetRef)
+		}
+	}
+	for i := range out.IngressClasses {
+		out.IngressClasses[i].Parameters = cleanRef(out.IngressClasses[i].Parameters)
+	}
+	for i := range out.Ingresses {
+		out.Ingresses[i].Backends = cleanRefs(out.Ingresses[i].Backends)
+	}
+	for i := range out.GatewayClasses {
+		out.GatewayClasses[i].Parameters = cleanRef(out.GatewayClasses[i].Parameters)
+	}
+	for i := range out.GatewayRoutes {
+		for j := range out.GatewayRoutes[i].Rules {
+			out.GatewayRoutes[i].Rules[j].BackendRefs = cleanRefs(out.GatewayRoutes[i].Rules[j].BackendRefs)
+		}
+	}
+	for i := range out.GatewayPolicies {
+		out.GatewayPolicies[i].TargetRefs = cleanRefs(out.GatewayPolicies[i].TargetRefs)
+	}
+	return out
+}
+
+func buildStoragePageContext(k inventory.Kubernetes, scope Scope, omitted *[]string) *storagePageContext {
+	out := &storagePageContext{
+		StorageClasses:         filterRefItems(k.StorageClasses, scope, omitted, "storage classes truncated", func(v *inventory.StorageClass) *inventory.ObjectRef { return &v.ObjectRef }),
+		PersistentVolumes:      filterRefItems(k.PersistentVolumes, scope, omitted, "persistent volumes truncated", func(v *inventory.PersistentVolume) *inventory.ObjectRef { return &v.ObjectRef }),
+		PersistentVolumeClaims: filterRefItems(k.PersistentVolumeClaims, scope, omitted, "persistent volume claims truncated", func(v *inventory.PersistentVolumeClaim) *inventory.ObjectRef { return &v.ObjectRef }),
+		CSIDrivers:             filterRefItems(k.CSIDrivers, scope, omitted, "CSI drivers truncated", func(v *inventory.CSIDriver) *inventory.ObjectRef { return &v.ObjectRef }),
+		CSINodes:               filterRefItems(k.CSINodes, scope, omitted, "CSI nodes truncated", func(v *inventory.CSINode) *inventory.ObjectRef { return &v.ObjectRef }),
+		VolumeAttachments:      filterRefItems(k.VolumeAttachments, scope, omitted, "volume attachments truncated", func(v *inventory.VolumeAttachment) *inventory.ObjectRef { return &v.ObjectRef }),
+		RuntimeClasses:         filterRefItems(k.RuntimeClasses, scope, omitted, "runtime classes truncated", func(v *inventory.RuntimeClass) *inventory.ObjectRef { return &v.ObjectRef }),
+	}
+	for i := range out.PersistentVolumes {
+		out.PersistentVolumes[i].ClaimRef = cleanRef(out.PersistentVolumes[i].ClaimRef)
+	}
+	return out
+}
+
+func buildSecurityPageContext(k inventory.Kubernetes, scope Scope, omitted *[]string) *securityPageContext {
+	roles := append(append([]inventory.Role(nil), k.RBAC.RoleDetails...), k.RBAC.ClusterRoleDetails...)
+	bindings := append(append([]inventory.RoleBinding(nil), k.RBAC.RoleBindingDetails...), k.RBAC.ClusterRoleBindingDetails...)
+	out := &securityPageContext{
+		Roles:             filterRefItems(roles, scope, omitted, "RBAC roles truncated", func(v *inventory.Role) *inventory.ObjectRef { return &v.ObjectRef }),
+		Bindings:          filterRefItems(bindings, scope, omitted, "RBAC bindings truncated", func(v *inventory.RoleBinding) *inventory.ObjectRef { return &v.ObjectRef }),
+		AdmissionWebhooks: filterRefItems(k.AdmissionWebhooks, scope, omitted, "admission webhook configurations truncated", func(v *inventory.AdmissionWebhookConfig) *inventory.ObjectRef { return &v.ObjectRef }),
+	}
+	for i := range out.Bindings {
+		out.Bindings[i].RoleRef = cleanRef(out.Bindings[i].RoleRef)
+	}
+	for i := range out.AdmissionWebhooks {
+		for j := range out.AdmissionWebhooks[i].Webhooks {
+			out.AdmissionWebhooks[i].Webhooks[j].ClientService = cleanRef(out.AdmissionWebhooks[i].Webhooks[j].ClientService)
+		}
+	}
+	return out
+}
+
+func filterRefItems[T any](values []T, scope Scope, omitted *[]string, message string, ref func(*T) *inventory.ObjectRef) []T {
+	out := make([]T, 0, len(values))
+	for _, value := range values {
+		itemRef := ref(&value)
+		if !scopeRefMatches(*itemRef, scope) {
+			continue
+		}
+		*itemRef = cleanRef(*itemRef)
+		out = append(out, value)
+	}
+	return take(out, maxPageItems, omitted, message)
+}
+
+func scopeRefMatches(ref inventory.ObjectRef, scope Scope) bool {
+	if scope.Namespace != "" && ref.Namespace != "" && ref.Namespace != scope.Namespace {
+		return false
+	}
+	if len(scope.SelectedRefs) == 0 {
+		return true
+	}
+	selected := refSet(scope.SelectedRefs)
+	return selectedMatches(selected, ref)
+}
+
+func selectedNames(refs []inventory.ObjectRef) map[string]struct{} {
+	out := map[string]struct{}{}
+	for _, ref := range refs {
+		if ref.Name != "" {
+			out[ref.Name] = struct{}{}
+		}
+	}
+	return out
+}
+
+func filterNamed[T any](values []T, selected map[string]struct{}, name func(T) string) []T {
+	if len(selected) == 0 {
+		return append([]T(nil), values...)
+	}
+	out := make([]T, 0, len(values))
+	for _, value := range values {
+		if _, ok := selected[name(value)]; ok {
+			out = append(out, value)
+		}
+	}
+	return out
 }
 
 func cleanScope(scope Scope) Scope {
