@@ -554,3 +554,38 @@ func TestAdvisorArtifactAndHTML(t *testing.T) {
 		t.Fatal("unresolved live markdown placeholder")
 	}
 }
+
+func TestAdvisorReadabilityWorkspace(t *testing.T) {
+	page := LiveHTML()
+	for _, want := range []string{
+		`class="section stack advisor-section"`,
+		`class="advisor-posture"`,
+		`id="advisor-status-filters"`,
+		`id="advisor-domain-filters"`,
+		`id="advisor-search"`,
+		`id="advisor-result-count" role="status" aria-atomic="true"`,
+		`body[data-active-section="advisor"]`,
+		`document.body.dataset.activeSection = id`,
+		"function advisorMatchesStatus",
+		"function advisorCapabilityHTML",
+		"function advisorEvidenceHTML",
+		"Assessment and coverage counts may overlap.",
+		"Deterministic conclusion",
+		"Interpretation boundary",
+		"Collection gaps",
+		"advisorReport = data.advisor || {}",
+	} {
+		if !strings.Contains(page, want) {
+			t.Fatalf("Advisory workspace missing %q", want)
+		}
+	}
+	for _, old := range []string{
+		`<div class="body advisor-body">`,
+		`<summary style="cursor:pointer;padding:12px 0;overflow-wrap:anywhere">`,
+		`Implementation: ${esc(c.implementation || 'Unknown')} · Coverage:`,
+	} {
+		if strings.Contains(page, old) {
+			t.Fatalf("Advisory workspace kept dense legacy renderer %q", old)
+		}
+	}
+}
