@@ -1356,6 +1356,12 @@
     .report-section table {
       min-width:760px;
     }
+    body:not([data-active-section="overview"]):not([data-active-section="advisor"]) .shell > .app {
+      grid-template-columns:minmax(0,1fr) 328px;
+    }
+    body:not([data-active-section="overview"]) .sidebar {
+      display:none;
+    }
     body[data-active-section="advisor"] .shell > .app {
       grid-template-columns:minmax(0,1fr);
     }
