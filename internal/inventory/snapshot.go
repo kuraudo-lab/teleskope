@@ -35,9 +35,95 @@ type EKSInventory struct {
 	Cluster                 Cluster                  `json:"cluster"`
 	Addons                  []Addon                  `json:"addons"`
 	Nodegroups              []Nodegroup              `json:"nodegroups"`
+	Infrastructure          EKSInfrastructure        `json:"infrastructure,omitempty"`
 	Insights                []EKSInsight             `json:"insights,omitempty"`
 	AccessEntries           []AccessEntry            `json:"accessEntries"`
 	PodIdentityAssociations []PodIdentityAssociation `json:"podIdentityAssociations"`
+}
+
+// EKSInfrastructure records optional AWS infrastructure evidence associated with an EKS cluster.
+// Collectors may leave it empty when EC2 and Auto Scaling APIs are outside their configured scope.
+type EKSInfrastructure struct {
+	Instances         []EC2Instance         `json:"instances,omitempty"`
+	AutoScalingGroups []AutoScalingGroup    `json:"autoScalingGroups,omitempty"`
+	VPCs              []VPCDetail           `json:"vpcs,omitempty"`
+	Subnets           []SubnetDetail        `json:"subnets,omitempty"`
+	SecurityGroups    []SecurityGroupDetail `json:"securityGroups,omitempty"`
+}
+
+// EC2Instance records compute evidence and its EKS/Kubernetes associations.
+type EC2Instance struct {
+	InstanceID            string            `json:"instanceId"`
+	Name                  string            `json:"name,omitempty"`
+	State                 string            `json:"state,omitempty"`
+	InstanceType          string            `json:"instanceType,omitempty"`
+	Architecture          string            `json:"architecture,omitempty"`
+	AvailabilityZone      string            `json:"availabilityZone,omitempty"`
+	PrivateIP             string            `json:"privateIp,omitempty"`
+	SubnetID              string            `json:"subnetId,omitempty"`
+	VPCID                 string            `json:"vpcId,omitempty"`
+	SecurityGroupIDs      []string          `json:"securityGroupIds,omitempty"`
+	NodegroupName         string            `json:"nodegroupName,omitempty"`
+	AutoScalingGroupName  string            `json:"autoScalingGroupName,omitempty"`
+	KubernetesNodeName    string            `json:"kubernetesNodeName,omitempty"`
+	LaunchTemplateID      string            `json:"launchTemplateId,omitempty"`
+	LaunchTemplateVersion string            `json:"launchTemplateVersion,omitempty"`
+	ImageID               string            `json:"imageId,omitempty"`
+	Tags                  map[string]string `json:"tags,omitempty"`
+}
+
+// AutoScalingGroup records the capacity envelope behind an EKS nodegroup.
+type AutoScalingGroup struct {
+	Name                  string   `json:"name"`
+	ARN                   string   `json:"arn,omitempty"`
+	NodegroupName         string   `json:"nodegroupName,omitempty"`
+	MinSize               int32    `json:"minSize"`
+	MaxSize               int32    `json:"maxSize"`
+	DesiredCapacity       int32    `json:"desiredCapacity"`
+	AvailabilityZones     []string `json:"availabilityZones,omitempty"`
+	SubnetIDs             []string `json:"subnetIds,omitempty"`
+	InstanceIDs           []string `json:"instanceIds,omitempty"`
+	LaunchTemplateID      string   `json:"launchTemplateId,omitempty"`
+	LaunchTemplateVersion string   `json:"launchTemplateVersion,omitempty"`
+	HealthCheckType       string   `json:"healthCheckType,omitempty"`
+}
+
+// VPCDetail records VPC attributes useful for EKS network inspection.
+type VPCDetail struct {
+	VPCID         string            `json:"vpcId"`
+	CIDR          string            `json:"cidr,omitempty"`
+	State         string            `json:"state,omitempty"`
+	Tenancy       string            `json:"tenancy,omitempty"`
+	DNSSupport    *bool             `json:"dnsSupport,omitempty"`
+	DNSHostnames  *bool             `json:"dnsHostnames,omitempty"`
+	DHCPOptionsID string            `json:"dhcpOptionsId,omitempty"`
+	Tags          map[string]string `json:"tags,omitempty"`
+}
+
+// SubnetDetail records subnet placement and routing associations.
+type SubnetDetail struct {
+	SubnetID                string            `json:"subnetId"`
+	VPCID                   string            `json:"vpcId,omitempty"`
+	CIDR                    string            `json:"cidr,omitempty"`
+	AvailabilityZone        string            `json:"availabilityZone,omitempty"`
+	AvailabilityZoneID      string            `json:"availabilityZoneId,omitempty"`
+	State                   string            `json:"state,omitempty"`
+	AvailableIPAddressCount int32             `json:"availableIpAddressCount,omitempty"`
+	MapPublicIPOnLaunch     bool              `json:"mapPublicIpOnLaunch"`
+	RouteTableID            string            `json:"routeTableId,omitempty"`
+	NATGatewayIDs           []string          `json:"natGatewayIds,omitempty"`
+	Tags                    map[string]string `json:"tags,omitempty"`
+}
+
+// SecurityGroupDetail records security-group identity and summarized rule counts.
+type SecurityGroupDetail struct {
+	GroupID          string            `json:"groupId"`
+	GroupName        string            `json:"groupName,omitempty"`
+	Description      string            `json:"description,omitempty"`
+	VPCID            string            `json:"vpcId,omitempty"`
+	IngressRuleCount int               `json:"ingressRuleCount,omitempty"`
+	EgressRuleCount  int               `json:"egressRuleCount,omitempty"`
+	Tags             map[string]string `json:"tags,omitempty"`
 }
 
 // Cluster summarizes the EKS cluster control plane and AWS-owned settings.

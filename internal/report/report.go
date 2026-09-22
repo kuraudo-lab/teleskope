@@ -633,6 +633,11 @@ func hasEKS(snapshot *inventory.Snapshot) bool {
 	return snapshot.EKS.Cluster.Name != "" ||
 		len(snapshot.EKS.Addons) > 0 ||
 		len(snapshot.EKS.Nodegroups) > 0 ||
+		len(snapshot.EKS.Infrastructure.Instances) > 0 ||
+		len(snapshot.EKS.Infrastructure.AutoScalingGroups) > 0 ||
+		len(snapshot.EKS.Infrastructure.VPCs) > 0 ||
+		len(snapshot.EKS.Infrastructure.Subnets) > 0 ||
+		len(snapshot.EKS.Infrastructure.SecurityGroups) > 0 ||
 		len(snapshot.EKS.Insights) > 0 ||
 		len(snapshot.EKS.AccessEntries) > 0 ||
 		len(snapshot.EKS.PodIdentityAssociations) > 0

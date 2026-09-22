@@ -202,6 +202,37 @@ func TestBuildEKSProjectionPartialSnapshots(t *testing.T) {
 			},
 		},
 		{
+			name: "recorded infrastructure preview",
+			snap: &inventory.Snapshot{
+				EKS: inventory.EKSInventory{
+					Nodegroups: []inventory.Nodegroup{{Name: "workers", AutoScalingGroups: []string{"asg-workers"}}},
+					Infrastructure: inventory.EKSInfrastructure{
+						Instances:         []inventory.EC2Instance{{InstanceID: "i-b", NodegroupName: "workers", AutoScalingGroupName: "asg-workers", KubernetesNodeName: "node-b", SubnetID: "subnet-b", VPCID: "vpc-a", SecurityGroupIDs: []string{"sg-node"}, LaunchTemplateID: "lt-a", LaunchTemplateVersion: "3"}, {InstanceID: "i-a", NodegroupName: "workers", AutoScalingGroupName: "asg-workers", KubernetesNodeName: "node-a"}},
+						AutoScalingGroups: []inventory.AutoScalingGroup{{Name: "asg-workers", NodegroupName: "workers", MinSize: 1, MaxSize: 4, DesiredCapacity: 2, InstanceIDs: []string{"i-a", "i-b"}, LaunchTemplateID: "lt-a", LaunchTemplateVersion: "3"}},
+						VPCs:              []inventory.VPCDetail{{VPCID: "vpc-a", CIDR: "192.0.2.0/24", DNSSupport: boolPointer(true)}},
+						Subnets:           []inventory.SubnetDetail{{SubnetID: "subnet-b", VPCID: "vpc-a", CIDR: "192.0.2.64/26", AvailabilityZone: "eu-west-1b", RouteTableID: "rtb-b"}},
+						SecurityGroups:    []inventory.SecurityGroupDetail{{GroupID: "sg-node", GroupName: "nodes", VPCID: "vpc-a", IngressRuleCount: 3, EgressRuleCount: 1}},
+					},
+				},
+			},
+			assert: func(t *testing.T, got EKSProjection) {
+				t.Helper()
+				if !got.Visible || len(got.Instances) != 2 || got.Instances[0].InstanceID != "i-a" || got.Instances[1].LaunchTemplate != "lt-a version=3" {
+					t.Fatalf("instances = %#v", got.Instances)
+				}
+				if len(got.AutoScalingGroups) != 1 || got.AutoScalingGroups[0].Size != "desired=2 min=1 max=4" {
+					t.Fatalf("auto scaling groups = %#v", got.AutoScalingGroups)
+				}
+				workers := nodegroupRow(got.Nodegroups, "workers")
+				if workers.ASGs != "asg-workers" || workers.Instances != "i-a,i-b" {
+					t.Fatalf("nodegroup associations = %#v", workers)
+				}
+				if len(got.VPCs) != 1 || got.VPCs[0].DNSSupport != "true" || len(got.Subnets) != 1 || got.Subnets[0].RouteTable != "rtb-b" || len(got.SecurityGroups) != 1 || got.SecurityGroups[0].Ingress != 3 {
+					t.Fatalf("network infrastructure = vpcs=%#v subnets=%#v securityGroups=%#v", got.VPCs, got.Subnets, got.SecurityGroups)
+				}
+			},
+		},
+		{
 			name: "no eks facts",
 			snap: &inventory.Snapshot{},
 			assert: func(t *testing.T, got EKSProjection) {
@@ -219,6 +250,8 @@ func TestBuildEKSProjectionPartialSnapshots(t *testing.T) {
 		})
 	}
 }
+
+func boolPointer(value bool) *bool { return &value }
 
 func containsField(rows []FieldValueRow, field, value string) bool {
 	for _, row := range rows {

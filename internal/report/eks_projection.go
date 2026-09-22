@@ -21,6 +21,11 @@ type EKSProjection struct {
 	Addons             []EKSAddonRow              `json:"addons,omitempty"`
 	Nodegroups         []EKSNodegroupRow          `json:"nodegroups,omitempty"`
 	NodegroupReadiness []EKSNodegroupReadinessRow `json:"nodegroupReadiness,omitempty"`
+	Instances          []EKSInstanceRow           `json:"instances,omitempty"`
+	AutoScalingGroups  []EKSAutoScalingGroupRow   `json:"autoScalingGroups,omitempty"`
+	VPCs               []EKSVPCRow                `json:"vpcs,omitempty"`
+	Subnets            []EKSSubnetRow             `json:"subnets,omitempty"`
+	SecurityGroups     []EKSSecurityGroupRow      `json:"securityGroups,omitempty"`
 }
 
 type FieldValueRow struct {
@@ -92,8 +97,72 @@ type EKSNodegroupRow struct {
 	CapacityType string `json:"capacityType"`
 	Size         string `json:"size"`
 	Subnets      string `json:"subnets"`
+	ASGs         string `json:"asgs"`
+	Instances    string `json:"instances"`
 	IAM          string `json:"iam"`
 	Issues       string `json:"issues"`
+}
+
+type EKSInstanceRow struct {
+	InstanceID       string `json:"instanceId"`
+	Name             string `json:"name"`
+	State            string `json:"state"`
+	InstanceType     string `json:"instanceType"`
+	Zone             string `json:"zone"`
+	PrivateIP        string `json:"privateIp"`
+	SubnetID         string `json:"subnetId"`
+	SecurityGroups   string `json:"securityGroups"`
+	Nodegroup        string `json:"nodegroup"`
+	AutoScalingGroup string `json:"autoScalingGroup"`
+	KubernetesNode   string `json:"kubernetesNode"`
+	LaunchTemplate   string `json:"launchTemplate"`
+	ImageID          string `json:"imageId"`
+}
+
+type EKSAutoScalingGroupRow struct {
+	Name            string `json:"name"`
+	Nodegroup       string `json:"nodegroup"`
+	Size            string `json:"size"`
+	Zones           string `json:"zones"`
+	Subnets         string `json:"subnets"`
+	Instances       string `json:"instances"`
+	LaunchTemplate  string `json:"launchTemplate"`
+	HealthCheckType string `json:"healthCheckType"`
+}
+
+type EKSVPCRow struct {
+	VPCID        string `json:"vpcId"`
+	CIDR         string `json:"cidr"`
+	State        string `json:"state"`
+	Tenancy      string `json:"tenancy"`
+	DNSSupport   string `json:"dnsSupport"`
+	DNSHostnames string `json:"dnsHostnames"`
+	DHCPOptions  string `json:"dhcpOptions"`
+	Tags         string `json:"tags"`
+}
+
+type EKSSubnetRow struct {
+	SubnetID           string `json:"subnetId"`
+	VPCID              string `json:"vpcId"`
+	CIDR               string `json:"cidr"`
+	Zone               string `json:"zone"`
+	ZoneID             string `json:"zoneId"`
+	State              string `json:"state"`
+	AvailableAddresses int32  `json:"availableAddresses"`
+	PublicIPOnLaunch   bool   `json:"publicIpOnLaunch"`
+	RouteTable         string `json:"routeTable"`
+	NATGateways        string `json:"natGateways"`
+	Tags               string `json:"tags"`
+}
+
+type EKSSecurityGroupRow struct {
+	GroupID     string `json:"groupId"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	VPCID       string `json:"vpcId"`
+	Ingress     int    `json:"ingress"`
+	Egress      int    `json:"egress"`
+	Tags        string `json:"tags"`
 }
 
 type EKSNodegroupReadinessRow struct {
@@ -136,8 +205,10 @@ func BuildEKSProjection(snapshot *inventory.Snapshot) EKSProjection {
 	out.NetworkDetails = projectEKSNetworkDetails(snapshot)
 	out.Security, out.AccessEntries, out.PodIdentities = projectEKSSecurity(snapshot)
 	out.Addons = projectEKSAddons(snapshot.EKS.Addons, snapshot.EKS.Insights)
-	out.Nodegroups = projectEKSNodegroups(snapshot.EKS.Nodegroups)
+	out.Nodegroups = projectEKSNodegroups(snapshot.EKS.Nodegroups, snapshot.EKS.Infrastructure)
 	out.NodegroupReadiness = projectEKSNodegroupReadiness(snapshot.EKS.Nodegroups, snapshot.Kubernetes.Nodes)
+	out.Instances, out.AutoScalingGroups = projectEKSComputeInfrastructure(snapshot.EKS.Infrastructure)
+	out.VPCs, out.Subnets, out.SecurityGroups = projectEKSNetworkInfrastructure(snapshot.EKS.Infrastructure)
 	return out
 }
 
@@ -196,6 +267,15 @@ func projectEKSNetwork(cluster inventory.Cluster, nodegroups []inventory.Nodegro
 
 func projectEKSNetworkDetails(snapshot *inventory.Snapshot) []EKSNetworkDetailRow {
 	cluster := snapshot.EKS.Cluster
+	hasInfrastructureNetwork := len(snapshot.EKS.Infrastructure.VPCs) > 0 || len(snapshot.EKS.Infrastructure.Subnets) > 0 || len(snapshot.EKS.Infrastructure.SecurityGroups) > 0
+	vpcGap := "subnet CIDRs, route tables, ENIs and security group rules are not collected"
+	nodegroupGap := "subnet AZ/CIDR and security group rules are not collected"
+	nodePlacementGap := "node subnet IDs and ENI attachments are not collected"
+	if hasInfrastructureNetwork {
+		vpcGap = "ENI attachments and security group rule bodies are not collected"
+		nodegroupGap = "ENI attachments and security group rule bodies are not collected"
+		nodePlacementGap = "ENI attachments are not collected"
+	}
 	rows := []EKSNetworkDetailRow{}
 	add := func(area, source, association, evidence, gap string) {
 		rows = append(rows, EKSNetworkDetailRow{
@@ -207,16 +287,16 @@ func projectEKSNetworkDetails(snapshot *inventory.Snapshot) []EKSNetworkDetailRo
 		})
 	}
 	if cluster.VPC.VPCID != "" || len(cluster.VPC.SubnetIDs) > 0 || cluster.VPC.ClusterSecurityGroupID != "" || len(cluster.VPC.SecurityGroupIDs) > 0 {
-		add("vpc", "eks.cluster", cluster.Name, strings.Join(nonEmpty(evidencePart("vpc", cluster.VPC.VPCID), evidencePart("subnets", strings.Join(cluster.VPC.SubnetIDs, ",")), evidencePart("clusterSG", cluster.VPC.ClusterSecurityGroupID), evidencePart("extraSGs", strings.Join(cluster.VPC.SecurityGroupIDs, ","))), " "), "subnet CIDRs, route tables, ENIs and security group rules are not collected")
+		add("vpc", "eks.cluster", cluster.Name, strings.Join(nonEmpty(evidencePart("vpc", cluster.VPC.VPCID), evidencePart("subnets", strings.Join(cluster.VPC.SubnetIDs, ",")), evidencePart("clusterSG", cluster.VPC.ClusterSecurityGroupID), evidencePart("extraSGs", strings.Join(cluster.VPC.SecurityGroupIDs, ","))), " "), vpcGap)
 	}
 	for _, nodegroup := range sortedNodegroups(snapshot.EKS.Nodegroups) {
 		if len(nodegroup.Subnets) == 0 && nodegroup.RemoteAccessSecurityGroupID == "" {
 			continue
 		}
-		add("nodegroup networking", "eks.nodegroup/"+nodegroup.Name, nodegroup.Name, strings.Join(nonEmpty(evidencePart("subnets", strings.Join(nodegroup.Subnets, ",")), evidencePart("remoteAccessSG", nodegroup.RemoteAccessSecurityGroupID)), " "), "subnet AZ/CIDR and security group rules are not collected")
+		add("nodegroup networking", "eks.nodegroup/"+nodegroup.Name, nodegroup.Name, strings.Join(nonEmpty(evidencePart("subnets", strings.Join(nodegroup.Subnets, ",")), evidencePart("remoteAccessSG", nodegroup.RemoteAccessSecurityGroupID)), " "), nodegroupGap)
 	}
 	for group, zones := range nodeZonesByGroup(snapshot.Kubernetes.Nodes) {
-		add("node placement", "kubernetes.nodes", group, "zones="+strings.Join(zones, ","), "node subnet IDs and ENI attachments are not collected")
+		add("node placement", "kubernetes.nodes", group, "zones="+strings.Join(zones, ","), nodePlacementGap)
 	}
 	for _, addon := range sortedAddons(snapshot.EKS.Addons) {
 		if !isVPCCNIName(addon.Name) {
@@ -509,9 +589,16 @@ func addonUpgrade(currentVersion string, compat addonCompatibility) string {
 	return strings.Join(parts, " ")
 }
 
-func projectEKSNodegroups(nodegroups []inventory.Nodegroup) []EKSNodegroupRow {
+func projectEKSNodegroups(nodegroups []inventory.Nodegroup, infrastructure inventory.EKSInfrastructure) []EKSNodegroupRow {
 	rows := make([]EKSNodegroupRow, 0, len(nodegroups))
 	for _, nodegroup := range sortedNodegroups(nodegroups) {
+		instanceIDs := []string{}
+		for _, instance := range infrastructure.Instances {
+			if instance.NodegroupName == nodegroup.Name {
+				instanceIDs = append(instanceIDs, instance.InstanceID)
+			}
+		}
+		sort.Strings(instanceIDs)
 		rows = append(rows, EKSNodegroupRow{
 			Name:         display(nodegroup.Name),
 			Version:      display(nodegroup.Version),
@@ -522,11 +609,74 @@ func projectEKSNodegroups(nodegroups []inventory.Nodegroup) []EKSNodegroupRow {
 			CapacityType: display(nodegroup.CapacityType),
 			Size:         fmt.Sprintf("desired=%s min=%s max=%s", int32Ptr(nodegroup.DesiredSize), int32Ptr(nodegroup.MinSize), int32Ptr(nodegroup.MaxSize)),
 			Subnets:      display(strings.Join(nodegroup.Subnets, ",")),
+			ASGs:         display(strings.Join(nodegroup.AutoScalingGroups, ",")),
+			Instances:    display(strings.Join(instanceIDs, ",")),
 			IAM:          display(nodegroup.NodeRoleARN),
 			Issues:       healthIssues(nodegroup.Issues),
 		})
 	}
 	return rows
+}
+
+func projectEKSComputeInfrastructure(infrastructure inventory.EKSInfrastructure) ([]EKSInstanceRow, []EKSAutoScalingGroupRow) {
+	instances := append([]inventory.EC2Instance(nil), infrastructure.Instances...)
+	sort.Slice(instances, func(i, j int) bool { return instances[i].InstanceID < instances[j].InstanceID })
+	instanceRows := make([]EKSInstanceRow, 0, len(instances))
+	for _, instance := range instances {
+		instanceRows = append(instanceRows, EKSInstanceRow{
+			InstanceID: display(instance.InstanceID), Name: display(instance.Name), State: display(instance.State),
+			InstanceType: display(instance.InstanceType), Zone: display(instance.AvailabilityZone), PrivateIP: display(instance.PrivateIP),
+			SubnetID: display(instance.SubnetID), SecurityGroups: display(strings.Join(instance.SecurityGroupIDs, ",")),
+			Nodegroup: display(instance.NodegroupName), AutoScalingGroup: display(instance.AutoScalingGroupName),
+			KubernetesNode: display(instance.KubernetesNodeName), LaunchTemplate: display(launchTemplate(instance.LaunchTemplateID, instance.LaunchTemplateVersion)),
+			ImageID: display(instance.ImageID),
+		})
+	}
+	groups := append([]inventory.AutoScalingGroup(nil), infrastructure.AutoScalingGroups...)
+	sort.Slice(groups, func(i, j int) bool { return groups[i].Name < groups[j].Name })
+	groupRows := make([]EKSAutoScalingGroupRow, 0, len(groups))
+	for _, group := range groups {
+		groupRows = append(groupRows, EKSAutoScalingGroupRow{
+			Name: display(group.Name), Nodegroup: display(group.NodegroupName),
+			Size:  fmt.Sprintf("desired=%d min=%d max=%d", group.DesiredCapacity, group.MinSize, group.MaxSize),
+			Zones: display(strings.Join(group.AvailabilityZones, ",")), Subnets: display(strings.Join(group.SubnetIDs, ",")),
+			Instances: display(strings.Join(group.InstanceIDs, ",")), LaunchTemplate: display(launchTemplate(group.LaunchTemplateID, group.LaunchTemplateVersion)),
+			HealthCheckType: display(group.HealthCheckType),
+		})
+	}
+	return instanceRows, groupRows
+}
+
+func projectEKSNetworkInfrastructure(infrastructure inventory.EKSInfrastructure) ([]EKSVPCRow, []EKSSubnetRow, []EKSSecurityGroupRow) {
+	vpcs := append([]inventory.VPCDetail(nil), infrastructure.VPCs...)
+	sort.Slice(vpcs, func(i, j int) bool { return vpcs[i].VPCID < vpcs[j].VPCID })
+	vpcRows := make([]EKSVPCRow, 0, len(vpcs))
+	for _, vpc := range vpcs {
+		vpcRows = append(vpcRows, EKSVPCRow{VPCID: display(vpc.VPCID), CIDR: display(vpc.CIDR), State: display(vpc.State), Tenancy: display(vpc.Tenancy), DNSSupport: boolPtr(vpc.DNSSupport), DNSHostnames: boolPtr(vpc.DNSHostnames), DHCPOptions: display(vpc.DHCPOptionsID), Tags: display(mapValue(vpc.Tags))})
+	}
+	subnets := append([]inventory.SubnetDetail(nil), infrastructure.Subnets...)
+	sort.Slice(subnets, func(i, j int) bool { return subnets[i].SubnetID < subnets[j].SubnetID })
+	subnetRows := make([]EKSSubnetRow, 0, len(subnets))
+	for _, subnet := range subnets {
+		subnetRows = append(subnetRows, EKSSubnetRow{SubnetID: display(subnet.SubnetID), VPCID: display(subnet.VPCID), CIDR: display(subnet.CIDR), Zone: display(subnet.AvailabilityZone), ZoneID: display(subnet.AvailabilityZoneID), State: display(subnet.State), AvailableAddresses: subnet.AvailableIPAddressCount, PublicIPOnLaunch: subnet.MapPublicIPOnLaunch, RouteTable: display(subnet.RouteTableID), NATGateways: display(strings.Join(subnet.NATGatewayIDs, ",")), Tags: display(mapValue(subnet.Tags))})
+	}
+	securityGroups := append([]inventory.SecurityGroupDetail(nil), infrastructure.SecurityGroups...)
+	sort.Slice(securityGroups, func(i, j int) bool { return securityGroups[i].GroupID < securityGroups[j].GroupID })
+	securityGroupRows := make([]EKSSecurityGroupRow, 0, len(securityGroups))
+	for _, group := range securityGroups {
+		securityGroupRows = append(securityGroupRows, EKSSecurityGroupRow{GroupID: display(group.GroupID), Name: display(group.GroupName), Description: display(group.Description), VPCID: display(group.VPCID), Ingress: group.IngressRuleCount, Egress: group.EgressRuleCount, Tags: display(mapValue(group.Tags))})
+	}
+	return vpcRows, subnetRows, securityGroupRows
+}
+
+func launchTemplate(id, version string) string {
+	if id == "" {
+		return ""
+	}
+	if version == "" {
+		return id
+	}
+	return id + " version=" + version
 }
 
 type nodegroupReadinessBucket struct {

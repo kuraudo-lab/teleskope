@@ -23,16 +23,16 @@
       "roleArn": "arn:aws:iam::000000000000:role/demo-eks-cluster-role",
       "createdAt": "2026-09-15T02:22:11.106Z",
       "vpc": {
-        "vpcId": "vpc-00000000000000000",
+        "vpcId": "vpc-11111111111111111",
         "subnetIds": [
-          "subnet-00000000000000000",
-          "subnet-00000000000000000",
-          "subnet-00000000000000000"
+          "subnet-11111111111111111",
+          "subnet-22222222222222222",
+          "subnet-33333333333333333"
         ],
         "securityGroupIds": [
-          "sg-00000000000000000"
+          "sg-22222222222222222"
         ],
-        "clusterSecurityGroupId": "sg-00000000000000000",
+        "clusterSecurityGroupId": "sg-11111111111111111",
         "endpointPublicAccess": true,
         "endpointPrivateAccess": true,
         "publicAccessCidrs": [
@@ -137,9 +137,9 @@
         "capacityType": "ON_DEMAND",
         "nodeRoleArn": "arn:aws:iam::000000000000:role/demo-role",
         "subnets": [
-          "subnet-00000000000000000",
-          "subnet-00000000000000000",
-          "subnet-00000000000000000"
+          "subnet-11111111111111111",
+          "subnet-22222222222222222",
+          "subnet-33333333333333333"
         ],
         "instanceTypes": [
           "m6i.large"
@@ -150,7 +150,7 @@
         "autoScalingGroups": [
           "eks-demo-nodegroup"
         ],
-        "launchTemplateId": "lt-00000000000000000",
+        "launchTemplateId": "lt-11111111111111111",
         "launchTemplateName": "demo-nodegroup",
         "launchTemplateVersion": "1",
         "tags": {
@@ -161,6 +161,194 @@
         }
       }
     ],
+    "infrastructure": {
+      "instances": [
+        {
+          "instanceId": "i-11111111111111111",
+          "name": "demo-node-1",
+          "state": "running",
+          "instanceType": "m6i.large",
+          "architecture": "x86_64",
+          "availabilityZone": "eu-west-1b",
+          "privateIp": "192.0.2.21",
+          "subnetId": "subnet-22222222222222222",
+          "vpcId": "vpc-11111111111111111",
+          "securityGroupIds": [
+            "sg-33333333333333333"
+          ],
+          "nodegroupName": "demo-nodegroup",
+          "autoScalingGroupName": "eks-demo-nodegroup",
+          "kubernetesNodeName": "demo-node-1",
+          "launchTemplateId": "lt-11111111111111111",
+          "launchTemplateVersion": "1",
+          "imageId": "ami-11111111111111111",
+          "tags": {
+            "Name": "demo-node-1",
+            "eks:cluster-name": "demo-eks",
+            "eks:nodegroup-name": "demo-nodegroup"
+          }
+        },
+        {
+          "instanceId": "i-22222222222222222",
+          "name": "demo-node-2",
+          "state": "running",
+          "instanceType": "m6i.large",
+          "architecture": "x86_64",
+          "availabilityZone": "eu-west-1c",
+          "privateIp": "192.0.2.85",
+          "subnetId": "subnet-33333333333333333",
+          "vpcId": "vpc-11111111111111111",
+          "securityGroupIds": [
+            "sg-33333333333333333"
+          ],
+          "nodegroupName": "demo-nodegroup",
+          "autoScalingGroupName": "eks-demo-nodegroup",
+          "kubernetesNodeName": "demo-node-2",
+          "launchTemplateId": "lt-11111111111111111",
+          "launchTemplateVersion": "1",
+          "imageId": "ami-11111111111111111",
+          "tags": {
+            "Name": "demo-node-2",
+            "eks:cluster-name": "demo-eks",
+            "eks:nodegroup-name": "demo-nodegroup"
+          }
+        }
+      ],
+      "autoScalingGroups": [
+        {
+          "name": "eks-demo-nodegroup",
+          "arn": "arn:aws:autoscaling:eu-west-1:000000000000:autoScalingGroup:00000000-0000-0000-0000-000000000000:autoScalingGroupName/eks-demo-nodegroup",
+          "nodegroupName": "demo-nodegroup",
+          "minSize": 2,
+          "maxSize": 5,
+          "desiredCapacity": 2,
+          "availabilityZones": [
+            "eu-west-1a",
+            "eu-west-1b",
+            "eu-west-1c"
+          ],
+          "subnetIds": [
+            "subnet-11111111111111111",
+            "subnet-22222222222222222",
+            "subnet-33333333333333333"
+          ],
+          "instanceIds": [
+            "i-11111111111111111",
+            "i-22222222222222222"
+          ],
+          "launchTemplateId": "lt-11111111111111111",
+          "launchTemplateVersion": "1",
+          "healthCheckType": "EC2"
+        }
+      ],
+      "vpcs": [
+        {
+          "vpcId": "vpc-11111111111111111",
+          "cidr": "192.0.2.0/24",
+          "state": "available",
+          "tenancy": "default",
+          "dnsSupport": true,
+          "dnsHostnames": true,
+          "dhcpOptionsId": "dopt-11111111111111111",
+          "tags": {
+            "Name": "demo-eks-vpc",
+            "kubernetes.io/cluster/demo-eks": "shared"
+          }
+        }
+      ],
+      "subnets": [
+        {
+          "subnetId": "subnet-11111111111111111",
+          "vpcId": "vpc-11111111111111111",
+          "cidr": "192.0.2.0/26",
+          "availabilityZone": "eu-west-1a",
+          "availabilityZoneId": "euw1-az1",
+          "state": "available",
+          "availableIpAddressCount": 48,
+          "mapPublicIpOnLaunch": false,
+          "routeTableId": "rtb-11111111111111111",
+          "natGatewayIds": [
+            "nat-11111111111111111"
+          ],
+          "tags": {
+            "Name": "demo-eks-private-a",
+            "kubernetes.io/role/internal-elb": "1"
+          }
+        },
+        {
+          "subnetId": "subnet-22222222222222222",
+          "vpcId": "vpc-11111111111111111",
+          "cidr": "192.0.2.64/26",
+          "availabilityZone": "eu-west-1b",
+          "availabilityZoneId": "euw1-az2",
+          "state": "available",
+          "availableIpAddressCount": 42,
+          "mapPublicIpOnLaunch": false,
+          "routeTableId": "rtb-22222222222222222",
+          "natGatewayIds": [
+            "nat-22222222222222222"
+          ],
+          "tags": {
+            "Name": "demo-eks-private-b",
+            "kubernetes.io/role/internal-elb": "1"
+          }
+        },
+        {
+          "subnetId": "subnet-33333333333333333",
+          "vpcId": "vpc-11111111111111111",
+          "cidr": "192.0.2.128/26",
+          "availabilityZone": "eu-west-1c",
+          "availabilityZoneId": "euw1-az3",
+          "state": "available",
+          "availableIpAddressCount": 41,
+          "mapPublicIpOnLaunch": false,
+          "routeTableId": "rtb-33333333333333333",
+          "natGatewayIds": [
+            "nat-33333333333333333"
+          ],
+          "tags": {
+            "Name": "demo-eks-private-c",
+            "kubernetes.io/role/internal-elb": "1"
+          }
+        }
+      ],
+      "securityGroups": [
+        {
+          "groupId": "sg-11111111111111111",
+          "groupName": "eks-cluster-sg-demo-eks",
+          "description": "EKS cluster security group",
+          "vpcId": "vpc-11111111111111111",
+          "ingressRuleCount": 2,
+          "egressRuleCount": 1,
+          "tags": {
+            "Name": "demo-eks-cluster-sg"
+          }
+        },
+        {
+          "groupId": "sg-22222222222222222",
+          "groupName": "demo-eks-control-plane",
+          "description": "Additional control plane security group",
+          "vpcId": "vpc-11111111111111111",
+          "ingressRuleCount": 1,
+          "egressRuleCount": 1,
+          "tags": {
+            "Name": "demo-eks-control-plane"
+          }
+        },
+        {
+          "groupId": "sg-33333333333333333",
+          "groupName": "demo-eks-nodes",
+          "description": "Managed nodegroup security group",
+          "vpcId": "vpc-11111111111111111",
+          "ingressRuleCount": 3,
+          "egressRuleCount": 1,
+          "tags": {
+            "Name": "demo-eks-nodes",
+            "kubernetes.io/cluster/demo-eks": "owned"
+          }
+        }
+      ]
+    },
     "accessEntries": [
       {
         "principalArn": "arn:aws:iam::000000000000:role/demo-role",
@@ -2039,15 +2227,15 @@
         "kind": "Node",
         "name": "demo-node-1",
         "uid": "00000000-0000-0000-0000-000000000000",
-        "providerId": "aws:///eu-west-1a/demo-instance-1",
+        "providerId": "aws:///eu-west-1b/i-11111111111111111",
         "labels": {
           "beta.kubernetes.io/arch": "amd64",
           "beta.kubernetes.io/instance-type": "m6i.large",
           "beta.kubernetes.io/os": "linux",
           "eks.amazonaws.com/capacityType": "ON_DEMAND",
           "eks.amazonaws.com/nodegroup": "demo-nodegroup",
-          "eks.amazonaws.com/nodegroup-image": "ami-00000000000000000",
-          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-00000000000000000",
+          "eks.amazonaws.com/nodegroup-image": "ami-11111111111111111",
+          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-11111111111111111",
           "eks.amazonaws.com/sourceLaunchTemplateVersion": "1",
           "failure-domain.beta.kubernetes.io/region": "eu-west-1",
           "failure-domain.beta.kubernetes.io/zone": "eu-west-1b",
@@ -2095,15 +2283,15 @@
         "kind": "Node",
         "name": "demo-node-2",
         "uid": "00000000-0000-0000-0000-000000000000",
-        "providerId": "aws:///eu-west-1a/demo-instance-2",
+        "providerId": "aws:///eu-west-1c/i-22222222222222222",
         "labels": {
           "beta.kubernetes.io/arch": "amd64",
           "beta.kubernetes.io/instance-type": "m6i.large",
           "beta.kubernetes.io/os": "linux",
           "eks.amazonaws.com/capacityType": "ON_DEMAND",
           "eks.amazonaws.com/nodegroup": "demo-nodegroup",
-          "eks.amazonaws.com/nodegroup-image": "ami-00000000000000000",
-          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-00000000000000000",
+          "eks.amazonaws.com/nodegroup-image": "ami-11111111111111111",
+          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-11111111111111111",
           "eks.amazonaws.com/sourceLaunchTemplateVersion": "1",
           "failure-domain.beta.kubernetes.io/region": "eu-west-1",
           "failure-domain.beta.kubernetes.io/zone": "eu-west-1c",

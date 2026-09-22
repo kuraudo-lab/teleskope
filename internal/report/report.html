@@ -1928,7 +1928,12 @@
         <div id="analysisBody" class="body analysis-body"><p class="empty">Run AI analysis from the live view after a snapshot is available.</p></div>
       </div>
     </section>
-<section class="section stack" data-section="eks"><div class="panel page-analysis" data-analysis-page="eks" hidden><div class="page-analysis-head"><div><h3>EKS AI analysis</h3><p>Analyze the current EKS evidence and selected namespace.</p></div><button type="button" class="export-button ai-button page-analyze-button" data-analyze-page="eks" disabled><span>Analyze EKS</span></button></div><div id="analysisBody-eks" class="body analysis-body"><p class="empty">No scoped analysis yet.</p></div></div><div class="panel"><h3>EKS overview</h3><div class="scroll"><table id="eksOverviewTable"></table></div></div><div class="panel"><h3>Upgrade / rollback insights</h3><div class="scroll"><table id="eksInsightsTable"></table></div></div><div class="panel"><h3>Compute capacity and declared usage</h3><div class="scroll"><table id="eksCapacityTable"></table></div></div><div class="panel"><h3>Network</h3><div class="scroll"><table id="eksNetworkTable"></table></div></div><div class="panel"><h3>EKS networking details</h3><div class="scroll"><table id="eksNetworkDetailsTable"></table></div></div><div class="panel"><h3>Security and identity</h3><div class="scroll"><table id="eksSecurityTable"></table></div></div><div class="panel"><h3>Access entries</h3><div class="scroll"><table id="accessEntriesTable"></table></div></div><div class="panel"><h3>Pod Identity associations</h3><div class="scroll"><table id="podIdentityTable"></table></div></div><div class="panel"><h3>Managed add-ons</h3><div class="scroll"><table id="addonsTable"></table></div></div><div class="panel"><h3>Managed nodegroups</h3><div class="scroll"><table id="nodegroupsTable"></table></div></div><div class="panel"><h3>Nodegroup runtime readiness</h3><div class="scroll"><table id="nodegroupReadinessTable"></table></div></div></section>
+<section class="section stack" data-section="eks"><div class="panel page-analysis" data-analysis-page="eks" hidden><div class="page-analysis-head"><div><h3>EKS AI analysis</h3><p>Analyze the current EKS evidence and selected namespace.</p></div><button type="button" class="export-button ai-button page-analyze-button" data-analyze-page="eks" disabled><span>Analyze EKS</span></button></div><div id="analysisBody-eks" class="body analysis-body"><p class="empty">No scoped analysis yet.</p></div></div><div class="panel"><h3>EKS overview</h3><div class="scroll"><table id="eksOverviewTable"></table></div></div></section>
+    <section class="section stack" data-section="eks-upgrades"><div class="panel"><h3>Upgrade / rollback insights</h3><div class="scroll"><table id="eksInsightsTable"></table></div></div></section>
+    <section class="section stack" data-section="eks-compute"><div class="panel"><h3>Compute capacity and declared usage</h3><div class="scroll"><table id="eksCapacityTable"></table></div></div><div class="panel"><h3>Managed nodegroups</h3><div class="scroll"><table id="nodegroupsTable"></table></div></div><div class="panel"><h3>Auto Scaling groups</h3><div class="scroll"><table id="autoScalingGroupsTable"></table></div></div><div class="panel"><h3>EC2 instances</h3><div class="scroll"><table id="eksInstancesTable"></table></div></div><div class="panel"><h3>Nodegroup runtime readiness</h3><div class="scroll"><table id="nodegroupReadinessTable"></table></div></div></section>
+    <section class="section stack" data-section="eks-network"><div class="panel"><h3>Network</h3><div class="scroll"><table id="eksNetworkTable"></table></div></div><div class="panel"><h3>VPC details</h3><div class="scroll"><table id="eksVPCsTable"></table></div></div><div class="panel"><h3>Subnet details</h3><div class="scroll"><table id="eksSubnetsTable"></table></div></div><div class="panel"><h3>Security groups</h3><div class="scroll"><table id="eksSecurityGroupsTable"></table></div></div><div class="panel"><h3>EKS networking evidence</h3><div class="scroll"><table id="eksNetworkDetailsTable"></table></div></div></section>
+    <section class="section stack" data-section="eks-security"><div class="panel"><h3>Security and identity</h3><div class="scroll"><table id="eksSecurityTable"></table></div></div><div class="panel"><h3>Access entries</h3><div class="scroll"><table id="accessEntriesTable"></table></div></div><div class="panel"><h3>Pod Identity associations</h3><div class="scroll"><table id="podIdentityTable"></table></div></div></section>
+    <section class="section stack" data-section="eks-addons"><div class="panel"><h3>Managed add-ons</h3><div class="scroll"><table id="addonsTable"></table></div></div></section>
     <section class="section stack" data-section="nodes"><div class="panel page-analysis" data-analysis-page="nodes" hidden><div class="page-analysis-head"><div><h3>Nodes AI analysis</h3><p>Analyze the nodes visible in the current scope.</p></div><button type="button" class="export-button ai-button page-analyze-button" data-analyze-page="nodes" disabled><span>Analyze Nodes</span></button></div><div id="analysisBody-nodes" class="body analysis-body"><p class="empty">No scoped analysis yet.</p></div></div><div class="panel"><h3>Nodes</h3><div class="scroll"><table id="nodesTable"></table></div></div></section>
     <section class="section stack" data-section="images"><div class="panel"><h3>Running images</h3><div class="scroll"><table id="imagesTable"></table></div></div><div class="panel"><h3>Running containers</h3><div class="scroll"><table id="containersTable"></table></div></div></section>
     <section class="section stack" data-section="crds"><div class="panel"><h3>CRD types</h3><div class="scroll"><table id="crdTypesTable"></table></div></div><div class="panel"><h3>CRD instances</h3><div class="scroll"><table id="crdInstancesTable"></table></div></div></section>
@@ -1955,10 +1960,11 @@ let reportMarkdown = document.getElementById('markdown-data').textContent;
 let k = snapshot.kubernetes || {};
 let eks = snapshot.eks || {};
 let cluster = eks.cluster || {};
-const primaryNavItems = [['overview','Overview'], ['advisor','Advisory'], ['eks','EKS']];
+const primaryNavItems = [['overview','Overview'], ['advisor','Advisory']];
+const eksNavItems = [['eks','Overview'], ['eks-upgrades','Upgrades'], ['eks-compute','Compute'], ['eks-network','Network'], ['eks-security','Security'], ['eks-addons','Add-ons']];
 const kubernetesNavItems = [['nodes','Nodes'], ['images','Running images'], ['crds','Custom resources'], ['workloads','Workloads'], ['network','Network'], ['security','Security'], ['policies','Policies'], ['storage','Storage']];
 const trailingNavItems = document.body.dataset.live === 'true' ? [['events', 'Events']] : [];
-const navItems = [...primaryNavItems, ...kubernetesNavItems, ...trailingNavItems];
+const navItems = [...primaryNavItems, ...eksNavItems, ...kubernetesNavItems, ...trailingNavItems];
 let llmAnalysis = null;
 let llmAnalyses = {};
 const byId = id => document.getElementById(id);
@@ -2136,13 +2142,17 @@ function topologySearchMatches(node) {
   return haystack.includes(topologySearch);
 }
 function syncResourceFilterState() { byId('focus').disabled = activeSection === 'advisor' || activeSection === 'events'; byId('resourceType').disabled = activeSection !== 'overview'; }
-function closeKubernetesMenu() { document.querySelector('#nav .nav-menu')?.classList.remove('open'); document.querySelector('#nav .nav-menu-button')?.setAttribute('aria-expanded', 'false'); }
+function closeNavMenus() { document.querySelectorAll('#nav .nav-menu').forEach(menu => { menu.classList.remove('open'); menu.querySelector('.nav-menu-button')?.setAttribute('aria-expanded', 'false'); }); }
 function syncNavActive() {
-  document.querySelectorAll('#nav [data-target]').forEach(b => b.classList.toggle('active', b.dataset.target === activeSection));
-  const inKubernetes = kubernetesNavItems.some(([id]) => id === activeSection);
-  document.querySelector('#nav .nav-menu-button')?.classList.toggle('has-active', inKubernetes);
+  document.querySelectorAll('#nav [data-target]').forEach(b => {
+    const active = b.dataset.target === activeSection;
+    b.classList.toggle('active', active);
+    if (active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  const groups = {eks: eksNavItems, kubernetes: kubernetesNavItems};
+  document.querySelectorAll('#nav .nav-menu').forEach(menu => menu.querySelector('.nav-menu-button')?.classList.toggle('has-active', arr(groups[menu.dataset.navGroup]).some(([id]) => id === activeSection)));
 }
-function positionKubernetesMenu(menu) {
+function positionNavMenu(menu) {
   const button = menu.querySelector('.nav-menu-button');
   const items = menu.querySelector('.nav-menu-items');
   if (!button || !items) return;
@@ -2150,26 +2160,54 @@ function positionKubernetesMenu(menu) {
   items.style.left = `${Math.min(rect.left, window.innerWidth - 190)}px`;
   items.style.top = `${rect.bottom + 8}px`;
 }
-function selectSection(id) { activeSection = id; document.body.dataset.activeSection = id; syncNavActive(); document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === activeSection)); closeKubernetesMenu(); syncResourceFilterState(); renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); }
+function selectSection(id) { activeSection = id; document.body.dataset.activeSection = id; syncNavActive(); document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.dataset.section === activeSection)); closeNavMenus(); syncResourceFilterState(); renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); }
 function renderNav() {
   const primary = primaryNavItems.map(([id,label],i) => `<button class="tab ${i===0?'active':''}" data-target="${id}">${label}</button>`).join('');
-  const kubernetes = `<div class="nav-menu"><button type="button" class="tab nav-menu-button" aria-haspopup="menu" aria-expanded="false">Kubernetes</button><div class="nav-menu-items" role="menu">${kubernetesNavItems.map(([id,label]) => `<button type="button" role="menuitem" class="tab" data-target="${id}">${label}</button>`).join('')}</div></div>`;
+  const menu = (group, label, items) => `<div class="nav-menu" data-nav-group="${group}"><button type="button" class="tab nav-menu-button" aria-haspopup="menu" aria-expanded="false">${label}</button><div class="nav-menu-items" role="menu" aria-label="${label} projects">${items.map(([id,itemLabel]) => `<button type="button" role="menuitem" class="tab" data-target="${id}">${itemLabel}</button>`).join('')}</div></div>`;
+  const eksMenu = menu('eks', 'EKS', eksNavItems);
+  const kubernetes = menu('kubernetes', 'Kubernetes', kubernetesNavItems);
   const trailing = trailingNavItems.map(([id,label]) => `<button class="tab" data-target="${id}"><span>${label}</span>${id === 'events' ? '<span id="eventsNavStatus" class="nav-status loading">Waiting</span>' : ''}</button>`).join('');
-  byId('nav').innerHTML = primary + kubernetes + trailing;
+  byId('nav').innerHTML = primary + eksMenu + kubernetes + trailing;
   byId('nav').onclick = e => {
     const menuButton = e.target.closest('.nav-menu-button');
     if (menuButton) {
       const menu = menuButton.closest('.nav-menu');
       const open = !menu.classList.contains('open');
-      document.querySelectorAll('#nav .nav-menu.open').forEach(el => el.classList.remove('open'));
+      closeNavMenus();
       menu.classList.toggle('open', open);
       menuButton.setAttribute('aria-expanded', String(open));
-      if (open) positionKubernetesMenu(menu);
+      if (open) positionNavMenu(menu);
       return;
     }
     const btn = e.target.closest('[data-target]');
     if (!btn) return;
     selectSection(btn.dataset.target);
+  };
+  byId('nav').onkeydown = e => {
+    const menu = e.target.closest('.nav-menu');
+    if (!menu) return;
+    const button = menu.querySelector('.nav-menu-button');
+    const items = [...menu.querySelectorAll('.nav-menu-items [data-target]')];
+    if (e.key === 'Escape') {
+      closeNavMenus();
+      button.focus();
+      e.preventDefault();
+      return;
+    }
+    if (e.target === button && e.key === 'ArrowDown') {
+      closeNavMenus();
+      menu.classList.add('open');
+      button.setAttribute('aria-expanded', 'true');
+      positionNavMenu(menu);
+      items[0]?.focus();
+      e.preventDefault();
+      return;
+    }
+    const index = items.indexOf(e.target);
+    if (index >= 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      items[(index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+      e.preventDefault();
+    }
   };
   syncNavActive();
 }
@@ -2257,7 +2295,12 @@ function renderTables() {
   table('accessEntriesTable', ['Principal','Type','User','Groups','Policies'], eksProjection.accessEntries, 'eks', r => [esc(r.principal), esc(r.type), esc(r.user), esc(r.groups), esc(r.policies)]);
   table('podIdentityTable', ['Namespace','ServiceAccount','Role','Target role','Owner'], eksProjection.podIdentities, 'eks', r => [esc(r.namespace), esc(r.serviceAccount), esc(r.role), esc(r.targetRole), esc(r.owner)]);
   table('addonsTable', ['Name','Version','Status','Namespace','Target Kubernetes','Compatible versions','Upgrade','IAM','Issues'], eksProjection.addons, 'eks', r => [esc(r.name), esc(r.version), esc(r.status), esc(r.namespace), esc(r.targetKubernetes), esc(r.compatibleVersions), esc(r.upgrade), esc(r.iam), esc(r.issues)]);
-  table('nodegroupsTable', ['Name','Version','Release','Status','AMI','Capacity','Size','Subnets','IAM','Issues'], eksProjection.nodegroups, 'eks', r => [esc(r.name), esc(r.version), esc(r.release), esc(r.status), esc(r.ami), esc(r.capacity), esc(r.size), esc(r.subnets), esc(r.iam), esc(r.issues)]);
+  table('nodegroupsTable', ['Name','Version','Release','Status','AMI','Capacity','Size','Subnets','ASGs','Instances','IAM','Issues'], eksProjection.nodegroups, 'eks', r => [esc(r.name), esc(r.version), esc(r.release), esc(r.status), esc(r.ami), esc(r.capacity), esc(r.size), esc(r.subnets), esc(r.asgs), esc(r.instances), esc(r.iam), esc(r.issues)]);
+  table('autoScalingGroupsTable', ['Name','Nodegroup','Size','AZs','Subnets','Instances','Launch template','Health check'], eksProjection.autoScalingGroups, 'eks', r => [esc(r.name), esc(r.nodegroup), esc(r.size), esc(r.zones), esc(r.subnets), esc(r.instances), esc(r.launchTemplate), esc(r.healthCheckType)]);
+  table('eksInstancesTable', ['Instance','Name','State','Type','AZ','Private IP','Subnet','Security groups','Nodegroup','ASG','Kubernetes node','Launch template','AMI'], eksProjection.instances, 'eks', r => [esc(r.instanceId), esc(r.name), esc(r.state), esc(r.instanceType), esc(r.zone), esc(r.privateIp), esc(r.subnetId), esc(r.securityGroups), esc(r.nodegroup), esc(r.autoScalingGroup), esc(r.kubernetesNode), esc(r.launchTemplate), esc(r.imageId)]);
+  table('eksVPCsTable', ['VPC','CIDR','State','Tenancy','DNS support','DNS hostnames','DHCP options','Tags'], eksProjection.vpcs, 'eks', r => [esc(r.vpcId), esc(r.cidr), esc(r.state), esc(r.tenancy), esc(r.dnsSupport), esc(r.dnsHostnames), esc(r.dhcpOptions), esc(r.tags)]);
+  table('eksSubnetsTable', ['Subnet','VPC','CIDR','AZ','AZ ID','State','Available IPs','Public IP on launch','Route table','NAT gateways','Tags'], eksProjection.subnets, 'eks', r => [esc(r.subnetId), esc(r.vpcId), esc(r.cidr), esc(r.zone), esc(r.zoneId), esc(r.state), esc(r.availableAddresses), esc(r.publicIpOnLaunch), esc(r.routeTable), esc(r.natGateways), esc(r.tags)]);
+  table('eksSecurityGroupsTable', ['Security group','Name','Description','VPC','Ingress rules','Egress rules','Tags'], eksProjection.securityGroups, 'eks', r => [esc(r.groupId), esc(r.name), esc(r.description), esc(r.vpcId), esc(r.ingress), esc(r.egress), esc(r.tags)]);
   table('nodegroupReadinessTable', ['Group','Evidence','AZ','Expected version','Expected release','Expected AMI','Launch template','Nodes','Kubelet','OS image','Runtime','Instance types','Readiness'], eksProjection.nodegroupReadiness, 'eks', r => [esc(r.group), esc(r.evidence), esc(r.zone), esc(r.expectedVersion), esc(r.expectedRelease), esc(r.expectedAmi), esc(r.launchTemplate), esc(r.nodes), esc(r.observedKubelet), esc(r.observedOs), esc(r.observedRuntime), esc(r.observedInstances), esc(r.readiness)]);
   table('nodesTable', ['Node','ProviderID','Ready','Schedulable','Kubelet','Runtime','OS','Kernel','Arch','Capacity','Allocatable','Taints','Key labels','Blind spots'], k.nodes, 'node', r => [esc(r.name), esc(r.providerId), esc(r.ready), esc(!r.unschedulable), esc(r.kubeletVersion), esc(r.containerRuntime), esc(r.osImage), esc(r.kernelVersion), esc(r.architecture), esc(resourceMap(r.capacity)), esc(resourceMap(r.allocatable)), esc(taints(r.taints)), esc(nodeLabels(r.labels)), esc(join(r.nodeLocalBlindSpots))]);
   table('imagesTable', ['Image','Pods','Containers','Runtime','Namespaces','Workloads','Image IDs'], k.runningImages, 'image', r => [`<b>${esc(r.image)} <span class="muted">(pods=${r.podCount || 0})</span></b>`, esc(r.podCount || 0), esc(r.containerCount || 0), chips(r.runtimes), chips(r.namespaces), chips(r.workloads), esc(arr(r.imageIds).map(shortDigest).join(', ') || '-')]);
@@ -2581,7 +2624,7 @@ function renderAnalysis(page='advisor') {
   analysisBodyFor(page).innerHTML = `<p class="analysis-summary">${esc(analysis.summary || 'No summary returned.')}</p>${meta ? `<p class="analysis-meta">${esc(meta)}</p>` : ''}${analysisGroup('Observed facts', facts)}${analysisGroup('Inference', inference)}${limitations}`;
 }
 function renderAll() { renderAdvisor(); renderAnalysis(); Object.keys(llmAnalyses).forEach(renderAnalysis); renderCards(); renderTables(); renderTopology(); renderWorkloadSearch(); }
-document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (!e.target.closest('#nav .nav-menu')) closeKubernetesMenu(); const workload = e.target.closest('[data-workload-key]'); if (workload) { openWorkloadByKey(workload.dataset.workloadKey); return; } if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
+document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (!e.target.closest('#nav .nav-menu')) closeNavMenus(); const workload = e.target.closest('[data-workload-key]'); if (workload) { openWorkloadByKey(workload.dataset.workloadKey); return; } if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
 byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); }, {passive:false});
 byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, detail:e.target.closest('[data-detail]')?.dataset.detail}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointermove', e => { if (!topologyDrag.active) return; const dx = e.clientX - topologyDrag.startX, dy = e.clientY - topologyDrag.startY; topologyDrag.moved = topologyDrag.moved || Math.abs(dx) + Math.abs(dy) > 3; topologyView.x = topologyDrag.viewX + dx; topologyView.y = topologyDrag.viewY + dy; applyTopologyTransform(); });

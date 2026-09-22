@@ -23,6 +23,10 @@ PLACEHOLDERS = {
 EXTRA_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = []
 
 
+RESOURCE_ID_PATTERN = re.compile(r"\b(vpc|subnet|sg|i|lt|ami|rtb|nat|dopt)-[0-9a-f]+\b")
+RESOURCE_ID_MAPS: dict[str, dict[str, str]] = {}
+
+
 PATTERN_REPLACEMENTS = [
     (re.compile(r"\b\d{12}\b"), PLACEHOLDERS["account"]),
     (
@@ -77,21 +81,25 @@ PATTERN_REPLACEMENTS = [
     (re.compile(r"\bip-\d+-\d+-\d+-\d+\.[a-z0-9-]+\.compute\.internal\b"), "demo-node.internal"),
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}/\d{1,2}\b"), "demo-cidr"),
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"), "demo-ip"),
-    (re.compile(r"\bvpc-[0-9a-f]+\b"), "vpc-00000000000000000"),
-    (re.compile(r"\bsubnet-[0-9a-f]+\b"), "subnet-00000000000000000"),
-    (re.compile(r"\bsg-[0-9a-f]+\b"), "sg-00000000000000000"),
-    (re.compile(r"\bi-[0-9a-f]+\b"), "i-00000000000000000"),
-    (re.compile(r"\blt-[0-9a-f]+\b"), "lt-00000000000000000"),
-    (re.compile(r"\bami-[0-9a-f]+\b"), "ami-00000000000000000"),
     (re.compile(r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b"), "00000000-0000-0000-0000-000000000000"),
 ]
 
 
 def sanitize_string(value: str) -> str:
     out = value
+    out = RESOURCE_ID_PATTERN.sub(pseudonymize_resource_id, out)
     for pattern, replacement in [*PATTERN_REPLACEMENTS, *EXTRA_REPLACEMENTS]:
         out = pattern.sub(replacement, out)
     return out
+
+
+def pseudonymize_resource_id(match: re.Match[str]) -> str:
+    prefix = match.group(1)
+    original = match.group(0)
+    mapping = RESOURCE_ID_MAPS.setdefault(prefix, {})
+    if original not in mapping:
+        mapping[original] = f"{prefix}-{len(mapping) + 1:017x}"
+    return mapping[original]
 
 
 def sanitize(value: Any) -> Any:
@@ -112,19 +120,26 @@ def stable_name(prefix: str, value: str) -> str:
 def normalize_nodes(snapshot: dict[str, Any]) -> None:
     kubernetes = snapshot.get("kubernetes") or {}
     node_names: dict[str, str] = {}
+    instance_ids: dict[str, str] = {}
     for index, node in enumerate(kubernetes.get("nodes") or [], start=1):
         old = node.get("name")
         new = f"demo-node-{index}"
         if old:
             node_names[old] = new
         node["name"] = new
-        if node.get("providerId"):
-            node["providerId"] = f"aws:///eu-west-1a/demo-instance-{index}"
+        provider_id = node.get("providerId")
+        if provider_id:
+            provider_prefix, _, old_instance_id = provider_id.rpartition("/")
+            new_instance_id = f"i-{index:017x}"
+            if old_instance_id:
+                instance_ids[old_instance_id] = new_instance_id
+            node["providerId"] = f"{provider_prefix}/{new_instance_id}"
         labels = node.get("labels") or {}
         labels["kubernetes.io/hostname"] = new
         labels["eks.amazonaws.com/nodegroup"] = PLACEHOLDERS["nodegroup"]
         node["labels"] = labels
     replace_node_refs(kubernetes, node_names)
+    replace_exact_strings(snapshot, instance_ids)
 
 
 def replace_node_refs(value: Any, node_names: dict[str, str]) -> None:
@@ -139,6 +154,23 @@ def replace_node_refs(value: Any, node_names: dict[str, str]) -> None:
     elif isinstance(value, list):
         for item in value:
             replace_node_refs(item, node_names)
+
+
+def replace_exact_strings(value: Any, replacements: dict[str, str]) -> None:
+    if not replacements:
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if isinstance(item, str) and item in replacements:
+                value[key] = replacements[item]
+            else:
+                replace_exact_strings(item, replacements)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            if isinstance(item, str) and item in replacements:
+                value[index] = replacements[item]
+            else:
+                replace_exact_strings(item, replacements)
 
 
 def normalize_generated_names(snapshot: dict[str, Any]) -> None:

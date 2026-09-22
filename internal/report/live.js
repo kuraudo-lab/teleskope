@@ -4,6 +4,7 @@ document.querySelector('.toolbar').insertAdjacentHTML('beforeend', '<button id="
 const analyzeButton = byId('analyzeSnapshot');
 const pageAnalysisButtons = [...document.querySelectorAll('[data-analyze-page]')];
 const scopedAnalysisPages = new Set(['eks','nodes','workloads','network','storage','security']);
+function normalizedAnalysisPage(pageId) { return String(pageId || '').startsWith('eks-') ? 'eks' : pageId; }
 document.querySelectorAll('[data-analysis-page]').forEach(panel => { panel.hidden = false; });
 analyzeButton.hidden = false;
 syncAnalyzeButtonState();
@@ -48,7 +49,7 @@ function syncOneAnalyzeButton(button, page, label, lastKey) {
 analyzeButton.onclick = () => runScopedAnalysis(activeSection, true);
 pageAnalysisButtons.forEach(button => { button.onclick = () => runScopedAnalysis(button.dataset.analyzePage, false); });
 async function runScopedAnalysis(pageId, fromToolbar) {
-  const resultPage = scopedAnalysisPages.has(pageId) ? pageId : 'advisor';
+  const resultPage = scopedAnalysisPages.has(normalizedAnalysisPage(pageId)) ? normalizedAnalysisPage(pageId) : 'advisor';
   const analysisRequest = currentAnalysisRequest(pageId);
   const analysisKey = currentAnalysisKey(analysisRequest);
   const lastKey = fromToolbar ? lastAnalyzedRequestKey : (lastAnalyzedRequestKeys[pageId] || '');
@@ -75,14 +76,16 @@ async function runScopedAnalysis(pageId, fromToolbar) {
   }
 }
 function analysisResourceType(pageId) {
+  pageId = normalizedAnalysisPage(pageId);
   if (scopedAnalysisPages.has(pageId)) return pageId;
   return pageId === 'overview' && resourceFilter !== 'all' ? resourceFilter : '';
 }
 function currentAnalysisRequest(pageId=activeSection) {
+  const normalizedPage = normalizedAnalysisPage(pageId);
   const scope = {
-    pageId: pageId || '',
+    pageId: normalizedPage || '',
     namespace: nsFilter === 'all' ? '' : nsFilter,
-    resourceType: analysisResourceType(pageId),
+    resourceType: analysisResourceType(normalizedPage),
     selectedRefs: selectedDetail ? [selectedDetail].filter(refLike) : []
   };
   return {revision: liveRevision, scope};
