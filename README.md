@@ -67,6 +67,24 @@ Use AWS profile and region overrides when needed:
 teleskope scan eks --cluster my-cluster --profile prod --region ap-northeast-1
 ```
 
+Deep EKS infrastructure collection follows references from the target cluster
+and its managed node groups instead of scanning unrelated account resources. In
+addition to the existing EKS and STS permissions, grant these read-only actions
+to populate the Compute, Network, and Security pages:
+
+```text
+autoscaling:DescribeAutoScalingGroups
+ec2:DescribeInstances
+ec2:DescribeVpcs
+ec2:DescribeVpcAttribute
+ec2:DescribeSubnets
+ec2:DescribeRouteTables
+ec2:DescribeSecurityGroups
+```
+
+Missing auxiliary permissions are recorded as partial coverage; they do not
+discard the EKS control-plane inventory that was collected successfully.
+
 Collect Kubernetes-only inventory from your current kubeconfig:
 
 ```sh
@@ -84,7 +102,7 @@ Each report keeps raw evidence and a human-readable view side by side:
 | Artifact | Purpose |
 | --- | --- |
 | `snapshot.json` | Complete inventory snapshot for automation and later analysis |
-| `eks.json` | AWS-side EKS metadata, add-ons, node groups, access entries, and Pod Identity associations |
+| `eks.json` | AWS-side EKS metadata, node-group infrastructure, networking, security, add-ons, access entries, and Pod Identity associations |
 | `kubernetes.json` | Kubernetes API resources, workloads, networking, storage, RBAC, and platform objects |
 | `advisor.json` | Evidence-backed cluster capability assessment |
 | `coverage.json` | Collection coverage and errors, so partial inventory is explicit |

@@ -9,6 +9,8 @@ import (
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	ekstypes "github.com/aws/aws-sdk-go-v2/service/eks/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -35,9 +37,11 @@ func Collect(ctx context.Context, opts Options) (*inventory.Snapshot, error) {
 
 // Collector retains the SDK credential cache and EKS client between scans.
 type Collector struct {
-	opts   Options
-	cfg    awssdk.Config
-	client *eks.Client
+	opts        Options
+	cfg         awssdk.Config
+	client      *eks.Client
+	autoScaling autoScalingAPI
+	ec2         ec2API
 }
 
 // NewCollector initializes the AWS configuration and reusable client.
@@ -55,7 +59,13 @@ func NewCollector(ctx context.Context, opts Options) (*Collector, error) {
 		return nil, fmt.Errorf("AWS region is not configured; set AWS_REGION, AWS_DEFAULT_REGION, shared config region, or --region")
 	}
 
-	return &Collector{opts: opts, cfg: cfg, client: eks.NewFromConfig(cfg)}, nil
+	return &Collector{
+		opts:        opts,
+		cfg:         cfg,
+		client:      eks.NewFromConfig(cfg),
+		autoScaling: autoscaling.NewFromConfig(cfg),
+		ec2:         ec2.NewFromConfig(cfg),
+	}, nil
 }
 
 // Collect builds a fresh AWS inventory.
@@ -107,6 +117,16 @@ func (c *Collector) Collect(ctx context.Context) (*inventory.Snapshot, error) {
 		snapshot.Coverage = append(snapshot.Coverage, partial("eks", "Nodegroups", len(snapshot.EKS.Nodegroups), err, now))
 	}
 	progress(opts.Progress, "managed nodegroups=%d", len(snapshot.EKS.Nodegroups))
+
+	progress(opts.Progress, "collecting EKS infrastructure")
+	collectInfrastructure(ctx, c.autoScaling, c.ec2, snapshot, now)
+	progress(opts.Progress, "infrastructure asgs=%d instances=%d vpcs=%d subnets=%d security-groups=%d",
+		len(snapshot.EKS.Infrastructure.AutoScalingGroups),
+		len(snapshot.EKS.Infrastructure.Instances),
+		len(snapshot.EKS.Infrastructure.VPCs),
+		len(snapshot.EKS.Infrastructure.Subnets),
+		len(snapshot.EKS.Infrastructure.SecurityGroups),
+	)
 
 	progress(opts.Progress, "collecting upgrade and rollback insights")
 	snapshot.EKS.Insights, err = collectInsights(ctx, client, opts.ClusterName, now, &snapshot.Coverage)
