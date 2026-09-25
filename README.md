@@ -20,6 +20,41 @@ the moment before a migration, upgrade, incident review, or platform cleanup:
 you need the shape of the system, the raw evidence behind it, and a local view
 you can share with teammates without granting cluster access.
 
+## Highlights
+
+Three short walkthroughs captured from the real UI using fictional demo data.
+Each GIF loops through three key moments in nine seconds; no cluster credentials
+or AI provider calls were used. [Try the sample reports](docs/launch/demo-assets.md).
+
+**Follow a workload to its storage.** Focus the topology, inspect Pod/node/volume
+relationships, then open the PVC's collected fields.
+
+![Topology focus, workload dependencies, and PVC evidence](assets/highlights/topology.gif)
+
+<details>
+<summary><strong>Inspect Gateway routing and storage configuration</strong></summary>
+
+Follow an HTTPRoute to its parent Gateway and backend Service, inspect its raw
+inventory, then review PVC bindings and StorageClass expansion support.
+
+![Gateway route evidence and persistent storage configuration](assets/highlights/evidence.gif)
+
+</details>
+
+<details>
+<summary><strong>Find a resource across clusters</strong></summary>
+
+Review the fleet, search for `orders` across both clusters, then open the target
+cluster's storage view. Partial collection is visible throughout.
+
+![Fleet overview, cross-cluster search, and target cluster drill-down](assets/highlights/fleet.gif)
+
+</details>
+
+[Static frames and capture notes](assets/highlights/README.md) are available for
+readers who prefer still images. These previews show the current source checkout;
+the latest published release may lag behind it.
+
 ## Quick install
 
 Install the latest stable release with one command.

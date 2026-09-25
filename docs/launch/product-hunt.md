@@ -6,6 +6,15 @@ positioning become ready.
 
 ## Launch Decision
 
+Latest audit: [2026-09-25 readiness review](ph-readiness-2026-09-25.md).
+Current decision: **NO-GO for scheduling**. Public v0.15.0 downloads and six-platform
+binary smoke checks are verified; a license decision, publicly hosted interactive
+demo, release/demo alignment, consolidated data-handling note, published-install
+verification, and Product Hunt account/gallery confirmation remain open. Three README
+[highlight GIFs](../../assets/highlights/) now cover topology, evidence, and fleet
+review. They are nine-second UI keyframe walkthroughs; a dedicated Product Hunt
+gallery and upload preview still need verification.
+
 Teleskope is a good fit for Product Hunt once it is easy for a new visitor to
 try or inspect the product without preparing a real Kubernetes cluster.
 
@@ -38,7 +47,7 @@ Short tagline options:
 Category:
 
 - Developer Tools
-- Open Source
+- Open Source, only after the owner selects a license and adds `LICENSE`
 - Artificial Intelligence, only if the optional LLM analysis becomes central to
   the launch story
 
@@ -74,10 +83,9 @@ Tagline:
 
 Description:
 
-> Teleskope collects EKS and Kubernetes inventory into reviewable local reports.
-> Scan a cluster, inspect topology and platform configuration, compare source
-> and target environments, and share the evidence with teammates without giving
-> everyone direct cluster access.
+> Inspect EKS and Kubernetes inventory, topology, and migration gaps in local
+> reports. Share evidence without granting cluster access. Try a synthetic demo;
+> optional AI analysis stays separate from deterministic findings.
 
 Maker comment draft:
 
@@ -99,13 +107,14 @@ Maker comment draft:
 
 ## Assets To Prepare
 
-The Product Hunt launch should not happen until these assets are ready:
+Project launch assets to prepare (the video is optional; see the latest audit
+for actual Product Hunt requirements):
 
 - Public sample report built from realistic demo data.
 - Download link for a stable release.
 - Landing page with a clear demo, install command, and GitHub link.
 - Product Hunt gallery images: three to five screenshots or short visual cards.
-- One short demo video, ideally 45 to 75 seconds.
+- Optional short demo video, ideally 45 to 75 seconds; it is not a PH requirement.
 - Clear privacy and security note covering local reports, credentials, Secrets,
   ConfigMaps, live server exposure, and optional LLM analysis.
 - GitHub README section that points visitors to the sample report and release.
@@ -126,13 +135,18 @@ The launch video should show the product, not a conceptual slide deck.
 
 Launch later, but keep these current while features are still moving:
 
-- [ ] Decide the first launch version number.
+- [ ] Decide the first launch version number (published latest: v0.15.0).
+- [ ] Select a license and add `LICENSE` before using the Open Source positioning.
+- [x] Verify a public stable release and six-platform native binary smoke checks
+  (v0.15.0; this does not verify the public install scripts).
 - [ ] Verify install scripts against the published release on macOS, Linux, and
   Windows.
 - [x] Generate a realistic synthetic demo dataset ([samples and reproduction](demo-assets.md)).
-- [ ] Publish a public sample report.
-- [ ] Capture screenshots from the latest UI.
-- [ ] Record the demo video against the latest release candidate.
+- [ ] Publish a public interactive sample report (committed HTML exists; Pages
+  was not configured at the latest audit).
+- [x] Capture current synthetic UI highlights ([GIFs and nine still frames](../../assets/highlights/README.md)).
+- [ ] Export dedicated PH gallery assets and verify the submission preview.
+- [ ] Optionally record the demo video against the latest release candidate.
 - [ ] Add a concise security and data-handling note.
 - [ ] Prepare a landing page or GitHub Pages site.
 - [ ] Prepare Product Hunt copy from the current feature set.
