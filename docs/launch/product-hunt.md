@@ -8,8 +8,8 @@ positioning become ready.
 
 Latest audit: [2026-09-25 readiness review](ph-readiness-2026-09-25.md).
 Current decision: **NO-GO for scheduling**. Public v0.15.0 downloads and six-platform
-binary smoke checks are verified; a license decision, publicly hosted interactive
-demo, release/demo alignment, consolidated data-handling note, published-install
+binary smoke checks are verified; Apache-2.0 has been adopted locally. A publicly
+hosted interactive demo, release/demo alignment, consolidated data-handling note, published-install
 verification, and Product Hunt account/gallery confirmation remain open. Three README
 [highlight GIFs](../../assets/highlights/) now cover topology, evidence, and fleet
 review. They are nine-second UI keyframe walkthroughs; a dedicated Product Hunt
@@ -47,7 +47,7 @@ Short tagline options:
 Category:
 
 - Developer Tools
-- Open Source, only after the owner selects a license and adds `LICENSE`
+- Open Source (Apache-2.0; publish the repository license before launch)
 - Artificial Intelligence, only if the optional LLM analysis becomes central to
   the launch story
 
@@ -136,7 +136,8 @@ The launch video should show the product, not a conceptual slide deck.
 Launch later, but keep these current while features are still moving:
 
 - [ ] Decide the first launch version number (published latest: v0.15.0).
-- [ ] Select a license and add `LICENSE` before using the Open Source positioning.
+- [x] Adopt Apache-2.0 and add [LICENSE](../../LICENSE); include it in future release archives.
+- [ ] Publish the license-bearing commit and release (older public packages remain unchanged).
 - [x] Verify a public stable release and six-platform native binary smoke checks
   (v0.15.0; this does not verify the public install scripts).
 - [ ] Verify install scripts against the published release on macOS, Linux, and

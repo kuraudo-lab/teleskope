@@ -430,3 +430,11 @@ Makefile             Local development commands
 
 Internal packages are added as their functionality is implemented. See
 [architecture](docs/architecture.md) for intended module boundaries.
+
+## License
+
+Teleskope is licensed under the [Apache License 2.0](LICENSE).
+Third-party dependencies retain their respective licenses and notices.
+The license does not grant rights to use the project's trademarks except as
+provided in its terms. Release archives built from this revision include the
+license text; older published archives are unchanged.

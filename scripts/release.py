@@ -15,6 +15,25 @@ def archive_name(version, os_name, arch):
     return f"teleskope_{version}_{os_name}_{arch}.{extension}"
 
 
+def verify_license(archive):
+    expected = (Path(__file__).resolve().parents[1] / "LICENSE").read_text(encoding="utf-8")
+    try:
+        if archive.suffix == ".zip":
+            with zipfile.ZipFile(archive) as package:
+                data = package.read("LICENSE")
+        else:
+            with tarfile.open(archive) as package:
+                member = package.getmember("LICENSE")
+                if not member.isfile():
+                    raise ValueError(f"LICENSE must be a regular file: {archive.name}")
+                data = package.extractfile(member).read()
+    except KeyError as error:
+        raise ValueError(f"Missing LICENSE: {archive.name}") from error
+    # Windows checkouts may use CRLF while Linux-built archives use LF.
+    if data.decode("utf-8").replace("\r\n", "\n") != expected:
+        raise ValueError(f"LICENSE does not match repository text: {archive.name}")
+
+
 def verify(directory, version):
     expected = {
         archive_name(version, os_name, arch)
@@ -36,6 +55,7 @@ def verify(directory, version):
         with (directory / name).open("rb") as stream:
             if hashlib.file_digest(stream, "sha256").hexdigest() != digest:
                 raise ValueError(f"Checksum mismatch: {name}")
+        verify_license(directory / name)
 
 
 def smoke(directory, version, os_name, arch):
