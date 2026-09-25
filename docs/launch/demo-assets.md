@@ -1,30 +1,90 @@
-# Demo And Screenshot Plan
+# Public Demo Reports And Screenshot Plan
 
-Use this plan to keep launch visuals aligned with the product as it changes.
+## Open the samples
 
-## Sample Dataset
+The [demo catalog](../demo/index.html) links to all five requested areas. Clone
+or download the repository and open `docs/demo/index.html`, or run:
 
-The public demo should use data that feels like a real platform without exposing
-any real infrastructure.
+```sh
+python3 -m http.server 8090 --bind 127.0.0.1 --directory docs/demo
+```
 
-Recommended shape:
+Open http://127.0.0.1:8090. GitHub's file viewer shows HTML source, not the
+interactive report. No public hosting deployment is implied by these links.
 
-- Two clusters: `source-prod` and `target-prod`.
-- Three namespaces: `checkout`, `platform`, and `observability`.
-- A mix of Deployments, Services, Ingress or Gateway resources, ConfigMaps,
-  StorageClasses, PVCs, CRDs, and RBAC objects.
-- One or two intentional migration gaps, such as a missing IngressClass, changed
-  Kubernetes version, missing CRD, or storage capability difference.
-- A partial collection example that demonstrates coverage without making the
-  product look broken.
+| Area | Artifact | Walkthrough |
+| --- | --- | --- |
+| EKS | [Source report](../demo/source/index.html) | EKS menu → Overview, Compute, Add-ons; one managed nodegroup and the EBS CSI add-on. |
+| Gateway | [Source report](../demo/source/index.html) | Kubernetes menu → Network; HTTPRoute `checkout` references Gateway `public` and Service `checkout-api`. Overview shows the workload relationships. |
+| Storage | [Source](../demo/source/index.html) and [target](../demo/target/index.html) | Kubernetes menu → Storage; `orders-data` is Bound to `demo-orders-pv`, using `demo-block`. Source enables expansion; target disables it. |
+| Hub | [Fleet sample](../demo/hub/index.html) | Two clusters with different Kubernetes versions and intentional partial EKS coverage. Links to cluster reports, fleet JSON, and Markdown. |
+| AI analysis | [Output example](../demo/ai/index.html) | Hand-authored illustrative comparison, observed/inferred findings, evidence paths, limitations, JSON and Markdown downloads. No model was called. |
 
-Avoid:
+For full Hub interaction (filters, search, exports, cluster drill-down):
 
-- Real account IDs, hostnames, IP ranges, ARNs, domain names, service names, or
-  customer names.
-- Secret values.
-- Screenshots that reveal local paths, usernames, cloud account details, or
-  kubeconfig names.
+```sh
+go run ./scripts/demo -serve
+# Open http://127.0.0.1:8091; Ctrl-C to stop
+```
+
+This uses the production Hub handler with an in-memory synthetic fleet and a
+fixed loopback listener. It never contacts AWS, Kubernetes, or an AI provider;
+AI execution is disabled. The static fleet page is a portable summary, not the
+full Hub application. Browser AI output is provided separately in the catalog.
+
+## Reproduce and refresh
+
+From the repository root, with the Go version required by `go.mod` installed:
+
+```sh
+go run ./scripts/demo
+go test ./scripts/demo
+# Optional isolated output directory:
+go run ./scripts/demo -out /tmp/teleskope-demo
+```
+
+The generator embeds `scripts/demo/fixtures/{source,target,analysis}.json` and
+uses the production report, Advisor, Hub, and analysis renderers/models. It does
+not read kubeconfig, AWS profiles, local AI configuration, or the older recorded
+EKS fixture. The first Go run may download build dependencies.
+
+`docs/demo` is committed so readers need no Go installation. Source and target
+each include self-contained HTML, snapshot JSON, Advisor JSON, and summary
+Markdown. Hub includes fleet JSON and both remote-write envelopes. AI includes
+structured JSON and Markdown. Generation overwrites these known output files;
+use a separate output directory when experimenting. Do not edit generated files.
+
+The fixed fixture timestamp is preserved. The generator replaces the Hub
+Markdown renderer's wall-clock generation line with a labeled demo timestamp to
+keep artifacts reproducible. Tests compare regenerated files byte-for-byte with
+the committed outputs, validate catalog links, Gateway/storage references,
+privacy constraints, and the seeded production Hub endpoints. Regenerate and
+commit the artifact changes after report UI or model changes.
+
+## Data provenance and limitations
+
+Every input was authored for this demo; none came from a real cluster or model
+conversation. Fictional cluster names are `source-demo` and `target-demo`, with
+`checkout`, `platform`, and `observability` namespaces. Endpoint and image hosts
+use the reserved `example.invalid` domain; the AWS account is `000000000000`.
+No credentials, Secret values, ConfigMap contents, personal paths, customer
+names, or real network addresses are included. Standard Kubernetes/AWS API names
+and CSI driver identifiers remain intact so the product recognizes capabilities.
+Automated marker checks supplement, rather than replace, review of fixture edits.
+
+Kubernetes versions are illustrative fixture values, not a support matrix.
+EKS upgrade insights are intentionally skipped, so upgrade readiness remains
+unknown. Unrepresented collections must not be interpreted as complete evidence.
+Gateway references do not prove traffic health, and Bound volumes do not prove
+backup/restore readiness. The AI example illustrates the output format; its
+inferences are distinct from inventory facts and deterministic Advisor output.
+
+## Sharing
+
+Use the catalog for README and walkthrough links, or publish the entire
+`docs/demo` directory to a static host while preserving relative paths. The two
+cluster HTML files can also be shared individually. Review modified fixtures
+before publishing; no deployment or hosted URL is created by the generator.
 
 ## Screenshot Set
 

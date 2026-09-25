@@ -1,0 +1,295 @@
+{
+  "schemaVersion": "teleskope.io/advisor/v1alpha1",
+  "ruleVersion": "1",
+  "summary": "0 Ingress classes, 1 Gateway classes, 1 StorageClasses, 0 custom API definitions, 0 EKS insights, 1 EKS managed add-ons and 1 EKS managed nodegroups observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified. RWX bindings observed in 0 StorageClasses; 4 assessments remain unknown and 8 have incomplete coverage.",
+  "capabilities": [
+    {
+      "key": "eks.addon",
+      "scope": "aws-ebs-csi-driver",
+      "implementation": "demo",
+      "assessment": "supported",
+      "basis": "observed",
+      "summary": "Managed add-on is active and has no recorded health issues.",
+      "constraints": [
+        "Add-on status and EKS insights do not verify controller runtime health inside the cluster."
+      ],
+      "evidence": [
+        {
+          "resource": {
+            "kind": "Addon",
+            "name": "aws-ebs-csi-driver"
+          },
+          "field": "addonVersion/status",
+          "value": "demo/ACTIVE",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "collection": [
+        {
+          "area": "eks",
+          "resource": "Addons",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        },
+        {
+          "area": "eks",
+          "resource": "Insights",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "eks.addon/v1"
+    },
+    {
+      "key": "eks.insight",
+      "scope": "cluster",
+      "assessment": "unknown",
+      "basis": "none",
+      "summary": "No EKS upgrade or readiness insights were observed in the snapshot.",
+      "constraints": [
+        "Missing insight evidence is not proof that the cluster is upgrade-ready."
+      ],
+      "collection": [
+        {
+          "area": "eks",
+          "resource": "Insights",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "eks.insight/v1"
+    },
+    {
+      "key": "eks.nodegroup",
+      "scope": "demo-workers",
+      "assessment": "supported",
+      "basis": "observed",
+      "summary": "Managed nodegroup has 1 observed Kubernetes node(s).",
+      "constraints": [
+        "EKS nodegroup configuration and Kubernetes node status do not prove AMI patch freshness or workload safety."
+      ],
+      "evidence": [
+        {
+          "resource": {
+            "apiVersion": "v1",
+            "kind": "Node",
+            "name": "demo-node"
+          },
+          "field": "node.runtime",
+          "value": "zone= kubelet=v1.35.0 os= runtime=containerd://2.0.0 instance=",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        },
+        {
+          "resource": {
+            "kind": "Nodegroup",
+            "name": "demo-workers"
+          },
+          "field": "version/release/ami/status",
+          "value": "1.35///ACTIVE",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "collection": [
+        {
+          "area": "eks",
+          "resource": "Nodegroups",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        },
+        {
+          "area": "kubernetes",
+          "resource": "Nodes",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "eks.nodegroup/v1"
+    },
+    {
+      "key": "extensions.api",
+      "scope": "cluster",
+      "assessment": "unknown",
+      "basis": "none",
+      "summary": "No custom API definitions observed.",
+      "constraints": [
+        "Review collection coverage before drawing conclusions about extensions."
+      ],
+      "collection": [
+        {
+          "area": "kubernetes",
+          "resource": "CustomResourceDefinitions",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "extensions.api/v1"
+    },
+    {
+      "key": "networking.gateway",
+      "scope": "demo-gateway",
+      "implementation": "example.invalid/demo-controller",
+      "assessment": "supported",
+      "basis": "declared",
+      "summary": "Gateway class configured.",
+      "constraints": [
+        "Route kinds, controller acceptance and data-plane readiness are not verified."
+      ],
+      "evidence": [
+        {
+          "resource": {
+            "apiVersion": "gateway.networking.k8s.io/v1",
+            "kind": "GatewayClass",
+            "name": "demo-gateway"
+          },
+          "field": "spec.controllerName",
+          "value": "example.invalid/demo-controller",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "collection": [
+        {
+          "area": "kubernetes",
+          "resource": "GatewayClasses",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "networking.gateway/v1"
+    },
+    {
+      "key": "networking.ingress",
+      "scope": "cluster",
+      "assessment": "unknown",
+      "basis": "none",
+      "summary": "No Ingress class observed.",
+      "constraints": [
+        "Legacy or classless controllers may exist; missing classes do not prove lack of support."
+      ],
+      "collection": [
+        {
+          "area": "kubernetes",
+          "resource": "IngressClasses",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "networking.ingress/v1"
+    },
+    {
+      "key": "storage.expansion",
+      "scope": "demo-block",
+      "implementation": "ebs.csi.aws.com",
+      "assessment": "unsupported",
+      "basis": "declared",
+      "summary": "StorageClass does not allow volume expansion.",
+      "constraints": [
+        "Actual expansion depends on the driver, backend and volume."
+      ],
+      "evidence": [
+        {
+          "resource": {
+            "apiVersion": "storage.k8s.io/v1",
+            "kind": "StorageClass",
+            "name": "demo-block"
+          },
+          "field": "allowVolumeExpansion",
+          "value": "false",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "collection": [
+        {
+          "area": "kubernetes",
+          "resource": "StorageClasses",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "storage.expansion/v1"
+    },
+    {
+      "key": "storage.rwx",
+      "scope": "demo-block",
+      "implementation": "ebs.csi.aws.com",
+      "assessment": "unknown",
+      "basis": "none",
+      "summary": "RWX support is unknown.",
+      "constraints": [
+        "Binding is not a multi-node read/write test or a guarantee for new volumes. Check volume mode and backend configuration."
+      ],
+      "evidence": [
+        {
+          "resource": {
+            "apiVersion": "storage.k8s.io/v1",
+            "kind": "StorageClass",
+            "name": "demo-block"
+          },
+          "field": "provisioner",
+          "value": "ebs.csi.aws.com",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "collection": [
+        {
+          "area": "kubernetes",
+          "resource": "StorageClasses",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        },
+        {
+          "area": "kubernetes",
+          "resource": "PersistentVolumes",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        },
+        {
+          "area": "kubernetes",
+          "resource": "PersistentVolumeClaims",
+          "status": "unavailable",
+          "objectCount": 0,
+          "reason": "Collection coverage not recorded in this snapshot.",
+          "collectedAt": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "coverage": "partial",
+      "freshness": "snapshot",
+      "ruleId": "storage.rwx/v1"
+    }
+  ]
+}

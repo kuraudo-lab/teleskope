@@ -129,7 +129,7 @@ Launch later, but keep these current while features are still moving:
 - [ ] Decide the first launch version number.
 - [ ] Verify install scripts against the published release on macOS, Linux, and
   Windows.
-- [ ] Generate a realistic sanitized demo dataset.
+- [x] Generate a realistic synthetic demo dataset ([samples and reproduction](demo-assets.md)).
 - [ ] Publish a public sample report.
 - [ ] Capture screenshots from the latest UI.
 - [ ] Record the demo video against the latest release candidate.

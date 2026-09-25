@@ -1,0 +1,812 @@
+{
+  "cluster": {
+    "id": "source",
+    "name": "source-demo",
+    "provider": "eks",
+    "region": "eu-west-1"
+  },
+  "revision": 1,
+  "collectedAt": "2026-09-25T00:00:00Z",
+  "snapshot": {
+    "schemaVersion": "teleskope.io/snapshot/v1alpha1",
+    "collectedAt": "2026-09-25T00:00:00Z",
+    "source": {
+      "tool": "teleskope",
+      "version": "synthetic-demo",
+      "mode": "synthetic/offline"
+    },
+    "aws": {
+      "region": "eu-west-1",
+      "accountId": "000000000000"
+    },
+    "eks": {
+      "cluster": {
+        "name": "source-demo",
+        "arn": "arn:aws:eks:eu-west-1:000000000000:cluster/source-demo",
+        "version": "1.34",
+        "status": "ACTIVE",
+        "endpoint": "https://source.example.invalid",
+        "vpc": {
+          "endpointPublicAccess": false,
+          "endpointPrivateAccess": false
+        },
+        "network": {},
+        "accessConfig": {},
+        "autoMode": {}
+      },
+      "addons": [
+        {
+          "name": "aws-ebs-csi-driver",
+          "version": "demo",
+          "status": "ACTIVE"
+        }
+      ],
+      "nodegroups": [
+        {
+          "name": "demo-workers",
+          "version": "1.34",
+          "status": "ACTIVE",
+          "instanceTypes": [
+            "m7i.large"
+          ],
+          "desiredSize": 1,
+          "minSize": 1,
+          "maxSize": 3
+        }
+      ],
+      "infrastructure": {},
+      "accessEntries": null,
+      "podIdentityAssociations": null
+    },
+    "kubernetes": {
+      "context": "source-demo",
+      "server": "https://source.example.invalid",
+      "version": {
+        "gitVersion": "v1.34.0",
+        "major": "1",
+        "minor": "34"
+      },
+      "namespaces": [
+        {
+          "apiVersion": "v1",
+          "kind": "Namespace",
+          "name": "checkout"
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "Namespace",
+          "name": "platform"
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "Namespace",
+          "name": "observability"
+        }
+      ],
+      "nodes": [
+        {
+          "apiVersion": "v1",
+          "kind": "Node",
+          "name": "demo-node",
+          "labels": {
+            "eks.amazonaws.com/nodegroup": "demo-workers"
+          },
+          "kubeletVersion": "v1.34.0",
+          "containerRuntime": "containerd://2.0.0",
+          "capacity": {
+            "cpu": "2",
+            "memory": "8Gi",
+            "pods": "29"
+          },
+          "allocatable": {
+            "cpu": "1900m",
+            "memory": "7Gi",
+            "pods": "29"
+          },
+          "ready": "True"
+        }
+      ],
+      "workloads": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "namespace": "checkout",
+          "name": "checkout-api",
+          "replicas": 1,
+          "readyReplicas": 1,
+          "availableReplicas": 1,
+          "selector": {
+            "app": "checkout-api"
+          },
+          "containers": [
+            {
+              "name": "api",
+              "image": "registry.example.invalid/demo/api:v1"
+            }
+          ]
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "StatefulSet",
+          "namespace": "checkout",
+          "name": "orders",
+          "replicas": 1,
+          "readyReplicas": 1,
+          "selector": {
+            "app": "orders"
+          },
+          "containers": [
+            {
+              "name": "db",
+              "image": "registry.example.invalid/demo/db:v1"
+            }
+          ],
+          "volumes": [
+            {
+              "name": "data",
+              "type": "PersistentVolumeClaim",
+              "persistentVolumeClaim": "orders-data"
+            }
+          ]
+        }
+      ],
+      "pods": [
+        {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "namespace": "checkout",
+          "name": "checkout-api-demo",
+          "phase": "Running",
+          "nodeName": "demo-node",
+          "containers": [
+            {
+              "name": "api",
+              "image": "registry.example.invalid/demo/api:v1"
+            }
+          ],
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "namespace": "checkout",
+              "name": "checkout-api"
+            }
+          ]
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "namespace": "checkout",
+          "name": "orders-demo",
+          "phase": "Running",
+          "nodeName": "demo-node",
+          "containers": [
+            {
+              "name": "db",
+              "image": "registry.example.invalid/demo/db:v1"
+            }
+          ],
+          "volumes": [
+            {
+              "name": "data",
+              "type": "PersistentVolumeClaim",
+              "persistentVolumeClaim": "orders-data"
+            }
+          ],
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "StatefulSet",
+              "namespace": "checkout",
+              "name": "orders"
+            }
+          ]
+        }
+      ],
+      "runningImages": [
+        {
+          "image": "registry.example.invalid/demo/api:v1",
+          "podCount": 1,
+          "containerCount": 1,
+          "namespaces": [
+            "checkout"
+          ],
+          "workloads": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "Deployment",
+              "namespace": "checkout",
+              "name": "checkout-api"
+            }
+          ]
+        },
+        {
+          "image": "registry.example.invalid/demo/db:v1",
+          "podCount": 1,
+          "containerCount": 1,
+          "namespaces": [
+            "checkout"
+          ],
+          "workloads": [
+            {
+              "apiVersion": "apps/v1",
+              "kind": "StatefulSet",
+              "namespace": "checkout",
+              "name": "orders"
+            }
+          ]
+        }
+      ],
+      "services": [
+        {
+          "apiVersion": "v1",
+          "kind": "Service",
+          "namespace": "checkout",
+          "name": "checkout-api",
+          "type": "ClusterIP",
+          "selector": {
+            "app": "checkout-api"
+          },
+          "ports": [
+            {
+              "name": "http",
+              "protocol": "TCP",
+              "port": 80,
+              "targetPort": "8080"
+            }
+          ]
+        }
+      ],
+      "gatewayClasses": [
+        {
+          "apiVersion": "gateway.networking.k8s.io/v1",
+          "kind": "GatewayClass",
+          "name": "demo-gateway",
+          "controllerName": "example.invalid/demo-controller",
+          "parameters": {
+            "name": ""
+          }
+        }
+      ],
+      "gateways": [
+        {
+          "apiVersion": "gateway.networking.k8s.io/v1",
+          "kind": "Gateway",
+          "namespace": "checkout",
+          "name": "public",
+          "className": "demo-gateway",
+          "listeners": [
+            {
+              "name": "http",
+              "protocol": "HTTP",
+              "port": 80,
+              "hostname": "shop.example.invalid"
+            }
+          ]
+        }
+      ],
+      "gatewayRoutes": [
+        {
+          "apiVersion": "gateway.networking.k8s.io/v1",
+          "kind": "HTTPRoute",
+          "namespace": "checkout",
+          "name": "checkout",
+          "parentRefs": [
+            {
+              "kind": "Gateway",
+              "namespace": "checkout",
+              "name": "public",
+              "sectionName": "http"
+            }
+          ],
+          "hostnames": [
+            "shop.example.invalid"
+          ],
+          "rules": [
+            {
+              "matches": [
+                "PathPrefix /"
+              ],
+              "backendRefs": [
+                {
+                  "apiVersion": "v1",
+                  "kind": "Service",
+                  "namespace": "checkout",
+                  "name": "checkout-api"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "storageClasses": [
+        {
+          "apiVersion": "storage.k8s.io/v1",
+          "kind": "StorageClass",
+          "name": "demo-block",
+          "provisioner": "ebs.csi.aws.com",
+          "parameters": {
+            "type": "gp3"
+          },
+          "reclaimPolicy": "Retain",
+          "volumeBindingMode": "WaitForFirstConsumer",
+          "allowVolumeExpansion": true
+        }
+      ],
+      "persistentVolumes": [
+        {
+          "apiVersion": "v1",
+          "kind": "PersistentVolume",
+          "name": "demo-orders-pv",
+          "storageClassName": "demo-block",
+          "capacity": "20Gi",
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "volumeMode": "Filesystem",
+          "phase": "Bound",
+          "claimRef": {
+            "apiVersion": "v1",
+            "kind": "PersistentVolumeClaim",
+            "namespace": "checkout",
+            "name": "orders-data"
+          },
+          "csi": {
+            "driver": "ebs.csi.aws.com",
+            "volumeHandle": "demo-volume",
+            "fsType": "ext4"
+          }
+        }
+      ],
+      "persistentVolumeClaims": [
+        {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "namespace": "checkout",
+          "name": "orders-data",
+          "storageClassName": "demo-block",
+          "volumeName": "demo-orders-pv",
+          "requestedStorage": "20Gi",
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "volumeMode": "Filesystem",
+          "phase": "Bound"
+        }
+      ],
+      "csiDrivers": [
+        {
+          "apiVersion": "storage.k8s.io/v1",
+          "kind": "CSIDriver",
+          "name": "ebs.csi.aws.com",
+          "attachRequired": true,
+          "volumeLifecycleModes": [
+            "Persistent"
+          ]
+        }
+      ],
+      "rbac": {},
+      "policies": {}
+    },
+    "coverage": [
+      {
+        "area": "kubernetes",
+        "resource": "nodes",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "namespaces",
+        "status": "complete",
+        "objectCount": 3,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "deployments",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "statefulsets",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "pods",
+        "status": "complete",
+        "objectCount": 2,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "services",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "gatewayclasses",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "gateways",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "httproutes",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "storageclasses",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "persistentvolumes",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "persistentvolumeclaims",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "kubernetes",
+        "resource": "csidrivers",
+        "status": "complete",
+        "objectCount": 1,
+        "collectedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "area": "eks",
+        "resource": "eks.insight",
+        "status": "skipped",
+        "objectCount": 0,
+        "reason": "Synthetic fixture intentionally omits upgrade insights; readiness is unknown.",
+        "collectedAt": "2026-09-25T00:00:00Z"
+      }
+    ]
+  },
+  "advisor": {
+    "schemaVersion": "teleskope.io/advisor/v1alpha1",
+    "ruleVersion": "1",
+    "summary": "0 Ingress classes, 1 Gateway classes, 1 StorageClasses, 0 custom API definitions, 0 EKS insights, 1 EKS managed add-ons and 1 EKS managed nodegroups observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified. RWX bindings observed in 0 StorageClasses; 4 assessments remain unknown and 8 have incomplete coverage.",
+    "capabilities": [
+      {
+        "key": "eks.addon",
+        "scope": "aws-ebs-csi-driver",
+        "implementation": "demo",
+        "assessment": "supported",
+        "basis": "observed",
+        "summary": "Managed add-on is active and has no recorded health issues.",
+        "constraints": [
+          "Add-on status and EKS insights do not verify controller runtime health inside the cluster."
+        ],
+        "evidence": [
+          {
+            "resource": {
+              "kind": "Addon",
+              "name": "aws-ebs-csi-driver"
+            },
+            "field": "addonVersion/status",
+            "value": "demo/ACTIVE",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "collection": [
+          {
+            "area": "eks",
+            "resource": "Addons",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          },
+          {
+            "area": "eks",
+            "resource": "Insights",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "eks.addon/v1"
+      },
+      {
+        "key": "eks.insight",
+        "scope": "cluster",
+        "assessment": "unknown",
+        "basis": "none",
+        "summary": "No EKS upgrade or readiness insights were observed in the snapshot.",
+        "constraints": [
+          "Missing insight evidence is not proof that the cluster is upgrade-ready."
+        ],
+        "collection": [
+          {
+            "area": "eks",
+            "resource": "Insights",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "eks.insight/v1"
+      },
+      {
+        "key": "eks.nodegroup",
+        "scope": "demo-workers",
+        "assessment": "supported",
+        "basis": "observed",
+        "summary": "Managed nodegroup has 1 observed Kubernetes node(s).",
+        "constraints": [
+          "EKS nodegroup configuration and Kubernetes node status do not prove AMI patch freshness or workload safety."
+        ],
+        "evidence": [
+          {
+            "resource": {
+              "apiVersion": "v1",
+              "kind": "Node",
+              "name": "demo-node"
+            },
+            "field": "node.runtime",
+            "value": "zone= kubelet=v1.34.0 os= runtime=containerd://2.0.0 instance=",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          },
+          {
+            "resource": {
+              "kind": "Nodegroup",
+              "name": "demo-workers"
+            },
+            "field": "version/release/ami/status",
+            "value": "1.34///ACTIVE",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "collection": [
+          {
+            "area": "eks",
+            "resource": "Nodegroups",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          },
+          {
+            "area": "kubernetes",
+            "resource": "Nodes",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "eks.nodegroup/v1"
+      },
+      {
+        "key": "extensions.api",
+        "scope": "cluster",
+        "assessment": "unknown",
+        "basis": "none",
+        "summary": "No custom API definitions observed.",
+        "constraints": [
+          "Review collection coverage before drawing conclusions about extensions."
+        ],
+        "collection": [
+          {
+            "area": "kubernetes",
+            "resource": "CustomResourceDefinitions",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "extensions.api/v1"
+      },
+      {
+        "key": "networking.gateway",
+        "scope": "demo-gateway",
+        "implementation": "example.invalid/demo-controller",
+        "assessment": "supported",
+        "basis": "declared",
+        "summary": "Gateway class configured.",
+        "constraints": [
+          "Route kinds, controller acceptance and data-plane readiness are not verified."
+        ],
+        "evidence": [
+          {
+            "resource": {
+              "apiVersion": "gateway.networking.k8s.io/v1",
+              "kind": "GatewayClass",
+              "name": "demo-gateway"
+            },
+            "field": "spec.controllerName",
+            "value": "example.invalid/demo-controller",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "collection": [
+          {
+            "area": "kubernetes",
+            "resource": "GatewayClasses",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "networking.gateway/v1"
+      },
+      {
+        "key": "networking.ingress",
+        "scope": "cluster",
+        "assessment": "unknown",
+        "basis": "none",
+        "summary": "No Ingress class observed.",
+        "constraints": [
+          "Legacy or classless controllers may exist; missing classes do not prove lack of support."
+        ],
+        "collection": [
+          {
+            "area": "kubernetes",
+            "resource": "IngressClasses",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "networking.ingress/v1"
+      },
+      {
+        "key": "storage.expansion",
+        "scope": "demo-block",
+        "implementation": "ebs.csi.aws.com",
+        "assessment": "supported",
+        "basis": "declared",
+        "summary": "StorageClass allows volume expansion.",
+        "constraints": [
+          "Actual expansion depends on the driver, backend and volume."
+        ],
+        "evidence": [
+          {
+            "resource": {
+              "apiVersion": "storage.k8s.io/v1",
+              "kind": "StorageClass",
+              "name": "demo-block"
+            },
+            "field": "allowVolumeExpansion",
+            "value": "true",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "collection": [
+          {
+            "area": "kubernetes",
+            "resource": "StorageClasses",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "storage.expansion/v1"
+      },
+      {
+        "key": "storage.rwx",
+        "scope": "demo-block",
+        "implementation": "ebs.csi.aws.com",
+        "assessment": "unknown",
+        "basis": "none",
+        "summary": "RWX support is unknown.",
+        "constraints": [
+          "Binding is not a multi-node read/write test or a guarantee for new volumes. Check volume mode and backend configuration."
+        ],
+        "evidence": [
+          {
+            "resource": {
+              "apiVersion": "storage.k8s.io/v1",
+              "kind": "StorageClass",
+              "name": "demo-block"
+            },
+            "field": "provisioner",
+            "value": "ebs.csi.aws.com",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "collection": [
+          {
+            "area": "kubernetes",
+            "resource": "StorageClasses",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          },
+          {
+            "area": "kubernetes",
+            "resource": "PersistentVolumes",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          },
+          {
+            "area": "kubernetes",
+            "resource": "PersistentVolumeClaims",
+            "status": "unavailable",
+            "objectCount": 0,
+            "reason": "Collection coverage not recorded in this snapshot.",
+            "collectedAt": "0001-01-01T00:00:00Z"
+          }
+        ],
+        "coverage": "partial",
+        "freshness": "partial",
+        "ruleId": "storage.rwx/v1"
+      }
+    ]
+  },
+  "sources": {
+    "aws": {
+      "state": "partial",
+      "mode": "recorded",
+      "refreshing": false,
+      "lastSuccess": "2026-09-25T00:00:00Z",
+      "coverage": [
+        {
+          "area": "eks",
+          "resource": "eks.insight",
+          "status": "skipped",
+          "objectCount": 0,
+          "reason": "Synthetic fixture intentionally omits upgrade insights; readiness is unknown.",
+          "collectedAt": "2026-09-25T00:00:00Z"
+        }
+      ]
+    },
+    "kubernetes": {
+      "state": "ready",
+      "mode": "recorded",
+      "refreshing": false,
+      "lastSuccess": "2026-09-25T00:00:00Z"
+    }
+  }
+}

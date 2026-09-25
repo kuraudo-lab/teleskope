@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "teleskope.io/llm-analysis/v1alpha1",
+  "generatedAt": "2026-09-25T00:00:00Z",
+  "useCase": "compare",
+  "provider": "hand-authored-example",
+  "model": "none",
+  "promptVersion": "demo-v1",
+  "summary": "Illustrative AI analysis output — hand-authored from synthetic source-demo facts; no model was called.",
+  "sections": [
+    {
+      "title": "Gateway and persistent storage",
+      "items": [
+        {
+          "severity": "info",
+          "summary": "Checkout route and storage relationships are present.",
+          "detail": "HTTPRoute checkout references Gateway public and Service checkout-api. PVC orders-data is Bound to demo-orders-pv with 20Gi requested.",
+          "resources": [
+            {
+              "apiVersion": "gateway.networking.k8s.io/v1",
+              "kind": "HTTPRoute",
+              "namespace": "checkout",
+              "name": "checkout"
+            },
+            {
+              "apiVersion": "v1",
+              "kind": "PersistentVolumeClaim",
+              "namespace": "checkout",
+              "name": "orders-data"
+            }
+          ],
+          "basis": "observed",
+          "confidence": "high",
+          "evidence": [
+            "kubernetes.gatewayRoutes[0].parentRefs",
+            "kubernetes.gatewayRoutes[0].rules[0].backendRefs",
+            "kubernetes.persistentVolumeClaims[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "summary": "Validate storage expansion before migration.",
+          "detail": "The target fixture disables expansion on demo-block; an application requiring online growth may need a different class.",
+          "recommendation": "Compare source and target StorageClasses, then test volume growth in a disposable environment.",
+          "basis": "inferred",
+          "confidence": "medium",
+          "evidence": [
+            "source.kubernetes.storageClasses[0].allowVolumeExpansion=true",
+            "target.kubernetes.storageClasses[0].allowVolumeExpansion=false"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Synthetic, hand-authored output example, not an actual LLM response or operational recommendation.",
+    "Route references do not prove traffic reachability. Bound PVC status does not prove backup or restore readiness.",
+    "EKS upgrade insights are intentionally omitted; upgrade readiness remains unknown."
+  ]
+}

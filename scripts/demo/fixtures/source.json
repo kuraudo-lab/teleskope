@@ -1,0 +1,469 @@
+{
+  "schemaVersion": "teleskope.io/snapshot/v1alpha1",
+  "collectedAt": "2026-09-25T00:00:00Z",
+  "source": {
+    "tool": "teleskope",
+    "version": "synthetic-demo",
+    "mode": "synthetic/offline"
+  },
+  "aws": {
+    "region": "eu-west-1",
+    "accountId": "000000000000"
+  },
+  "eks": {
+    "cluster": {
+      "name": "source-demo",
+      "version": "1.34",
+      "status": "ACTIVE",
+      "endpoint": "https://source.example.invalid",
+      "arn": "arn:aws:eks:eu-west-1:000000000000:cluster/source-demo"
+    },
+    "addons": [
+      {
+        "name": "aws-ebs-csi-driver",
+        "version": "demo",
+        "status": "ACTIVE"
+      }
+    ],
+    "nodegroups": [
+      {
+        "name": "demo-workers",
+        "version": "1.34",
+        "status": "ACTIVE",
+        "desiredSize": 1,
+        "minSize": 1,
+        "maxSize": 3,
+        "instanceTypes": [
+          "m7i.large"
+        ]
+      }
+    ]
+  },
+  "kubernetes": {
+    "context": "source-demo",
+    "server": "https://source.example.invalid",
+    "version": {
+      "gitVersion": "v1.34.0",
+      "major": "1",
+      "minor": "34"
+    },
+    "namespaces": [
+      {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "name": "checkout"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "name": "platform"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "name": "observability"
+      }
+    ],
+    "nodes": [
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "name": "demo-node",
+        "ready": "True",
+        "kubeletVersion": "v1.34.0",
+        "containerRuntime": "containerd://2.0.0",
+        "capacity": {
+          "cpu": "2",
+          "memory": "8Gi",
+          "pods": "29"
+        },
+        "allocatable": {
+          "cpu": "1900m",
+          "memory": "7Gi",
+          "pods": "29"
+        },
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "demo-workers"
+        }
+      }
+    ],
+    "workloads": [
+      {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "checkout-api",
+        "replicas": 1,
+        "readyReplicas": 1,
+        "availableReplicas": 1,
+        "selector": {
+          "app": "checkout-api"
+        },
+        "containers": [
+          {
+            "name": "api",
+            "image": "registry.example.invalid/demo/api:v1"
+          }
+        ],
+        "namespace": "checkout"
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "StatefulSet",
+        "name": "orders",
+        "replicas": 1,
+        "readyReplicas": 1,
+        "selector": {
+          "app": "orders"
+        },
+        "containers": [
+          {
+            "name": "db",
+            "image": "registry.example.invalid/demo/db:v1"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "data",
+            "type": "PersistentVolumeClaim",
+            "persistentVolumeClaim": "orders-data"
+          }
+        ],
+        "namespace": "checkout"
+      }
+    ],
+    "pods": [
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "checkout-api-demo",
+        "phase": "Running",
+        "nodeName": "demo-node",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "checkout-api",
+            "namespace": "checkout"
+          }
+        ],
+        "containers": [
+          {
+            "name": "api",
+            "image": "registry.example.invalid/demo/api:v1"
+          }
+        ],
+        "volumes": [],
+        "namespace": "checkout"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "orders-demo",
+        "phase": "Running",
+        "nodeName": "demo-node",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "orders",
+            "namespace": "checkout"
+          }
+        ],
+        "containers": [
+          {
+            "name": "db",
+            "image": "registry.example.invalid/demo/db:v1"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "data",
+            "type": "PersistentVolumeClaim",
+            "persistentVolumeClaim": "orders-data"
+          }
+        ],
+        "namespace": "checkout"
+      }
+    ],
+    "services": [
+      {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "name": "checkout-api",
+        "type": "ClusterIP",
+        "selector": {
+          "app": "checkout-api"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 80,
+            "targetPort": "8080",
+            "protocol": "TCP"
+          }
+        ],
+        "namespace": "checkout"
+      }
+    ],
+    "gatewayClasses": [
+      {
+        "apiVersion": "gateway.networking.k8s.io/v1",
+        "kind": "GatewayClass",
+        "name": "demo-gateway",
+        "controllerName": "example.invalid/demo-controller"
+      }
+    ],
+    "gateways": [
+      {
+        "apiVersion": "gateway.networking.k8s.io/v1",
+        "kind": "Gateway",
+        "name": "public",
+        "className": "demo-gateway",
+        "listeners": [
+          {
+            "name": "http",
+            "protocol": "HTTP",
+            "port": 80,
+            "hostname": "shop.example.invalid"
+          }
+        ],
+        "namespace": "checkout"
+      }
+    ],
+    "gatewayRoutes": [
+      {
+        "apiVersion": "gateway.networking.k8s.io/v1",
+        "kind": "HTTPRoute",
+        "name": "checkout",
+        "hostnames": [
+          "shop.example.invalid"
+        ],
+        "parentRefs": [
+          {
+            "kind": "Gateway",
+            "name": "public",
+            "namespace": "checkout",
+            "sectionName": "http"
+          }
+        ],
+        "rules": [
+          {
+            "matches": [
+              "PathPrefix /"
+            ],
+            "backendRefs": [
+              {
+                "apiVersion": "v1",
+                "kind": "Service",
+                "name": "checkout-api",
+                "namespace": "checkout"
+              }
+            ]
+          }
+        ],
+        "namespace": "checkout"
+      }
+    ],
+    "storageClasses": [
+      {
+        "apiVersion": "storage.k8s.io/v1",
+        "kind": "StorageClass",
+        "name": "demo-block",
+        "provisioner": "ebs.csi.aws.com",
+        "parameters": {
+          "type": "gp3"
+        },
+        "reclaimPolicy": "Retain",
+        "volumeBindingMode": "WaitForFirstConsumer",
+        "allowVolumeExpansion": true
+      }
+    ],
+    "persistentVolumes": [
+      {
+        "apiVersion": "v1",
+        "kind": "PersistentVolume",
+        "name": "demo-orders-pv",
+        "storageClassName": "demo-block",
+        "capacity": "20Gi",
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "volumeMode": "Filesystem",
+        "phase": "Bound",
+        "claimRef": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "orders-data",
+          "namespace": "checkout"
+        },
+        "csi": {
+          "driver": "ebs.csi.aws.com",
+          "volumeHandle": "demo-volume",
+          "fsType": "ext4"
+        }
+      }
+    ],
+    "persistentVolumeClaims": [
+      {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "name": "orders-data",
+        "storageClassName": "demo-block",
+        "volumeName": "demo-orders-pv",
+        "requestedStorage": "20Gi",
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "volumeMode": "Filesystem",
+        "phase": "Bound",
+        "namespace": "checkout"
+      }
+    ],
+    "csiDrivers": [
+      {
+        "apiVersion": "storage.k8s.io/v1",
+        "kind": "CSIDriver",
+        "name": "ebs.csi.aws.com",
+        "attachRequired": true,
+        "volumeLifecycleModes": [
+          "Persistent"
+        ]
+      }
+    ],
+    "runningImages": [
+      {
+        "image": "registry.example.invalid/demo/api:v1",
+        "podCount": 1,
+        "containerCount": 1,
+        "namespaces": [
+          "checkout"
+        ],
+        "workloads": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "checkout-api",
+            "namespace": "checkout"
+          }
+        ]
+      },
+      {
+        "image": "registry.example.invalid/demo/db:v1",
+        "podCount": 1,
+        "containerCount": 1,
+        "namespaces": [
+          "checkout"
+        ],
+        "workloads": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "orders",
+            "namespace": "checkout"
+          }
+        ]
+      }
+    ]
+  },
+  "coverage": [
+    {
+      "area": "kubernetes",
+      "resource": "nodes",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "namespaces",
+      "status": "complete",
+      "objectCount": 3,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "deployments",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "statefulsets",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "pods",
+      "status": "complete",
+      "objectCount": 2,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "services",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "gatewayclasses",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "gateways",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "httproutes",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "storageclasses",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "persistentvolumes",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "persistentvolumeclaims",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "csidrivers",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-09-25T00:00:00Z"
+    },
+    {
+      "area": "eks",
+      "resource": "eks.insight",
+      "status": "skipped",
+      "objectCount": 0,
+      "reason": "Synthetic fixture intentionally omits upgrade insights; readiness is unknown.",
+      "collectedAt": "2026-09-25T00:00:00Z"
+    }
+  ]
+}

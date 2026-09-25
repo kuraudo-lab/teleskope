@@ -191,6 +191,25 @@ The default listener is `127.0.0.1:8080`; use `--listen` to change it. The
 browser uploads the two snapshots to the local server, which runs the same
 deterministic comparison module used by `teleskope compare`.
 
+## Public demo reports
+
+Explore [the sample report guide](docs/launch/demo-assets.md) without cluster
+access or credentials. The [committed demo catalog](docs/demo/index.html) includes
+self-contained source/target reports covering **EKS, Gateway, and Storage**, a
+**Hub fleet sample**, and a clearly labeled **AI analysis output example**.
+GitHub displays HTML source; download/clone the repository and open
+`docs/demo/index.html` in a browser, or serve it locally:
+
+```sh
+python3 -m http.server 8090 --bind 127.0.0.1 --directory docs/demo
+# Open http://127.0.0.1:8090
+```
+
+All inputs are newly authored synthetic data; no real scan or provider call is
+used. The AI sample is hand-authored, not a recorded model response. Regenerate
+with `go run ./scripts/demo`; launch the real Hub UI seeded with the two fixtures
+using `go run ./scripts/demo -serve` (localhost:8091).
+
 ## Live inventory
 
 Run a local web server with the same embedded UI as the offline report:

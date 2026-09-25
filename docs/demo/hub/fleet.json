@@ -1,0 +1,93 @@
+{
+  "revision": 2,
+  "clusters": [
+    {
+      "cluster": {
+        "id": "source",
+        "name": "source-demo",
+        "provider": "eks",
+        "region": "eu-west-1"
+      },
+      "revision": 1,
+      "collectedAt": "2026-09-25T00:00:00Z",
+      "state": "partial",
+      "kubernetesVersion": "1.34",
+      "addonRisks": 0,
+      "nodegroupRisks": 0,
+      "nodes": 1,
+      "workloads": 2,
+      "pods": 2,
+      "images": 2,
+      "events": 0,
+      "advisor": "0 Ingress classes, 1 Gateway classes, 1 StorageClasses, 0 custom API definitions, 0 EKS insights, 1 EKS managed add-ons and 1 EKS managed nodegroups observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified. RWX bindings observed in 0 StorageClasses; 4 assessments remain unknown and 8 have incomplete coverage.",
+      "sources": {
+        "aws": {
+          "state": "partial",
+          "mode": "recorded",
+          "refreshing": false,
+          "lastSuccess": "2026-09-25T00:00:00Z",
+          "coverage": [
+            {
+              "area": "eks",
+              "resource": "eks.insight",
+              "status": "skipped",
+              "objectCount": 0,
+              "reason": "Synthetic fixture intentionally omits upgrade insights; readiness is unknown.",
+              "collectedAt": "2026-09-25T00:00:00Z"
+            }
+          ]
+        },
+        "kubernetes": {
+          "state": "ready",
+          "mode": "recorded",
+          "refreshing": false,
+          "lastSuccess": "2026-09-25T00:00:00Z"
+        }
+      }
+    },
+    {
+      "cluster": {
+        "id": "target",
+        "name": "target-demo",
+        "provider": "eks",
+        "region": "eu-west-1"
+      },
+      "revision": 1,
+      "collectedAt": "2026-09-25T00:00:00Z",
+      "state": "partial",
+      "kubernetesVersion": "1.35",
+      "addonRisks": 0,
+      "nodegroupRisks": 0,
+      "nodes": 1,
+      "workloads": 2,
+      "pods": 2,
+      "images": 2,
+      "events": 0,
+      "advisor": "0 Ingress classes, 1 Gateway classes, 1 StorageClasses, 0 custom API definitions, 0 EKS insights, 1 EKS managed add-ons and 1 EKS managed nodegroups observed. Conclusions describe configuration and collected evidence; runtime behavior is not verified. RWX bindings observed in 0 StorageClasses; 4 assessments remain unknown and 8 have incomplete coverage.",
+      "sources": {
+        "aws": {
+          "state": "partial",
+          "mode": "recorded",
+          "refreshing": false,
+          "lastSuccess": "2026-09-25T00:00:00Z",
+          "coverage": [
+            {
+              "area": "eks",
+              "resource": "eks.insight",
+              "status": "skipped",
+              "objectCount": 0,
+              "reason": "Synthetic fixture intentionally omits upgrade insights; readiness is unknown.",
+              "collectedAt": "2026-09-25T00:00:00Z"
+            }
+          ]
+        },
+        "kubernetes": {
+          "state": "ready",
+          "mode": "recorded",
+          "refreshing": false,
+          "lastSuccess": "2026-09-25T00:00:00Z"
+        }
+      }
+    }
+  ]
+}
