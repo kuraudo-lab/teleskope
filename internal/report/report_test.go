@@ -417,6 +417,8 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		`aria-pressed="${n.id === topologySelectedNodeId}"`,
 		`id="topologySelectedSummary"`,
 		"Select an object to show relationships",
+		"right:22px; bottom:22px; width:640px",
+		"top:auto;\n      right:14px;\n      bottom:14px;",
 		"topologySvg",
 		"topologyViewport",
 		"Wheel to zoom",
