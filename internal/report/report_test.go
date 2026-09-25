@@ -407,6 +407,16 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"showPods = topologyResourceFilter === 'pod'",
 		"topologyResourceFilter === 'crd'",
 		"function renderTopology",
+		"topologySelectedNodeId",
+		"visibleTopologyLinks = topologySelectedNodeId ?",
+		"function selectTopologyNode",
+		"function clearTopologySelection",
+		"const orthogonalPath = (A, B) =>",
+		"H${midX} V${y2} H${x2}",
+		`data-node-id="${esc(n.id)}"`,
+		`aria-pressed="${n.id === topologySelectedNodeId}"`,
+		`id="topologySelectedSummary"`,
+		"Select an object to show relationships",
 		"topologySvg",
 		"topologyViewport",
 		"Wheel to zoom",
@@ -434,6 +444,9 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		if !strings.Contains(string(html), want) {
 			t.Fatalf("index.html missing %q", want)
 		}
+	}
+	if strings.Contains(string(html), "C${x1 + mid} ${y1} ${x2 - mid} ${y2}") {
+		t.Fatal("topology still contains the previous cubic relationship path")
 	}
 	if strings.Contains(string(html), "<h3>Coverage</h3>") {
 		t.Fatalf("index.html should not render coverage panel")

@@ -1153,6 +1153,23 @@
       rx:7;
       filter:none;
     }
+    .node.selected rect.node-card {
+      fill:var(--control-bg);
+      stroke:var(--blue);
+      stroke-width:2;
+    }
+    .node.related rect.node-card {
+      stroke:var(--line-strong);
+      stroke-width:1.5;
+    }
+    .node:focus-visible {
+      outline:none;
+    }
+    .node:focus-visible rect.node-card {
+      stroke:var(--cyan);
+      stroke-width:2.5;
+      stroke-dasharray:5 3;
+    }
     :root[data-theme="light"] .check,
     :root[data-theme="light"] .stat {
       background:rgba(255,255,255,.76);
@@ -1199,6 +1216,12 @@
     .link.hot {
       stroke:rgba(96,165,250,.8);
       stroke-width:2;
+    }
+    .link.active {
+      stroke:var(--blue);
+      stroke-width:2;
+      stroke-linecap:square;
+      stroke-linejoin:miter;
     }
     .map-inner > .legend {
       position:absolute;
@@ -2092,7 +2115,7 @@ function applyMockShell() {
   freshnessCard.appendChild(freshness);
   const selected = document.createElement('div');
   selected.className = 'summary-card';
-  selected.innerHTML = `<div class="summary-title"><div class="glyph gateway">${iconUse('icon-gateway')}</div><strong>Selected object</strong></div><div class="kv"><span>State</span><strong>Click a topology card</strong><span>Layout</span><strong>Swimlanes</strong><span>Mode</span><strong>Relationship map</strong></div>`;
+  selected.innerHTML = `<div class="summary-title"><div class="glyph gateway">${iconUse('icon-gateway')}</div><strong>Selected object</strong></div><div class="kv" id="topologySelectedSummary"><span>State</span><strong>Click a topology card</strong><span>Layout</span><strong>Swimlanes</strong><span>Mode</span><strong>Relationship focus</strong></div>`;
   inspectorBody.append(inventory, freshnessCard, selected);
   workspace.appendChild(inspector);
 }
@@ -2131,8 +2154,8 @@ function webhookClient(w) { return w.clientUrl || ref(w.clientService); }
 function limitItems(v) { return Array.isArray(v) && v.length ? v.map(i => `${i.type || '-'} default=${kv(i.default)} request=${kv(i.defaultRequest)} min=${kv(i.min)} max=${kv(i.max)}`).join(' | ') : '-'; }
 
 function namespacesOf(row) { const found = new Set(); const visit = value => { if (!value) return; if (Array.isArray(value)) { value.forEach(visit); return; } if (typeof value !== 'object') return; if (typeof value.namespace === 'string' && value.namespace) found.add(value.namespace); if (Array.isArray(value.namespaces)) value.namespaces.filter(Boolean).forEach(ns => found.add(ns)); for (const child of Object.values(value)) visit(child); }; visit(row); return [...found]; }
-let activeSection = 'overview', nsFilter = 'all', resourceFilter = 'all', topologySearch = '', topologyView = {scale:1, x:0, y:0};
-let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0};
+let activeSection = 'overview', nsFilter = 'all', resourceFilter = 'all', topologySearch = '', topologySelectedNodeId = '', topologyView = {scale:1, x:0, y:0};
+let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0, nodeId:'', detail:''};
 const resourceTypes = [
   ['all','All resource types'], ['workload','Workloads'], ['pod','Pods'], ['service','Services'], ['endpoint','EndpointSlices'],
   ['ingress','Ingresses'], ['gateway','Gateways'], ['gatewayRoute','Gateway routes'], ['image','Running images'], ['container','Running containers'], ['crd','Custom resources'],
@@ -2146,6 +2169,23 @@ function topologySearchMatches(node) {
   const data = node.data || {};
   const haystack = [node.label, node.type, data.apiVersion, data.kind, data.namespace, data.name, data.image, data.nodeName, data.serviceAccountName, data.runtimeClassName, data.phase].filter(Boolean).join(' ').toLowerCase();
   return haystack.includes(topologySearch);
+}
+function updateTopologySelectionSummary(node, relationshipCount) {
+  const summary = byId('topologySelectedSummary');
+  if (!summary) return;
+  summary.innerHTML = node
+    ? `<span>Object</span><strong>${esc(node.label)}</strong><span>Type</span><strong>${esc(node.type)}</strong><span>Direct relationships</span><strong>${relationshipCount}</strong>`
+    : '<span>State</span><strong>Click a topology card</strong><span>Layout</span><strong>Swimlanes</strong><span>Mode</span><strong>Relationship focus</strong>';
+}
+function selectTopologyNode(nodeId, detail) {
+  topologySelectedNodeId = nodeId || '';
+  renderTopology();
+  if (detail) showText(detail);
+}
+function clearTopologySelection() {
+  if (!topologySelectedNodeId) return;
+  topologySelectedNodeId = '';
+  renderTopology();
 }
 function syncResourceFilterState() { byId('focus').disabled = activeSection === 'advisor' || activeSection === 'events'; byId('resourceType').disabled = activeSection !== 'overview'; }
 function closeNavMenus() { document.querySelectorAll('#nav .nav-menu').forEach(menu => { menu.classList.remove('open'); menu.querySelector('.nav-menu-button')?.setAttribute('aria-expanded', 'false'); }); }
@@ -2369,6 +2409,10 @@ function renderTopology() {
   const topologyNodes = topologySearch ? nodes.filter(topologySearchMatches) : nodes;
   const topologyNodeIds = new Set(topologyNodes.map(n => n.id));
   const topologyLinks = links.filter(([a,b]) => topologyNodeIds.has(a) && topologyNodeIds.has(b));
+  if (topologySelectedNodeId && !topologyNodeIds.has(topologySelectedNodeId)) topologySelectedNodeId = '';
+  const selectedTopologyNode = nodeById.get(topologySelectedNodeId);
+  const visibleTopologyLinks = topologySelectedNodeId ? topologyLinks.filter(([a,b]) => a === topologySelectedNodeId || b === topologySelectedNodeId) : [];
+  const relatedTopologyNodeIds = new Set(visibleTopologyLinks.flatMap(([a,b]) => [a,b]));
   const warningCount = topologyNodes.filter(n => {
     const d = n.data || {};
     return (n.type === 'pod' && d.phase && d.phase !== 'Running' && d.phase !== 'Succeeded') ||
@@ -2383,9 +2427,10 @@ function renderTopology() {
   setText('topologyStorageCount', arr(k.persistentVolumeClaims).filter(namespaceMatches).length + arr(k.storageClasses).length);
   setText('topologyImageCount', arr(k.runningImages).filter(namespaceMatches).length);
   setText('topologyObjectStat', topologyNodes.length);
-  setText('topologyEdgeStat', topologyLinks.length);
+  setText('topologyEdgeStat', visibleTopologyLinks.length);
   setText('topologyWarningStat', warningCount);
   setText('topologyScope', nsFilter === 'all' ? 'Namespace: all' : `Namespace: ${nsFilter}`);
+  updateTopologySelectionSummary(selectedTopologyNode, visibleTopologyLinks.length);
   if (topologyNodes.length === 0) { byId('topology').innerHTML = '<div class="body muted">No topology nodes match the current filter.</div>'; return; }
   const color = t => ({service:'#22d3ee', image:'#a78bfa', storage:'#34d399', pod:'#f59e0b', container:'#fb7185', crd:'#818cf8', ingress:'#38bdf8', endpoint:'#2dd4bf', gateway:'#facc15', gatewayRoute:'#fb923c', csi:'#4ade80', runtime:'#f472b6'}[t] || '#60a5fa');
   const lanes = [
@@ -2470,17 +2515,28 @@ function renderTopology() {
     const count = laneNodes.get(lane.id).length;
     return `<g class="topology-lane"><rect x="${x}" y="18" width="${laneW}" height="${contentH - 42}"/><text x="${x + 12}" y="40">${esc(lane.label)} (${count})</text></g>`;
   }).join('');
-  const linkSvg = topologyLinks.map(([a,b]) => {
+  const orthogonalPath = (A, B) => {
+    const centerA = A.x + A.w / 2, centerB = B.x + B.w / 2;
+    if (Math.abs(centerA - centerB) > 1) {
+      const left = centerA < centerB ? A : B, right = centerA < centerB ? B : A;
+      const x1 = left.x + left.w, y1 = left.y + left.h / 2, x2 = right.x, y2 = right.y + right.h / 2;
+      const midX = (x1 + x2) / 2;
+      return `M${x1} ${y1} H${midX} V${y2} H${x2}`;
+    }
+    const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x + B.w, y2 = B.y + B.h / 2;
+    const detourX = Math.max(x1, x2) + 16;
+    return `M${x1} ${y1} H${detourX} V${y2} H${x2}`;
+  };
+  const linkSvg = visibleTopologyLinks.map(([a,b]) => {
     const A = drawn.get(a), B = drawn.get(b);
     if (!A || !B) return '';
-    const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x, y2 = B.y + B.h / 2;
-    const mid = Math.max(24, Math.abs(x2 - x1) / 2);
     const hot = A.type === 'service' || B.type === 'service' || A.type === 'workload' || B.type === 'workload';
-    return `<path class="link ${hot ? 'hot' : ''}" d="M${x1} ${y1} C${x1 + mid} ${y1} ${x2 - mid} ${y2} ${x2} ${y2}"/>`;
+    return `<path class="link active ${hot ? 'hot' : ''}" d="${orthogonalPath(A, B)}"/>`;
   }).join('');
   const nodeSvg = Array.from(drawn.values()).map(n => {
     const status = health(n), statusColor = status === 'warn' ? 'var(--amber)' : status === 'bad' ? 'var(--red)' : 'var(--green)';
-    return `<g class="node" data-detail="${esc(JSON.stringify(n.data))}">
+    const selectionClass = n.id === topologySelectedNodeId ? ' selected' : relatedTopologyNodeIds.has(n.id) ? ' related' : '';
+    return `<g class="node${selectionClass}" data-node-id="${esc(n.id)}" data-detail="${esc(JSON.stringify(n.data))}" role="button" tabindex="0" aria-pressed="${n.id === topologySelectedNodeId}" aria-label="${esc(`Select ${n.type} ${n.label}`)}">
       <rect class="node-card" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"/>
       <rect class="node-icon-box" x="${n.x + 8}" y="${n.y + 10}" width="32" height="32" rx="8"/>
       <g style="color:${color(n.type)}" transform="translate(${n.x + 14} ${n.y + 16})">${icon(n.type)}</g>
@@ -2490,7 +2546,8 @@ function renderTopology() {
     </g>`;
   }).join('');
   const legendIcon = (type, text) => `<span><i style="--legend-color:${color(type)}"><svg viewBox="0 0 20 20">${icon(type)}</svg></i>${text}</span>`;
-  topology.innerHTML = `<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${topologyNodes.length} objects · ${topologyLinks.length} edges</span></div>`;
+  const relationshipHint = topologySelectedNodeId ? `${visibleTopologyLinks.length} direct relationships` : 'Select an object to show relationships';
+  topology.innerHTML = `<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${topologyNodes.length} objects · ${relationshipHint}</span></div>`;
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
 let selectedDetail = null;
@@ -2632,10 +2689,11 @@ function renderAnalysis(page='advisor') {
 function renderAll() { renderAdvisor(); renderAnalysis(); Object.keys(llmAnalyses).forEach(renderAnalysis); renderCards(); renderTables(); renderTopology(); renderWorkloadSearch(); }
 document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (!e.target.closest('#nav .nav-menu')) closeNavMenus(); const workload = e.target.closest('[data-workload-key]'); if (workload) { openWorkloadByKey(workload.dataset.workloadKey); return; } if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
 byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); }, {passive:false});
-byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, detail:e.target.closest('[data-detail]')?.dataset.detail}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
+byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; const node = e.target.closest('.node[data-node-id]'); topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, nodeId:node?.dataset.nodeId || '', detail:node?.dataset.detail || ''}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointermove', e => { if (!topologyDrag.active) return; const dx = e.clientX - topologyDrag.startX, dy = e.clientY - topologyDrag.startY; topologyDrag.moved = topologyDrag.moved || Math.abs(dx) + Math.abs(dy) > 3; topologyView.x = topologyDrag.viewX + dx; topologyView.y = topologyDrag.viewY + dy; applyTopologyTransform(); });
-byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = topologyDrag.moved; if (!topologyDrag.moved && topologyDrag.detail) showText(topologyDrag.detail); topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); });
+byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = true; if (!topologyDrag.moved) { if (topologyDrag.nodeId) selectTopologyNode(topologyDrag.nodeId, topologyDrag.detail); else clearTopologySelection(); } topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointercancel', e => { topologyDrag.active = false; byId('topology').classList.remove('panning'); if (byId('topology').hasPointerCapture(e.pointerId)) byId('topology').releasePointerCapture(e.pointerId); });
+byId('topology').addEventListener('keydown', e => { const node = e.target.closest('.node[data-node-id]'); if (!node || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); selectTopologyNode(node.dataset.nodeId, node.dataset.detail); });
 byId('focus').addEventListener('change', e => { nsFilter = e.target.value; renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
 byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
 byId('workloadSearch').addEventListener('input', renderWorkloadSearch);
