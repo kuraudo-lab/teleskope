@@ -3,8 +3,9 @@ PYTHON ?= python3
 VERSION ?= dev
 SCALE_PROFILE ?= small
 SCALE_ADDR ?= 127.0.0.1:8092
+LIVE_DEMO_ADDR ?= 127.0.0.1:8093
 
-.PHONY: build run test vet fixture-test topology-bench topology-scale-demo fmt check clean
+.PHONY: build run test vet fixture-test topology-bench topology-scale-demo topology-live-demo scope-release-check fmt check clean
 
 build:
 	$(GO) build -trimpath -ldflags "-X github.com/kuraudo-lab/teleskope/internal/buildinfo.Version=$(VERSION)" -o bin/teleskope ./cmd/teleskope
@@ -26,6 +27,12 @@ topology-bench:
 
 topology-scale-demo:
 	$(GO) run ./scripts/topology-scale -profile $(SCALE_PROFILE) -serve $(SCALE_ADDR)
+
+topology-live-demo:
+	$(GO) run ./scripts/topology-live-demo -serve $(LIVE_DEMO_ADDR)
+
+scope-release-check:
+	$(GO) run ./scripts/scope-release-check
 
 fmt:
 	$(GO) fmt ./...

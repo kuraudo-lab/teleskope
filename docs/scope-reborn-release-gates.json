@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "lineage": "Popeye replacement judgment engine with a Scope-inspired investigation shell",
+    "previewLabel": "Scope-inspired topology preview",
+    "graduatedLabel": "Scope reborn",
+    "blockingGraduationIssue": 40,
+    "popeyeFoundationIssues": [33, 34, 35, 36, 37, 38, 39, 40]
+  },
+  "scopeConcepts": {
+    "core": [
+      "semantic graph views",
+      "relationship-first navigation",
+      "search and filters",
+      "stable selection and layout",
+      "contextual details",
+      "accessible relation table fallback"
+    ],
+    "adapted": [
+      "Kubernetes ownership and declared relationships instead of host-probe discovery",
+      "Kubernetes watches and revisioned snapshots instead of probe streams",
+      "explicit evidence tier, freshness, confidence, and coverage"
+    ],
+    "deferred": [
+      "external observed-network adapters",
+      "external short-window metric adapters",
+      "provider-contributed read-only links",
+      "history and replay"
+    ],
+    "rejected": [
+      "privileged per-node probe or DaemonSet",
+      "host PID, host network, runtime socket, or debugfs access",
+      "terminal, delete, scale, and container lifecycle controls",
+      "declared relationships presented as observed traffic",
+      "general browser UI plugin store"
+    ]
+  },
+  "slices": [
+    {
+      "id": "graph-baseline",
+      "name": "API graph baseline",
+      "optional": false,
+      "dependsOn": [],
+      "issues": [41, 42],
+      "capabilities": [
+        "provider-neutral graph contract and stable object identity",
+        "semantic views, graph and table modes, search, filters, and drill-down",
+        "URL-restorable selection and a bounded high-complexity fallback"
+      ],
+      "modes": {
+        "offline": "Embed the complete deterministic graph and contextual navigation in the self-contained report.",
+        "live": "Project the latest published snapshot through the same graph and interaction contract.",
+        "hub": "Use the same contract within an explicit cluster scope; never merge cluster identities."
+      },
+      "acceptance": [
+        "finding or search result opens the correct topology object",
+        "Service or workload drills down through Pods, Node, and EKS infrastructure",
+        "copied URL restores view, filters, mode, and selection"
+      ]
+    },
+    {
+      "id": "live-continuity",
+      "name": "Live continuity",
+      "optional": false,
+      "dependsOn": ["graph-baseline"],
+      "issues": [43],
+      "capabilities": [
+        "revisioned graph deltas with reset semantics",
+        "stable selection, viewport, lane, and rank across accepted updates",
+        "explicit freshness and coverage without invented observations"
+      ],
+      "modes": {
+        "offline": "Remain a complete static snapshot and label live continuity unavailable.",
+        "live": "Consume bounded watch and poll publications without adding topology-only API polling.",
+        "hub": "Accept cluster-scoped remote revisions with bounded history and reset on gaps."
+      },
+      "acceptance": [
+        "unchanged objects retain position and selection after an incremental revision",
+        "revision gaps trigger a full reset instead of applying an unsafe delta",
+        "provider absence remains unavailable through refresh"
+      ]
+    },
+    {
+      "id": "contextual-investigation",
+      "name": "Contextual investigation",
+      "optional": false,
+      "dependsOn": ["graph-baseline", "live-continuity"],
+      "issues": [44],
+      "capabilities": [
+        "shared identity for findings, relatives, metrics, metadata, and raw evidence",
+        "cross-view navigation to owners, children, dependencies, and infrastructure",
+        "provider-aware metric semantics, sampling, freshness, and coverage"
+      ],
+      "modes": {
+        "offline": "Render recorded deterministic findings and evidence with unavailable live-only metrics.",
+        "live": "Update fixed contextual sections from the accepted snapshot revision.",
+        "hub": "Keep findings and provider evidence inside the selected cluster and revision."
+      },
+      "acceptance": [
+        "selected object exposes relatives, scoped findings, metrics, and raw evidence",
+        "relative navigation changes semantic view when required and preserves selection",
+        "missing metrics and connection evidence are visibly unavailable"
+      ]
+    },
+    {
+      "id": "external-evidence",
+      "name": "Optional external evidence",
+      "optional": true,
+      "dependsOn": ["contextual-investigation"],
+      "issues": [45],
+      "capabilities": [
+        "bounded metrics or observed-connection contributions to the typed graph contract",
+        "explicit provider, window, sampling, freshness, confidence, and coverage",
+        "isolated provider failure and server-side authorization"
+      ],
+      "modes": {
+        "offline": "Accept only sanitized imported evidence that preserves provider provenance and limitations.",
+        "live": "Run only explicitly configured server-side providers; never expose credentials to the browser.",
+        "hub": "Accept attested provider evidence through the remote-writer boundary and preserve cluster scope."
+      },
+      "acceptance": [
+        "Kubernetes-only use remains complete when the provider is absent or fails",
+        "runtime edges cannot be confused with declared or inferred relationships",
+        "provider credentials and raw privileged host access never reach the browser"
+      ]
+    }
+  ],
+  "crossCuttingGates": {
+    "issues": [46, 47],
+    "testCommands": [
+      "make check",
+      "make build",
+      "make topology-bench",
+      "make scope-release-check",
+      "git diff --check"
+    ],
+    "browserScenarios": [
+      "recorded finding and search to topology to contextual evidence",
+      "local recorded-fixture delta acceptance, selection and layout continuity, and revision-gap full reset",
+      "large graph accessible table fallback and filtered return to graph",
+      "keyboard-only, reduced-motion, narrow viewport, light and dark theme, and screen-reader traversal"
+    ],
+    "security": [
+      "no privileged node workload or host-runtime access",
+      "no browser-side provider or cluster credentials",
+      "no implicit external data transfer",
+      "no write, terminal, delete, scale, or lifecycle controls",
+      "no cross-cluster identity, freshness, finding, or coverage leak"
+    ],
+    "compatibility": [
+      "existing topology entry points and static exports remain available",
+      "view, mode, filters, focus, and selected object remain URL-restorable",
+      "graph and table use the same evidence and selection state"
+    ]
+  },
+  "extensionPolicy": {
+    "generalPluginSystem": false,
+    "requiresExplicitAuthorization": true,
+    "currentSeam": "typed topology graph, metric, coverage, and raw-evidence contracts with fixed UI sections",
+    "revisitWhen": "two independent external evidence implementations require the same registration lifecycle"
+  },
+  "securityBoundary": {
+    "nodeProbe": false,
+    "privilegedDaemonSet": false,
+    "browserCredentials": false,
+    "writeControls": false
+  }
+}
