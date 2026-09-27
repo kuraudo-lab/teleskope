@@ -47,6 +47,35 @@ Start with compiled-in modules rather than dynamic plugins.
 - Exclude Secret values and sanitize configuration evidence before export.
 - Keep snapshots independently readable without cluster credentials.
 
+## Provider boundaries
+
+Use `provider` for an independently sourced capability or evidence stream, not
+for every internal transformation. The intended provider families are:
+
+- **Collection providers** acquire primary facts. The implemented sources are
+  the Kubernetes API and AWS/EKS collectors; recorded snapshots and hub
+  envelopes replay or transport the same fact model without recollecting it.
+- **Evidence providers** add optional, time-bounded observations to existing
+  object identities. Metrics API is the baseline metric source. Prometheus,
+  OpenTelemetry, CNI observability, and AWS network telemetry may be integrated
+  through explicit provider contracts. Every observation retains provider,
+  time-window, sampling, freshness, and coverage metadata.
+- **Analysis providers** derive outputs from collected evidence. Deterministic
+  finding rule packs are authoritative. The OpenAI-compatible provider is an
+  optional narrative layer and cannot create or override findings.
+
+Component adapters interpret provider facts and relation resolvers construct
+declared, resolved, ownership, or inferred relationships; neither should be
+called a provider merely because it is modular. Observed communication is a
+separate edge basis and must come from connection evidence.
+
+Teleskope will not implement or ship a privileged node probe. It will not
+request host PID/network access, runtime sockets, procfs, conntrack, debugfs, or
+eBPF privileges to manufacture Scope-style connection visibility. When no
+external connection provider is configured, declared and resolved topology
+remains complete for the available inventory while runtime connection coverage
+is explicitly `unavailable`.
+
 ## Live polling
 
 `internal/live` owns source scheduling, publication, and the read-only HTTP
