@@ -1094,6 +1094,23 @@
     .topology-table-select { width:100%; border:0; padding:0; color:inherit; background:transparent; text-align:left; cursor:pointer; }
     .topology-coverage { display:grid; gap:6px; margin-top:10px; }
     .topology-coverage-item { padding:7px 8px; border:1px solid var(--line); border-radius:6px; color:var(--muted); font-size:11px; }
+    .topology-context { display:grid; gap:10px; margin-top:10px; }
+    .topology-context details { border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+    .topology-context summary { padding:8px; cursor:pointer; color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    .topology-context table { width:100%; border-collapse:collapse; font-size:11px; }
+    .topology-context th button { width:100%; border:0; padding:6px 8px; background:var(--table-head-bg); color:var(--muted); text-align:left; cursor:pointer; }
+    .topology-context td { padding:6px 8px; border-top:1px solid var(--table-line); vertical-align:top; }
+    .topology-relative-select { border:0; padding:0; background:transparent; color:inherit; text-align:left; cursor:pointer; }
+    .topology-finding { padding:8px; border-top:1px solid var(--table-line); font-size:11px; }
+    .topology-finding strong { display:block; }
+    .topology-finding small { color:var(--muted); }
+    .topology-metric-control { display:grid; gap:6px; padding:8px; }
+    .topology-metric-card { padding:8px; border-top:1px solid var(--table-line); font-size:11px; }
+    .topology-metric-card svg { width:100%; height:38px; color:var(--cyan); overflow:visible; }
+    .topology-metric-card .metric-line { fill:none; stroke:currentColor; stroke-width:2; vector-effect:non-scaling-stroke; }
+    .topology-metric-card .metric-dot { fill:currentColor; }
+    .topology-raw { max-height:220px; overflow:auto; margin:0; padding:8px; font-size:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .node-metric { fill:var(--muted); font-size:9px; font-weight:700; }
     .topology-selection-note { color:var(--amber); }
     .toolbar {
       display:flex;
@@ -1242,6 +1259,9 @@
       stroke:rgba(96,165,250,.8);
       stroke-width:2;
     }
+    .link.selectable { cursor:pointer; pointer-events:stroke; }
+    .link.selected { stroke:var(--cyan); stroke-width:3; }
+    .link.selectable:focus-visible { outline:none; stroke:var(--cyan); stroke-width:3; }
     .link.active {
       stroke:var(--blue);
       stroke-width:2;
@@ -1940,6 +1960,20 @@
         height:auto;
       }
     }
+    @media (max-width:650px) {
+      html,
+      body { max-width:100%; overflow-x:hidden; }
+      .topology-workspace > * { min-width:0; }
+      .topology-workspace .toolbar {
+        width:100%;
+        max-width:100%;
+        flex-wrap:wrap;
+      }
+      .topology-workspace .toolbar-title { flex:1 0 100%; }
+      .topology-workspace .stat { flex:1 1 72px; min-width:0; }
+      .map { width:100%; min-width:0; }
+      .topology-context table { display:block; max-width:100%; overflow-x:auto; }
+    }
   summary:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
 </style>
 </head>
@@ -2137,7 +2171,7 @@ function applyMockShell() {
   byId('topologyHealth').value = topologyHealthFilter;
   byId('topologySystem').value = topologySystemFilter;
   byId('topologyState').value = topologyStateFilter;
-  byId('topologyViewOptions').addEventListener('click', event => { const button = event.target.closest('[data-topology-view]'); if (!button) return; topologySemanticView = button.dataset.topologyView; syncTopologyURL(); renderTopology(); });
+  byId('topologyViewOptions').addEventListener('click', event => { const button = event.target.closest('[data-topology-view]'); if (!button) return; topologyRestoreSelectionView = false; topologySemanticView = button.dataset.topologyView; syncTopologyURL(); renderTopology(); });
   byId('topologyModeOptions').addEventListener('click', event => { const button = event.target.closest('[data-topology-mode]'); if (!button) return; topologyMode = button.dataset.topologyMode; syncTopologyURL(); renderTopology(); });
   byId('topologyHealth').addEventListener('change', event => { topologyHealthFilter = event.target.value; syncTopologyURL(); renderTopology(); });
   byId('topologySystem').addEventListener('change', event => { topologySystemFilter = event.target.value; syncTopologyURL(); renderTopology(); });
@@ -2155,7 +2189,7 @@ function applyMockShell() {
 
   const inspector = document.createElement('aside');
   inspector.className = 'panel inspector';
-  inspector.innerHTML = `<div class="pane-head"><p class="eyebrow">Inspector</p><h1>Cluster summary</h1></div><div class="inspector-body"></div>`;
+  inspector.innerHTML = `<div class="pane-head"><p class="eyebrow">Inspector</p><h1 id="topologyInspectorTitle">Cluster summary</h1></div><div class="inspector-body"></div>`;
   const inspectorBody = inspector.querySelector('.inspector-body');
   const inventory = document.createElement('div');
   inventory.className = 'summary-card';
@@ -2167,7 +2201,7 @@ function applyMockShell() {
   freshnessCard.appendChild(freshness);
   const selected = document.createElement('div');
   selected.className = 'summary-card';
-  selected.innerHTML = `<div class="summary-title"><div class="glyph gateway">${iconUse('icon-gateway')}</div><strong>Selected object</strong></div><div class="kv" id="topologySelectedSummary"><span>State</span><strong>Select an object</strong><span>Layout</span><strong>Semantic swimlanes</strong><span>Mode</span><strong>Relationship focus</strong></div><div id="topologyCoverage" class="topology-coverage"></div>`;
+  selected.innerHTML = `<div class="summary-title"><div class="glyph gateway">${iconUse('icon-gateway')}</div><strong>Selected object</strong></div><div class="kv" id="topologySelectedSummary"><span>State</span><strong>Select an object</strong><span>Layout</span><strong>Semantic swimlanes</strong><span>Mode</span><strong>Relationship focus</strong></div><div id="topologyContext" class="topology-context"><p class="muted">Select an object to inspect relatives, findings, metrics, and raw evidence.</p></div><div id="topologyCoverage" class="topology-coverage"></div>`;
   inspectorBody.append(inventory, freshnessCard, selected);
   workspace.appendChild(inspector);
   byId('topologyFit').addEventListener('click', () => { topologyView = {scale:1,x:0,y:0}; syncTopologyURL(); applyTopologyTransform(); });
@@ -2216,7 +2250,8 @@ const topologyStateNames = ['all','connected','disconnected','stopped'];
 const validTopologyParam = (value, allowed, fallback) => allowed.includes(value) ? value : fallback;
 const topologyNumberParam = (name, fallback) => { const raw = topologyURL.get(name); if (raw === null || raw === '') return fallback; const value = Number(raw); return Number.isFinite(value) ? value : fallback; };
 let activeSection = 'overview', nsFilter = topologyURL.get('namespace') || 'all', resourceFilter = topologyURL.get('resource') || 'all';
-let topologySearch = topologyURL.get('topologyQuery') || '', topologySelectedNodeId = topologyURL.get('topologySelected') || '';
+let topologySearch = topologyURL.get('topologyQuery') || '', topologySelectedNodeId = topologyURL.get('topologySelected') || '', topologySelectedEdgeId = topologyURL.get('topologyEdge') || '';
+let topologyRestoreSelectionView = Boolean(topologySelectedNodeId);
 let topologySemanticView = validTopologyParam(topologyURL.get('topologyView'), topologyViewNames, 'application');
 let topologyMode = validTopologyParam(topologyURL.get('topologyMode'), topologyModeNames, 'graph');
 let topologyHealthFilter = validTopologyParam(topologyURL.get('topologyHealth'), topologyHealthNames, 'all');
@@ -2225,8 +2260,9 @@ let topologyStateFilter = validTopologyParam(topologyURL.get('topologyState'), t
 let topologyFocusSelection = topologyURL.get('topologyFocus') === 'true';
 let topologyGroupReplicas = topologyURL.get('topologyGroup') !== 'false';
 let topologySort = topologyURL.get('topologySort') || 'kind', topologySortDirection = topologyURL.get('topologyDirection') === 'desc' ? 'desc' : 'asc';
+let topologyMetricKey = topologyURL.get('topologyMetric') || '', topologyRelativeSort = 'relation', topologyRelativeDirection = 'asc', topologyRawExpanded = false;
 let topologyView = {scale:Math.max(.35, Math.min(4, topologyNumberParam('topologyScale', 1))), x:topologyNumberParam('topologyX', 0), y:topologyNumberParam('topologyY', 0)};
-let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0, nodeId:'', detail:''};
+let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0, nodeId:'', edgeId:''};
 const topologyLayoutRanks = new Map();
 function syncTopologyURL() {
   const url = new URL(location.href);
@@ -2234,9 +2270,10 @@ function syncTopologyURL() {
   set('namespace', nsFilter, 'all'); set('resource', resourceFilter, 'all'); set('topologyQuery', topologySearch);
   set('topologyView', topologySemanticView, 'application'); set('topologyMode', topologyMode, 'graph');
   set('topologyHealth', topologyHealthFilter, 'all'); set('topologySystem', topologySystemFilter, 'include'); set('topologyState', topologyStateFilter, 'all');
-  set('topologyFocus', topologyFocusSelection ? 'true' : ''); set('topologySelected', topologySelectedNodeId);
+  set('topologyFocus', topologyFocusSelection ? 'true' : ''); set('topologySelected', topologySelectedNodeId); set('topologyEdge', topologySelectedEdgeId);
   set('topologyGroup', topologyGroupReplicas ? '' : 'false');
   set('topologySort', topologySort, 'kind'); set('topologyDirection', topologySortDirection, 'asc');
+  set('topologyMetric', topologyMetricKey);
   set('topologyScale', Math.round(topologyView.scale * 1000) / 1000, 1); set('topologyX', Math.round(topologyView.x), 0); set('topologyY', Math.round(topologyView.y), 0);
   history.replaceState(null, '', url);
 }
@@ -2261,15 +2298,23 @@ function updateTopologySelectionSummary(node, relationshipCount) {
     ? `<span>Object</span><strong>${esc(node.label)}</strong><span>Type</span><strong>${esc(node.type)}</strong><span>Direct relationships</span><strong>${relationshipCount}</strong>`
     : '<span>State</span><strong>Click a topology card</strong><span>Layout</span><strong>Swimlanes</strong><span>Mode</span><strong>Relationship focus</strong>';
 }
-function selectTopologyNode(nodeId, detail) {
+function topologyViewForNode(node) { const kind=topologyKind(node); return topologyViewNames.find(view=>topologyViewKinds[view].has(kind))||topologySemanticView; }
+function selectTopologyNode(nodeId) {
   topologySelectedNodeId = nodeId || '';
+  topologySelectedEdgeId = '';
+  topologyRestoreSelectionView = false;
+  topologyRawExpanded = false;
+  const selected=arr(topologyGraph?.nodes).find(node=>node.id===topologySelectedNodeId);
+  if(selected&&!topologyViewKinds[topologySemanticView].has(topologyKind(selected)))topologySemanticView=topologyViewForNode(selected);
   syncTopologyURL();
   renderTopology();
-  if (detail) showText(detail);
 }
+function selectTopologyEdge(edgeId) { topologySelectedEdgeId=edgeId||''; topologySelectedNodeId=''; topologyRawExpanded=false; syncTopologyURL(); renderTopology(); }
 function clearTopologySelection() {
-  if (!topologySelectedNodeId) return;
+  if (!topologySelectedNodeId && !topologySelectedEdgeId) return;
   topologySelectedNodeId = '';
+  topologySelectedEdgeId = '';
+  topologyRawExpanded = false;
   syncTopologyURL();
   renderTopology();
 }
@@ -2687,6 +2732,8 @@ function topologyReplicaGroup(node, edges, nodeById) {
 }
 function topologyFilteredGraph() {
   const allNodes = arr(topologyGraph?.nodes), allEdges = arr(topologyGraph?.edges), nodeById = new Map(allNodes.map(node => [node.id,node]));
+  const selectedForView=nodeById.get(topologySelectedNodeId);
+  if(topologyRestoreSelectionView&&selectedForView){topologyRestoreSelectionView=false;if(!topologyViewKinds[topologySemanticView].has(topologyKind(selectedForView))){topologySemanticView=topologyViewForNode(selectedForView);syncTopologyURL();}}
   const degree = new Map(allNodes.map(node => [node.id,0])); allEdges.forEach(edge => { degree.set(edge.source,(degree.get(edge.source)||0)+1); degree.set(edge.target,(degree.get(edge.target)||0)+1); });
   let nodes = allNodes.filter(node => topologyViewKinds[topologySemanticView].has(topologyKind(node)))
     .filter(node => nsFilter === 'all' || node.scope?.namespace === nsFilter)
@@ -2699,17 +2746,38 @@ function topologyFilteredGraph() {
   const graphReady = Boolean(topologyGraph?.schemaVersion) && allNodes.length > 0;
   if (topologySelectedNodeId && graphReady && !baseIDs.has(topologySelectedNodeId)) { topologySelectedNodeId = ''; if (byId('drawer')?.classList.contains('open')) closeDrawer(); syncTopologyURL(); }
   if (topologyFocusSelection && topologySelectedNodeId) { const focused = new Set([topologySelectedNodeId]); allEdges.forEach(edge => { if (edge.source === topologySelectedNodeId) focused.add(edge.target); if (edge.target === topologySelectedNodeId) focused.add(edge.source); }); nodes = nodes.filter(node => focused.has(node.id)); }
+  if (topologyFocusSelection && topologySelectedEdgeId) { const selectedEdge=allEdges.find(edge=>edge.id===topologySelectedEdgeId),focused=new Set([selectedEdge?.source,selectedEdge?.target].filter(Boolean)); nodes=nodes.filter(node=>focused.has(node.id)); }
   const ids = new Set(nodes.map(node => node.id)), edges = allEdges.filter(edge => ids.has(edge.source) && ids.has(edge.target));
+  if (topologySelectedEdgeId && graphReady && !edges.some(edge=>edge.id===topologySelectedEdgeId)) { topologySelectedEdgeId=''; syncTopologyURL(); }
   return {nodes,edges,nodeById};
 }
 function topologyNodeDetail(node, incident) { const {x,y,w,h,...resource} = node; return JSON.stringify({...resource,relationships:incident.map(edge => ({kind:edge.kind,relation:edge.relation,provider:edge.provider,source:edge.source,target:edge.target,evidence:edge.evidence}))}); }
-function updateTopologySelectionSummary(node, incident) {
-  const summary = byId('topologySelectedSummary'), coverage = byId('topologyCoverage'); if (!summary || !coverage) return;
-  summary.innerHTML = node ? `<span>Object</span><strong>${esc(node.name)}</strong><span>Identity</span><strong>${esc(node.id)}</strong><span>Health</span><strong>${esc(topologyNodeHealth(node))}</strong><span>Relationships</span><strong>${incident.length}</strong><span>Findings</span><strong>${esc(arr(node.findingRefs).join(', ') || 'none')}</strong>` : '<span>State</span><strong>Select an object</strong><span>Layout</span><strong>Semantic swimlanes</strong><span>Mode</span><strong>Relationship focus</strong>';
-  const evidence = node ? [...arr(node.evidence), ...incident.flatMap(edge => arr(edge.evidence))] : [];
+function topologyMetricCatalog() { const catalog=new Map(); arr(topologyGraph?.nodes).forEach(node=>arr(node.metrics).forEach(metric=>{if(!catalog.has(metric.key))catalog.set(metric.key,metric)})); return [...catalog.values()].sort((a,b)=>a.label.localeCompare(b.label)||a.key.localeCompare(b.key)); }
+function topologyMetricValue(metric) { const samples=arr(metric?.samples); return samples.length ? samples[samples.length-1].value : null; }
+function formatTopologyMetric(metric) { const value=topologyMetricValue(metric); if(value===null)return'unavailable'; if(metric.unit==='bytes'){const units=['B','KiB','MiB','GiB','TiB'];let current=Number(value),i=0;while(Math.abs(current)>=1024&&i<units.length-1){current/=1024;i++;}return`${current>=10?current.toFixed(0):current.toFixed(1)} ${units[i]}`;} if(metric.unit==='mCPU')return`${Number(value).toFixed(0)}m`; return`${Number(value).toLocaleString()} ${metric.unit||''}`.trim(); }
+function topologyMetricSparkline(metric) { const samples=arr(metric?.samples); if(samples.length<2)return'<p class="muted">Single snapshot point · history unavailable</p>'; const values=samples.map(sample=>Number(sample.value)),min=Math.min(...values),max=Math.max(...values),span=max-min||1,points=values.map((value,index)=>`${(index/(values.length-1))*120},${32-((value-min)/span)*28}`).join(' '); return`<svg viewBox="0 0 120 36" role="img" aria-label="${esc(metric.label)} sparkline"><polyline class="metric-line" points="${points}"/>${values.map((value,index)=>`<circle class="metric-dot" cx="${(index/(values.length-1))*120}" cy="${32-((value-min)/span)*28}" r="2"><title>${esc(String(value))} ${esc(metric.unit)} · ${esc(samples[index].at)}</title></circle>`).join('')}</svg>`; }
+function topologyFindingRef(item) { return `${item?.ruleId||''}::${item?.scope||''}`; }
+function topologyFinding(ref) { return arr(advisorReport?.capabilities).find(item=>topologyFindingRef(item)===ref)||null; }
+function topologyRelatives(node,nodeById,edges) { const rows=[],add=(relation,target,edge=null)=>{if(!target||target.id===node.id)return;const key=relation+'\u0000'+target.id;if(rows.some(row=>row.key===key))return;rows.push({key,relation,node:target,edge});}; if(node.parentId)add('parent',nodeById.get(node.parentId)); arr(topologyGraph?.nodes).forEach(candidate=>{if(candidate.parentId===node.id)add('child',candidate);else if(node.parentId&&candidate.parentId===node.parentId&&topologyKind(candidate)===topologyKind(node))add('sibling',candidate);}); edges.forEach(edge=>{if(edge.source!==node.id&&edge.target!==node.id)return;const outgoing=edge.source===node.id,target=nodeById.get(outgoing?edge.target:edge.source);if(!target)return;const direction=outgoing?'downstream':'upstream',relation=topologyLayer(target)===topologyLayer(node)?direction:'cross-layer '+direction;add(relation,target,edge);}); const value=(row,key)=>key==='name'?row.node.name:key==='kind'?row.node.kind:row.relation; rows.sort((a,b)=>{const result=String(value(a,topologyRelativeSort)).localeCompare(String(value(b,topologyRelativeSort)));return topologyRelativeDirection==='desc'?-result:result;}); return rows; }
+function topologyMetadataHTML(metadata) { const entries=Object.entries(metadata||{}).sort(([a],[b])=>a.localeCompare(b)); return entries.length?`<table><tbody>${entries.map(([key,value])=>`<tr><th scope="row">${esc(key)}</th><td>${esc(String(value))}</td></tr>`).join('')}</tbody></table>`:'<p class="muted topology-metric-control">No collected metadata for this object.</p>'; }
+function topologyResolvedFindings(refs) { return arr(refs).map(ref=>topologyFinding(ref)||{ruleId:ref,summary:'Referenced finding is unavailable in this report revision.'}); }
+function topologyFindingsHTML(refs) { const findings=topologyResolvedFindings(refs); return findings.map(finding=>{const tone=finding.assessment==='unsupported'?'warning':finding.coverage&&finding.coverage!=='complete'?'coverage gap':finding.assessment||'unknown';const evidence=arr(finding.evidence).map(item=>`<li><strong>${esc(ref(item.resource))}</strong><br>${esc(item.field||'-')} = ${esc(item.value||'-')}<br><small>${esc(item.collectedAt||'time unknown')}</small></li>`).join('')||'<li>No resource evidence recorded.</li>';const collection=arr(finding.collection).map(item=>`<li><strong>${esc([item.area,item.resource].filter(Boolean).join('/')||'collection')}</strong> · ${esc(item.status||'unknown')}${item.reason?`<br>${esc(item.reason)}`:''}</li>`).join('')||'<li>No collection gaps recorded.</li>';return`<div class="topology-finding"><strong>${esc(finding.ruleId||'unknown rule')} · ${esc(tone)}</strong><small>${esc(finding.basis||'none')} · coverage ${esc(finding.coverage||'unknown')} · freshness ${esc(finding.freshness||'unknown')}</small><p>${esc(finding.summary||'')}</p>${arr(finding.constraints).map(item=>`<p class="muted">${esc(item)}</p>`).join('')}<details><summary>Finding evidence · ${arr(finding.evidence).length}</summary><ul>${evidence}</ul></details><details><summary>Collection status · ${arr(finding.collection).length}</summary><ul>${collection}</ul></details></div>`;}).join('')||'<p class="muted topology-metric-control">No deterministic findings reference this object.</p>'; }
+function topologyMetricHTML(node) { const catalog=topologyMetricCatalog(),pinnedDefinition=catalog.find(metric=>metric.key===topologyMetricKey),options=['<option value="">No canvas metric</option>',...catalog.map(metric=>`<option value="${esc(metric.key)}" ${metric.key===topologyMetricKey?'selected':''}>${esc(metric.label)} · ${esc(metric.semantic)}</option>`)];if(topologyMetricKey&&!pinnedDefinition)options.push(`<option value="${esc(topologyMetricKey)}" selected>${esc(topologyMetricKey)} · unavailable</option>`);const selectedMetric=topologyMetricKey?arr(node.metrics).find(metric=>metric.key===topologyMetricKey):arr(node.metrics)[0],metricSamples=arr(selectedMetric?.samples),unavailable=topologyMetricKey?`Pinned metric ${topologyMetricKey} is unavailable for this object in the current revision.`:'Metrics unavailable for this object. Capacity and declared values are shown only when collected; runtime usage requires an explicit external provider.';return`<div class="topology-metric-control"><label for="topologyMetric">Pin metric to canvas</label><select id="topologyMetric">${options.join('')}</select></div>${selectedMetric?`<div class="topology-metric-card"><strong>${esc(selectedMetric.label)} · ${esc(formatTopologyMetric(selectedMetric))}</strong><p>${esc(selectedMetric.semantic)} · ${esc(selectedMetric.provider)} · ${esc(selectedMetric.sampling)} · ${esc(selectedMetric.freshness)}</p>${topologyMetricSparkline(selectedMetric)}<small>${esc(selectedMetric.windowStart||metricSamples[0]?.at||'time unknown')} → ${esc(selectedMetric.windowEnd||metricSamples[metricSamples.length-1]?.at||'time unknown')}</small></div>`:`<p class="muted topology-metric-control">${esc(unavailable)}</p>`}`; }
+function updateTopologySelectionSummary(node, incident, selectedEdge) {
+  const summary = byId('topologySelectedSummary'), context = byId('topologyContext'), coverage = byId('topologyCoverage'), inspectorTitle=byId('topologyInspectorTitle'); if (!summary || !context || !coverage) return;
+  summary.innerHTML = node ? `<span>Object</span><strong>${esc(node.name)}</strong><span>Identity</span><strong>${esc(node.id)}</strong><span>Health</span><strong>${esc(topologyNodeHealth(node))}</strong><span>Relationships</span><strong>${incident.length}</strong><span>Findings</span><strong>${esc(arr(node.findingRefs).join(', ') || 'none')}</strong>` : selectedEdge ? `<span>Relationship</span><strong>${esc(selectedEdge.relation||selectedEdge.kind)}</strong><span>Provider</span><strong>${esc(selectedEdge.provider)}</strong><span>Evidence tier</span><strong>${esc(selectedEdge.kind)}</strong><span>Findings</span><strong>${esc(arr(selectedEdge.findingRefs).join(', ')||'none')}</strong>` : '<span>State</span><strong>Select an object or relationship</strong><span>Layout</span><strong>Semantic swimlanes</strong><span>Mode</span><strong>Relationship focus</strong>';
+  if(inspectorTitle)inspectorTitle.textContent=node?node.name:selectedEdge?`${selectedEdge.relation||selectedEdge.kind} relationship`:'Cluster summary';
+  const evidence = node ? [...arr(node.evidence), ...incident.flatMap(edge => arr(edge.evidence))] : selectedEdge ? arr(selectedEdge.evidence) : [];
   const evidenceHTML = evidence.slice(0,6).map(item => `<div class="topology-coverage-item"><strong>${esc(item.basis || 'evidence')} · ${esc(item.provider || '-')}</strong><br>${esc(item.summary || item.freshness || '-')}</div>`).join('');
   const coverageHTML = arr(topologyGraph?.coverage).slice(0,8).map(item => `<div class="topology-coverage-item"><strong>${esc(item.provider)} · ${esc(item.capability)}</strong><br>${esc(item.status)}${item.reason ? ` · ${esc(item.reason)}` : ''}</div>`).join('');
   coverage.innerHTML = evidenceHTML + coverageHTML;
+  const allNodes=arr(topologyGraph?.nodes),nodeById=new Map(allNodes.map(item=>[item.id,item])),allEdges=arr(topologyGraph?.edges);
+  if(selectedEdge){const source=nodeById.get(selectedEdge.source),target=nodeById.get(selectedEdge.target),findings=topologyResolvedFindings(selectedEdge.findingRefs),endpoint=(label,item)=>`<div class="topology-finding"><small>${label}</small><button type="button" class="topology-relative-select" data-topology-select="${esc(item?.id||'')}">${esc(item?.name||'unavailable')}</button></div>`;const raw={edge:selectedEdge,source,target,findings,coverage:arr(topologyGraph?.coverage)};context.innerHTML=`<details open><summary>Endpoints</summary>${endpoint('Source',source)}${endpoint('Target',target)}</details><details open><summary>Relationship metadata</summary>${topologyMetadataHTML(selectedEdge.metadata)}</details><details open><summary>Deterministic findings · ${arr(selectedEdge.findingRefs).length}</summary>${topologyFindingsHTML(selectedEdge.findingRefs)}</details><details data-topology-raw ${topologyRawExpanded?'open':''}><summary>Raw evidence</summary><pre class="topology-raw">${esc(JSON.stringify(raw,null,2))}</pre></details>`;return;}
+  if(!node){context.innerHTML='<p class="muted">Select an object or relationship to inspect context, findings, metrics, and raw evidence.</p>';return;}
+  const relatives=topologyRelatives(node,nodeById,allEdges),headers=[['relation','Relation'],['kind','Kind'],['name','Object']];
+  const relativeRows=relatives.map(row=>{const relatedIncident=allEdges.filter(edge=>edge.source===row.node.id||edge.target===row.node.id);return`<tr><td>${esc(row.relation)}</td><td>${esc(row.node.kind)}</td><td><button type="button" class="topology-relative-select" data-topology-select="${esc(row.node.id)}" data-detail="${esc(topologyNodeDetail(row.node,relatedIncident))}">${esc(row.node.name)}</button>${row.edge?`<br><small>${esc(row.edge.kind)} · ${esc(row.edge.provider)} · ${esc(row.edge.relation||'-')}</small>`:''}</td></tr>`;}).join('')||'<tr><td colspan="3" class="muted">No collected relatives.</td></tr>';
+  const findings=topologyResolvedFindings(node.findingRefs),raw={node,relationships:incident,findings,coverage:arr(topologyGraph?.coverage),metrics:arr(node.metrics)};
+  context.innerHTML=`<details open><summary>Relatives · ${relatives.length}</summary><table><thead><tr>${headers.map(([key,label])=>`<th><button type="button" data-relative-sort="${key}">${label}${topologyRelativeSort===key?(topologyRelativeDirection==='asc'?' ↑':' ↓'):''}</button></th>`).join('')}</tr></thead><tbody>${relativeRows}</tbody></table></details><details open><summary>Metadata · ${Object.keys(node.metadata||{}).length}</summary>${topologyMetadataHTML(node.metadata)}</details><details open><summary>Deterministic findings · ${arr(node.findingRefs).length}</summary>${topologyFindingsHTML(node.findingRefs)}</details><details open><summary>Metrics · ${arr(node.metrics).length}</summary>${topologyMetricHTML(node)}</details><details data-topology-raw ${topologyRawExpanded?'open':''}><summary>Raw evidence</summary><pre class="topology-raw">${esc(JSON.stringify(raw,null,2))}</pre></details>`;
 }
 function topologyLayer(node) {
   const kind = topologyKind(node);
@@ -2746,24 +2814,24 @@ function renderTopologyTable(nodes, edges, nodeById) {
 }
 function renderTopology() {
   syncTopologyLayoutRanks();
-  const graph = topologyFilteredGraph(), {nodes,edges,nodeById} = graph, selected = nodeById.get(topologySelectedNodeId), incident = selected ? arr(topologyGraph?.edges).filter(edge => edge.source === selected.id || edge.target === selected.id) : [];
+  const graph = topologyFilteredGraph(), {nodes,edges,nodeById} = graph, selected = nodeById.get(topologySelectedNodeId), selectedEdge=edges.find(edge=>edge.id===topologySelectedEdgeId), incident = selected ? arr(topologyGraph?.edges).filter(edge => edge.source === selected.id || edge.target === selected.id) : [];
   document.querySelectorAll('[data-topology-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyView === topologySemanticView)));
   document.querySelectorAll('[data-topology-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyMode === topologyMode)));
   const warningCount = nodes.filter(node => topologyNodeHealth(node) === 'warning').length, setText = (id,value) => { const element=byId(id); if (element) element.textContent=value; };
   setText('topologyObjectStat',nodes.length); setText('topologyEdgeStat',edges.length); setText('topologyWarningStat',warningCount); setText('topologyScope',`${nsFilter === 'all' ? 'All namespaces' : nsFilter} · ${topologySemanticView}`); setText('topologyTitle',topologyMode === 'graph' ? 'Semantic swimlanes' : 'Relation explorer table');
   setText('topologyGatewayCount',nodes.filter(node => ['ingress','gateway','gatewayroute'].includes(topologyKind(node))).length); setText('topologyServiceCount',nodes.filter(node => topologyKind(node)==='service').length); setText('topologyWorkloadCount',nodes.filter(node => topologyKind(node)==='workload').length); setText('topologyPodCount',nodes.filter(node => topologyKind(node)==='pod').length); setText('topologyStorageCount',nodes.filter(node => ['persistentvolume','persistentvolumeclaim','storageclass'].includes(topologyKind(node))).length); setText('topologyImageCount',nodes.filter(node => topologyKind(node)==='image').length);
-  updateTopologySelectionSummary(selected,incident);
+  updateTopologySelectionSummary(selected,incident,selectedEdge);
   if (!nodes.length) { byId('topology').innerHTML='<div class="empty">No topology objects match the current view and filters.</div>'; return; }
   if (topologyMode === 'table') { renderTopologyTable(nodes,edges,nodeById); return; }
   const layers=['application','workload','runtime','infrastructure'], laneNodes=new Map(layers.map(layer=>[layer,[]])); nodes.forEach(node=>laneNodes.get(topologyLayer(node)).push(node));
   const groupOrder = node => topologyGroupReplicas ? topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById) : '';
   laneNodes.forEach(items => items.sort((a,b)=>topologyLayoutRank(a)-topologyLayoutRank(b) || groupOrder(a).localeCompare(groupOrder(b)) || a.name.localeCompare(b.name)));
-  const active=layers.filter(layer=>laneNodes.get(layer).length), W=byId('topology').clientWidth||900,H=byId('topology').clientHeight||560,gap=22,margin=22,nodeH=62,rowGap=10,top=54,laneW=260;
+  const active=layers.filter(layer=>laneNodes.get(layer).length), W=byId('topology').clientWidth||900,H=byId('topology').clientHeight||560,gap=22,margin=22,nodeH=topologyMetricKey?78:62,rowGap=10,top=54,laneW=260;
   const drawn=new Map(); active.forEach((layer,index)=>laneNodes.get(layer).forEach(node=>drawn.set(node.id,{...node,x:margin+index*(laneW+gap)+12,y:top+topologyLayoutRank(node)*(nodeH+rowGap),w:laneW-24,h:nodeH}))); const maxRank=Math.max(0,...nodes.map(topologyLayoutRank)); const contentW=Math.max(W,margin*2+active.length*laneW+Math.max(0,active.length-1)*gap),contentH=Math.max(H,top+(maxRank+1)*(nodeH+rowGap)+56);
   byId('topology').style.minWidth=(contentW+36)+'px'; byId('topology').style.minHeight=(contentH+36)+'px';
   const laneSVG=active.map((layer,index)=>`<g class="topology-lane"><rect x="${margin+index*(laneW+gap)}" y="18" width="${laneW}" height="${contentH-42}"/><text x="${margin+index*(laneW+gap)+12}" y="40">${layer.toUpperCase()} (${laneNodes.get(layer).length})</text></g>`).join('');
-  const edgeSVG=edges.map(edge=>{const A=drawn.get(edge.source),B=drawn.get(edge.target);if(!A||!B)return'';const hot=topologySelectedNodeId&&(edge.source===topologySelectedNodeId||edge.target===topologySelectedNodeId);return `<path class="link ${esc(edge.kind)}${hot?' hot':''}" d="${topologyOrthogonalPath(A,B)}"><title>${esc(`${edge.kind} · ${edge.provider} · ${edge.relation || ''}`)}</title></path>`}).join('');
-  const nodeSVG=[...drawn.values()].map(node=>{const selectedNode=node.id===topologySelectedNodeId,related=incident.some(edge=>edge.source===node.id||edge.target===node.id),nodeIncident=arr(topologyGraph?.edges).filter(edge=>edge.source===node.id||edge.target===node.id),health=topologyNodeHealth(node),statusColor=health==='warning'?'var(--amber)':health==='unknown'?'var(--muted)':health==='stopped'?'var(--red)':'var(--green)',group=topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById);return `<g class="node${selectedNode?' selected':related?' related':''}" data-node-id="${esc(node.id)}" data-detail="${esc(topologyNodeDetail(node,nodeIncident))}" role="button" tabindex="0" aria-pressed="${selectedNode}" aria-label="Select ${esc(node.kind)} ${esc(node.name)}"><rect class="node-card" x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}"/><rect class="node-icon-box" x="${node.x+8}" y="${node.y+12}" width="32" height="32"/><svg x="${node.x+14}" y="${node.y+18}" width="20" height="20" style="color:var(--blue)"><use href="#${topologyIconID(topologyKind(node))}"/></svg><text class="node-label" x="${node.x+48}" y="${node.y+24}">${esc(node.name)}</text><text class="node-meta" x="${node.x+48}" y="${node.y+42}">${esc(group || `${node.scope?.namespace || 'cluster'} · ${node.scope?.provider || '-'}`)}</text><circle cx="${node.x+node.w-14}" cy="${node.y+16}" r="5" fill="${statusColor}"/></g>`}).join('');
+  const edgeSVG=edges.map(edge=>{const A=drawn.get(edge.source),B=drawn.get(edge.target);if(!A||!B)return'';const hot=topologySelectedNodeId&&(edge.source===topologySelectedNodeId||edge.target===topologySelectedNodeId),selectedRelationship=edge.id===topologySelectedEdgeId;return `<path class="link selectable ${esc(edge.kind)}${hot?' hot':''}${selectedRelationship?' selected':''}" data-edge-id="${esc(edge.id)}" role="button" tabindex="0" aria-pressed="${selectedRelationship}" aria-label="Select ${esc(edge.relation||edge.kind)} relationship" d="${topologyOrthogonalPath(A,B)}"><title>${esc(`${edge.kind} · ${edge.provider} · ${edge.relation || ''}`)}</title></path>`}).join('');
+  const nodeSVG=[...drawn.values()].map(node=>{const selectedNode=node.id===topologySelectedNodeId,related=incident.some(edge=>edge.source===node.id||edge.target===node.id)||(selectedEdge&&(selectedEdge.source===node.id||selectedEdge.target===node.id)),nodeIncident=arr(topologyGraph?.edges).filter(edge=>edge.source===node.id||edge.target===node.id),health=topologyNodeHealth(node),statusColor=health==='warning'?'var(--amber)':health==='unknown'?'var(--muted)':health==='stopped'?'var(--red)':'var(--green)',group=topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById),metric=arr(node.metrics).find(item=>item.key===topologyMetricKey),metricText=topologyMetricKey?(metric?`${metric.label}: ${formatTopologyMetric(metric)}`:'metric unavailable'):'';return `<g class="node${selectedNode?' selected':related?' related':''}" data-node-id="${esc(node.id)}" data-detail="${esc(topologyNodeDetail(node,nodeIncident))}" role="button" tabindex="0" aria-pressed="${selectedNode}" aria-label="Select ${esc(node.kind)} ${esc(node.name)}"><rect class="node-card" x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}"/><rect class="node-icon-box" x="${node.x+8}" y="${node.y+12}" width="32" height="32"/><svg x="${node.x+14}" y="${node.y+18}" width="20" height="20" style="color:var(--blue)"><use href="#${topologyIconID(topologyKind(node))}"/></svg><text class="node-label" x="${node.x+48}" y="${node.y+24}">${esc(node.name)}</text><text class="node-meta" x="${node.x+48}" y="${node.y+42}">${esc(group || `${node.scope?.namespace || 'cluster'} · ${node.scope?.provider || '-'}`)}</text>${metricText?`<text class="node-metric" x="${node.x+48}" y="${node.y+59}">${esc(metricText)}</text>`:''}<circle cx="${node.x+node.w-14}" cy="${node.y+16}" r="5" fill="${statusColor}"/></g>`}).join('');
   byId('topology').innerHTML=`<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSVG}${edgeSVG}${nodeSVG}</g></svg><div class="legend"><span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${edges.length} evidence-backed relationships</span></div>`;
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
@@ -2904,13 +2972,14 @@ function renderAnalysis(page='advisor') {
   analysisBodyFor(page).innerHTML = `<p class="analysis-summary">${esc(analysis.summary || 'No summary returned.')}</p>${meta ? `<p class="analysis-meta">${esc(meta)}</p>` : ''}${analysisGroup('Observed facts', facts)}${analysisGroup('Inference', inference)}${limitations}`;
 }
 function renderAll() { renderAdvisor(); renderAnalysis(); Object.keys(llmAnalyses).forEach(renderAnalysis); renderCards(); renderTables(); renderTopology(); renderWorkloadSearch(); }
-document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (!e.target.closest('#nav .nav-menu')) closeNavMenus(); const workload = e.target.closest('[data-workload-key]'); if (workload) { openWorkloadByKey(workload.dataset.workloadKey); return; } const topologySelect = e.target.closest('[data-topology-select]'); if (topologySelect) { selectTopologyNode(topologySelect.dataset.topologySelect, topologySelect.dataset.detail); return; } if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
+document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (!e.target.closest('#nav .nav-menu')) closeNavMenus(); const rawSummary=e.target.closest('[data-topology-raw] summary'); if(rawSummary){topologyRawExpanded=!rawSummary.parentElement.open;return;} const relativeSort=e.target.closest('[data-relative-sort]'); if(relativeSort){const key=relativeSort.dataset.relativeSort;topologyRelativeDirection=topologyRelativeSort===key&&topologyRelativeDirection==='asc'?'desc':'asc';topologyRelativeSort=key;renderTopology();return;} const workload = e.target.closest('[data-workload-key]'); if (workload) { openWorkloadByKey(workload.dataset.workloadKey); return; } const topologySelect = e.target.closest('[data-topology-select]'); if (topologySelect) { selectTopologyNode(topologySelect.dataset.topologySelect, topologySelect.dataset.detail); return; } if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
+document.addEventListener('change',e=>{if(e.target.id!=='topologyMetric')return;topologyMetricKey=e.target.value;syncTopologyURL();renderTopology();});
 byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); syncTopologyURL(); }, {passive:false});
-byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; const node = e.target.closest('.node[data-node-id]'); topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, nodeId:node?.dataset.nodeId || '', detail:node?.dataset.detail || ''}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
+byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; const node = e.target.closest('.node[data-node-id]'),edge=e.target.closest('.link[data-edge-id]'); topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, nodeId:node?.dataset.nodeId || '', edgeId:edge?.dataset.edgeId || ''}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointermove', e => { if (!topologyDrag.active) return; const dx = e.clientX - topologyDrag.startX, dy = e.clientY - topologyDrag.startY; topologyDrag.moved = topologyDrag.moved || Math.abs(dx) + Math.abs(dy) > 3; topologyView.x = topologyDrag.viewX + dx; topologyView.y = topologyDrag.viewY + dy; applyTopologyTransform(); });
-byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = true; if (!topologyDrag.moved) { if (topologyDrag.nodeId) selectTopologyNode(topologyDrag.nodeId, topologyDrag.detail); else clearTopologySelection(); } topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); syncTopologyURL(); });
+byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = true; if (!topologyDrag.moved) { if (topologyDrag.nodeId) selectTopologyNode(topologyDrag.nodeId); else if(topologyDrag.edgeId) selectTopologyEdge(topologyDrag.edgeId); else clearTopologySelection(); } topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); syncTopologyURL(); });
 byId('topology').addEventListener('pointercancel', e => { topologyDrag.active = false; byId('topology').classList.remove('panning'); if (byId('topology').hasPointerCapture(e.pointerId)) byId('topology').releasePointerCapture(e.pointerId); });
-byId('topology').addEventListener('keydown', e => { const node = e.target.closest('.node[data-node-id]'); if (!node || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); selectTopologyNode(node.dataset.nodeId, node.dataset.detail); });
+byId('topology').addEventListener('keydown', e => { if(e.key !== 'Enter' && e.key !== ' ')return;const node=e.target.closest('.node[data-node-id]'),edge=e.target.closest('.link[data-edge-id]');if(!node&&!edge)return;e.preventDefault();if(node)selectTopologyNode(node.dataset.nodeId);else selectTopologyEdge(edge.dataset.edgeId); });
 byId('focus').addEventListener('change', e => { nsFilter = e.target.value; syncTopologyURL(); renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
 byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; syncTopologyURL(); renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
 byId('workloadSearch').addEventListener('input', renderWorkloadSearch);

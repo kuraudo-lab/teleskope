@@ -436,6 +436,24 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"data-topology-select",
 		`aria-selected="${node.id === topologySelectedNodeId}"`,
 		"runtime-connections",
+		"topologyMetric",
+		"function topologyRelatives",
+		"function topologyMetadataHTML",
+		"function topologyFindingsHTML",
+		"function topologyFindingRef",
+		"function topologyViewForNode",
+		"topologyRestoreSelectionView",
+		"function selectTopologyEdge",
+		"data-edge-id",
+		"Select an object or relationship",
+		"Pinned metric ${topologyMetricKey} is unavailable",
+		"function topologyMetricSparkline",
+		"topologyRawExpanded",
+		"data-topology-raw",
+		"Deterministic findings",
+		"Raw evidence",
+		"data-relative-sort",
+		"metric unavailable",
 		"topologySelectedNodeId",
 		"visibleTopologyLinks = topologySelectedNodeId ?",
 		"function selectTopologyNode",
@@ -478,6 +496,12 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	}
 	if strings.Contains(string(html), "C${x1 + mid} ${y1} ${x2 - mid} ${y2}") {
 		t.Fatal("topology still contains the previous cubic relationship path")
+	}
+	if strings.Contains(string(html), "if (detail) showText(detail)") {
+		t.Fatal("topology selection should keep contextual inspection in the inspector")
+	}
+	if strings.Contains(string(html), "if(topologyMetricKey&&!catalog.some") {
+		t.Fatal("topology should preserve a pinned metric when a revision does not provide it")
 	}
 	if strings.Contains(string(html), "<h3>Coverage</h3>") {
 		t.Fatalf("index.html should not render coverage panel")

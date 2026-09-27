@@ -4,6 +4,7 @@ package topology
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"sort"
 	"strings"
@@ -53,7 +54,35 @@ type Node struct {
 	PseudoKind  string            `json:"pseudoKind,omitempty"`
 	Metadata    map[string]string `json:"metadata,omitempty"`
 	Evidence    []Evidence        `json:"evidence,omitempty"`
+	Metrics     []MetricSeries    `json:"metrics,omitempty"`
 	FindingRefs []string          `json:"findingRefs,omitempty"`
+}
+
+type MetricSemantic string
+
+const (
+	MetricCapacity    MetricSemantic = "capacity"
+	MetricAllocatable MetricSemantic = "allocatable"
+	MetricDeclared    MetricSemantic = "declared"
+	MetricUsage       MetricSemantic = "usage"
+)
+
+type MetricSeries struct {
+	Key         string         `json:"key"`
+	Label       string         `json:"label"`
+	Provider    string         `json:"provider"`
+	Semantic    MetricSemantic `json:"semantic"`
+	Unit        string         `json:"unit"`
+	Sampling    string         `json:"sampling"`
+	Freshness   string         `json:"freshness"`
+	WindowStart *time.Time     `json:"windowStart,omitempty"`
+	WindowEnd   *time.Time     `json:"windowEnd,omitempty"`
+	Samples     []MetricSample `json:"samples"`
+}
+
+type MetricSample struct {
+	At    time.Time `json:"at"`
+	Value float64   `json:"value"`
 }
 
 type Scope struct {
@@ -147,6 +176,12 @@ func (g *Graph) Normalize() {
 			sortFieldReferences(g.Nodes[i].Evidence[j].Fields)
 		}
 		sort.Slice(g.Nodes[i].Evidence, func(a, b int) bool { return evidenceKey(g.Nodes[i].Evidence[a]) < evidenceKey(g.Nodes[i].Evidence[b]) })
+		for j := range g.Nodes[i].Metrics {
+			sort.Slice(g.Nodes[i].Metrics[j].Samples, func(a, b int) bool {
+				return g.Nodes[i].Metrics[j].Samples[a].At.Before(g.Nodes[i].Metrics[j].Samples[b].At)
+			})
+		}
+		sort.Slice(g.Nodes[i].Metrics, func(a, b int) bool { return g.Nodes[i].Metrics[a].Key < g.Nodes[i].Metrics[b].Key })
 		sort.Strings(g.Nodes[i].FindingRefs)
 	}
 	for i := range g.Edges {
@@ -165,6 +200,11 @@ func coverageKey(coverage Coverage) string {
 
 func evidenceKey(e Evidence) string {
 	encoded, _ := json.Marshal(e)
+	return string(encoded)
+}
+
+func metricSeriesKey(metric MetricSeries) string {
+	encoded, _ := json.Marshal(metric)
 	return string(encoded)
 }
 
@@ -225,6 +265,16 @@ func (g Graph) Validate() error {
 			if err := validateEvidence(evidence); err != nil {
 				return fmt.Errorf("node %q: %w", node.ID, err)
 			}
+		}
+		metricKeys := map[string]struct{}{}
+		for _, metric := range node.Metrics {
+			if err := validateMetric(metric); err != nil {
+				return fmt.Errorf("node %q: %w", node.ID, err)
+			}
+			if _, exists := metricKeys[metric.Key]; exists {
+				return fmt.Errorf("node %q has duplicate metric key %q", node.ID, metric.Key)
+			}
+			metricKeys[metric.Key] = struct{}{}
 		}
 		nodes[node.ID] = struct{}{}
 	}
@@ -310,6 +360,35 @@ func (g Graph) Validate() error {
 				return fmt.Errorf("observed evidence from %q is incompatible with runtime-connections coverage", provider)
 			}
 		}
+	}
+	return nil
+}
+
+func validateMetric(metric MetricSeries) error {
+	if metric.Key == "" || metric.Label == "" || metric.Provider == "" || metric.Unit == "" || metric.Sampling == "" || metric.Freshness == "" {
+		return fmt.Errorf("metric key, label, provider, unit, sampling, and freshness are required")
+	}
+	if metric.Semantic != MetricCapacity && metric.Semantic != MetricAllocatable && metric.Semantic != MetricDeclared && metric.Semantic != MetricUsage {
+		return fmt.Errorf("metric %q has unsupported semantic %q", metric.Key, metric.Semantic)
+	}
+	if len(metric.Samples) == 0 {
+		return fmt.Errorf("metric %q requires at least one sample", metric.Key)
+	}
+	if metric.WindowStart != nil && metric.WindowEnd != nil && metric.WindowStart.After(*metric.WindowEnd) {
+		return fmt.Errorf("metric %q window start is after window end", metric.Key)
+	}
+	var previous time.Time
+	for _, sample := range metric.Samples {
+		if sample.At.IsZero() || math.IsNaN(sample.Value) || math.IsInf(sample.Value, 0) {
+			return fmt.Errorf("metric %q has invalid sample", metric.Key)
+		}
+		if !previous.IsZero() && sample.At.Before(previous) {
+			return fmt.Errorf("metric %q samples are not ordered", metric.Key)
+		}
+		if metric.WindowStart != nil && sample.At.Before(*metric.WindowStart) || metric.WindowEnd != nil && sample.At.After(*metric.WindowEnd) {
+			return fmt.Errorf("metric %q sample is outside its window", metric.Key)
+		}
+		previous = sample.At
 	}
 	return nil
 }

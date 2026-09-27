@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 func TestRecordedEKSFixtureInfrastructureRelationships(t *testing.T) {
@@ -94,5 +95,146 @@ func TestRecordedEKSFixtureInfrastructureRelationships(t *testing.T) {
 		if _, ok := subnets[subnetID]; !ok {
 			t.Errorf("cluster references missing subnet detail %s", subnetID)
 		}
+	}
+}
+
+func TestRecordedEKSFixtureProjectsValidTopologyMetrics(t *testing.T) {
+	fixture := filepath.Join("..", "..", "testdata", "recorded", "eks-demo-snapshot.json")
+	data, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot inventory.Snapshot
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	graph := topology.Project(&snapshot, 1)
+	if err := graph.Validate(); err != nil {
+		t.Fatalf("recorded topology graph: %v", err)
+	}
+	var series int
+	nodeNames := map[string]bool{}
+	for _, node := range graph.Nodes {
+		series += len(node.Metrics)
+		nodeNames[node.Name] = true
+	}
+	if series == 0 {
+		t.Fatal("recorded topology did not project any metric series")
+	}
+	for _, name := range []string{"demo-node-1", "demo-node-2"} {
+		if !nodeNames[name] {
+			t.Fatalf("recorded topology collapsed %s", name)
+		}
+	}
+	uids := map[string]string{}
+	objects := map[string]string{}
+	addObject := func(ref inventory.ObjectRef) {
+		identity := strings.ToLower(ref.Kind) + "/" + ref.Namespace + "/" + ref.Name
+		if ref.UID == "" {
+			t.Errorf("recorded object %s has no sanitized UID", identity)
+			return
+		}
+		if previous := uids[ref.UID]; previous != "" {
+			t.Errorf("recorded objects %s and %s share sanitized UID %s", previous, identity, ref.UID)
+		}
+		uids[ref.UID] = identity
+		objects[identity] = ref.UID
+	}
+	for _, node := range snapshot.Kubernetes.Nodes {
+		addObject(node.ObjectRef)
+	}
+	for _, workload := range snapshot.Kubernetes.Workloads {
+		addObject(workload.ObjectRef)
+	}
+	for _, pod := range snapshot.Kubernetes.Pods {
+		addObject(pod.ObjectRef)
+	}
+	for _, service := range snapshot.Kubernetes.Services {
+		addObject(service.ObjectRef)
+	}
+	for _, endpointSlice := range snapshot.Kubernetes.EndpointSlices {
+		addObject(endpointSlice.ObjectRef)
+	}
+	assertReference := func(ref inventory.ObjectRef, namespace string) {
+		if ref.Name == "" {
+			return
+		}
+		if ref.Namespace == "" {
+			ref.Namespace = namespace
+		}
+		identity := strings.ToLower(ref.Kind) + "/" + ref.Namespace + "/" + ref.Name
+		if want := objects[identity]; want == "" || ref.UID != want {
+			t.Errorf("recorded reference %s has UID %s, want %s", identity, ref.UID, want)
+		}
+	}
+	for _, workload := range snapshot.Kubernetes.Workloads {
+		for _, owner := range workload.OwnerReferences {
+			assertReference(owner, workload.Namespace)
+		}
+	}
+	for _, pod := range snapshot.Kubernetes.Pods {
+		for _, owner := range pod.OwnerReferences {
+			assertReference(owner, pod.Namespace)
+		}
+	}
+	for _, endpointSlice := range snapshot.Kubernetes.EndpointSlices {
+		for _, endpoint := range endpointSlice.Endpoints {
+			assertReference(endpoint.TargetRef, endpointSlice.Namespace)
+		}
+	}
+}
+
+func TestRecordedEKSFixtureSanitizesEveryKubernetesObjectIdentity(t *testing.T) {
+	fixture := filepath.Join("..", "..", "testdata", "recorded", "eks-demo-snapshot.json")
+	data, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	kubernetes, ok := document["kubernetes"]
+	if !ok {
+		t.Fatal("recorded fixture has no kubernetes inventory")
+	}
+	identityUIDs, uidIdentities := map[string]string{}, map[string]string{}
+	var count int
+	var walk func(any, string)
+	walk = func(value any, namespace string) {
+		switch item := value.(type) {
+		case map[string]any:
+			if candidate, ok := item["namespace"].(string); ok && candidate != "" {
+				namespace = candidate
+			}
+			kind, kindOK := item["kind"].(string)
+			name, nameOK := item["name"].(string)
+			uid, uidOK := item["uid"].(string)
+			if kindOK && nameOK && uidOK && kind != "" && name != "" {
+				count++
+				identity := strings.ToLower(kind) + "/" + namespace + "/" + name
+				if !strings.HasPrefix(uid, "demo-uid-") {
+					t.Errorf("recorded identity %s has non-synthetic UID %s", identity, uid)
+				}
+				if previous := identityUIDs[identity]; previous != "" && previous != uid {
+					t.Errorf("recorded identity %s has inconsistent UIDs %s and %s", identity, previous, uid)
+				}
+				if previous := uidIdentities[uid]; previous != "" && previous != identity {
+					t.Errorf("recorded identities %s and %s share UID %s", previous, identity, uid)
+				}
+				identityUIDs[identity], uidIdentities[uid] = uid, identity
+			}
+			for _, child := range item {
+				walk(child, namespace)
+			}
+		case []any:
+			for _, child := range item {
+				walk(child, namespace)
+			}
+		}
+	}
+	walk(kubernetes, "")
+	if count < 500 {
+		t.Fatalf("validated only %d Kubernetes identities, want complete fixture coverage", count)
 	}
 }

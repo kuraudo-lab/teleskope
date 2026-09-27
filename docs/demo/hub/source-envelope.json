@@ -513,7 +513,7 @@
           "version": "demo"
         },
         "findingRefs": [
-          "eks.addon/v1"
+          "eks.addon/v1::aws-ebs-csi-driver"
         ]
       },
       {
@@ -544,7 +544,7 @@
           "status": "ACTIVE"
         },
         "findingRefs": [
-          "eks.nodegroup/v1"
+          "eks.nodegroup/v1::demo-workers"
         ]
       },
       {
@@ -561,7 +561,7 @@
         },
         "parentId": "eks/source/cluster/_/source",
         "findingRefs": [
-          "networking.gateway/v1"
+          "networking.gateway/v1::demo-gateway"
         ]
       },
       {
@@ -620,8 +620,78 @@
           "nodegroup": "demo-workers",
           "ready": "True"
         },
+        "metrics": [
+          {
+            "key": "cpu.allocatable",
+            "label": "CPU allocatable",
+            "provider": "kubernetes",
+            "semantic": "allocatable",
+            "unit": "mCPU",
+            "sampling": "snapshot",
+            "freshness": "current",
+            "windowStart": "2026-09-25T00:00:00Z",
+            "windowEnd": "2026-09-25T00:00:00Z",
+            "samples": [
+              {
+                "at": "2026-09-25T00:00:00Z",
+                "value": 1900
+              }
+            ]
+          },
+          {
+            "key": "cpu.capacity",
+            "label": "CPU capacity",
+            "provider": "kubernetes",
+            "semantic": "capacity",
+            "unit": "mCPU",
+            "sampling": "snapshot",
+            "freshness": "current",
+            "windowStart": "2026-09-25T00:00:00Z",
+            "windowEnd": "2026-09-25T00:00:00Z",
+            "samples": [
+              {
+                "at": "2026-09-25T00:00:00Z",
+                "value": 2000
+              }
+            ]
+          },
+          {
+            "key": "memory.allocatable",
+            "label": "Memory allocatable",
+            "provider": "kubernetes",
+            "semantic": "allocatable",
+            "unit": "bytes",
+            "sampling": "snapshot",
+            "freshness": "current",
+            "windowStart": "2026-09-25T00:00:00Z",
+            "windowEnd": "2026-09-25T00:00:00Z",
+            "samples": [
+              {
+                "at": "2026-09-25T00:00:00Z",
+                "value": 7516192768
+              }
+            ]
+          },
+          {
+            "key": "memory.capacity",
+            "label": "Memory capacity",
+            "provider": "kubernetes",
+            "semantic": "capacity",
+            "unit": "bytes",
+            "sampling": "snapshot",
+            "freshness": "current",
+            "windowStart": "2026-09-25T00:00:00Z",
+            "windowEnd": "2026-09-25T00:00:00Z",
+            "samples": [
+              {
+                "at": "2026-09-25T00:00:00Z",
+                "value": 8589934592
+              }
+            ]
+          }
+        ],
         "findingRefs": [
-          "eks.nodegroup/v1"
+          "eks.nodegroup/v1::demo-workers"
         ]
       },
       {
@@ -692,8 +762,8 @@
         },
         "parentId": "eks/source/cluster/_/source",
         "findingRefs": [
-          "storage.expansion/v1",
-          "storage.rwx/v1"
+          "storage.expansion/v1::demo-block",
+          "storage.rwx/v1::demo-block"
         ]
       },
       {
@@ -896,7 +966,7 @@
           }
         ],
         "findingRefs": [
-          "eks.nodegroup/v1"
+          "eks.nodegroup/v1::demo-workers"
         ]
       },
       {

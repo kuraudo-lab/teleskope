@@ -7,6 +7,7 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/advisor"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // Project builds a full deterministic graph revision from one inventory snapshot.
@@ -37,6 +38,8 @@ func ProjectForCluster(snapshot *inventory.Snapshot, revision uint64, cluster st
 	clusterID := NodeID(provider, cluster, "cluster", "", cluster)
 	g.Nodes = append(g.Nodes, Node{ID: clusterID, Kind: "cluster", Name: cluster, Identity: cluster, Scope: scope})
 
+	findings := advisor.Analyze(snapshot)
+	uidIdentities := collectedUIDIdentities(snapshot, findings)
 	nodeIDs := map[string]string{"cluster": clusterID}
 	addNamespace := func(namespace string) string {
 		if namespace == "" {
@@ -63,7 +66,7 @@ func ProjectForCluster(snapshot *inventory.Snapshot, revision uint64, cluster st
 			kind = ref.Kind
 		}
 		nameKey := ref.Name
-		if ref.UID != "" {
+		if ref.UID != "" && len(uidIdentities[ref.UID]) == 1 {
 			nameKey = ref.UID
 		}
 		if kind == "workload" && ref.Kind != "" {
@@ -79,7 +82,7 @@ func ProjectForCluster(snapshot *inventory.Snapshot, revision uint64, cluster st
 		}
 		g.Nodes = append(g.Nodes, Node{ID: id, Kind: strings.ToLower(kind), Name: ref.Name, Identity: nameKey, APIVersion: ref.APIVersion, UID: ref.UID, Scope: Scope{Provider: "kubernetes", Cluster: cluster, Namespace: ref.Namespace, Account: scope.Account, Region: scope.Region}, ParentID: parent, Metadata: metadata})
 		nodeIDs["id/"+id] = id
-		if ref.UID != "" {
+		if ref.UID != "" && len(uidIdentities[ref.UID]) == 1 {
 			nodeIDs["uid/"+ref.UID] = id
 		}
 		nodeIDs[objectKey(ref, firstNonEmpty(ref.Kind, kind))] = id
@@ -109,13 +112,16 @@ func ProjectForCluster(snapshot *inventory.Snapshot, revision uint64, cluster st
 	}
 
 	for _, node := range snapshot.Kubernetes.Nodes {
-		addObject(node.ObjectRef, "node", compactMetadata(map[string]string{"providerId": node.ProviderID, "ready": node.Ready, "nodegroup": node.Labels["eks.amazonaws.com/nodegroup"]}))
+		id := addObject(node.ObjectRef, "node", compactMetadata(map[string]string{"providerId": node.ProviderID, "ready": node.Ready, "nodegroup": node.Labels["eks.amazonaws.com/nodegroup"]}))
+		g.setNodeMetrics(id, resourceMetrics(node.Capacity, node.Allocatable, generatedAt))
 	}
 	for _, workload := range snapshot.Kubernetes.Workloads {
-		addObject(workload.ObjectRef, "workload", compactMetadata(map[string]string{"resourceKind": workload.Kind}))
+		id := addObject(workload.ObjectRef, "workload", compactMetadata(map[string]string{"resourceKind": workload.Kind}))
+		g.setNodeMetrics(id, declaredContainerMetrics(workload.Containers, generatedAt))
 	}
 	for _, pod := range snapshot.Kubernetes.Pods {
-		addObject(pod.ObjectRef, "pod", compactMetadata(map[string]string{"phase": pod.Phase, "podIp": pod.PodIP}))
+		id := addObject(pod.ObjectRef, "pod", compactMetadata(map[string]string{"phase": pod.Phase, "podIp": pod.PodIP}))
+		g.setNodeMetrics(id, declaredContainerMetrics(pod.Containers, generatedAt))
 	}
 	for _, service := range snapshot.Kubernetes.Services {
 		addObject(service.ObjectRef, "service", compactMetadata(map[string]string{"type": service.Type, "clusterIp": service.ClusterIP}))
@@ -225,7 +231,6 @@ func ProjectForCluster(snapshot *inventory.Snapshot, revision uint64, cluster st
 		}
 	}
 
-	findings := advisor.Analyze(snapshot)
 	for _, capability := range findings.Capabilities {
 		for _, evidence := range capability.Evidence {
 			if evidence.Resource.Name != "" && findObjectID(nodeIDs, evidence.Resource) == "" {
@@ -254,6 +259,139 @@ func ProjectForCluster(snapshot *inventory.Snapshot, revision uint64, cluster st
 	attachFindings(&g, nodeIDs, findings)
 	g.Normalize()
 	return g
+}
+
+func collectedUIDIdentities(snapshot *inventory.Snapshot, findings advisor.Report) map[string]map[string]struct{} {
+	identities := map[string]map[string]struct{}{}
+	add := func(ref inventory.ObjectRef, fallbackKind string) {
+		if ref.UID == "" || ref.Name == "" {
+			return
+		}
+		identity := objectKey(ref, firstNonEmpty(ref.Kind, fallbackKind))
+		if identities[ref.UID] == nil {
+			identities[ref.UID] = map[string]struct{}{}
+		}
+		identities[ref.UID][identity] = struct{}{}
+	}
+	for _, node := range snapshot.Kubernetes.Nodes {
+		add(node.ObjectRef, "node")
+	}
+	for _, workload := range snapshot.Kubernetes.Workloads {
+		add(workload.ObjectRef, "workload")
+	}
+	for _, pod := range snapshot.Kubernetes.Pods {
+		add(pod.ObjectRef, "pod")
+	}
+	for _, service := range snapshot.Kubernetes.Services {
+		add(service.ObjectRef, "service")
+	}
+	for _, endpointSlice := range snapshot.Kubernetes.EndpointSlices {
+		add(endpointSlice.ObjectRef, "endpoint-slice")
+	}
+	for _, capability := range findings.Capabilities {
+		for _, evidence := range capability.Evidence {
+			add(evidence.Resource, "resource")
+		}
+	}
+	return identities
+}
+
+func (g *Graph) setNodeMetrics(id string, metrics []MetricSeries) {
+	if id == "" || len(metrics) == 0 {
+		return
+	}
+	for i := range g.Nodes {
+		if g.Nodes[i].ID == id {
+			for _, metric := range metrics {
+				replaced := false
+				for j := range g.Nodes[i].Metrics {
+					if g.Nodes[i].Metrics[j].Key != metric.Key {
+						continue
+					}
+					if metricSeriesKey(metric) < metricSeriesKey(g.Nodes[i].Metrics[j]) {
+						g.Nodes[i].Metrics[j] = metric
+					}
+					replaced = true
+					break
+				}
+				if !replaced {
+					g.Nodes[i].Metrics = append(g.Nodes[i].Metrics, metric)
+				}
+			}
+			return
+		}
+	}
+}
+
+func resourceMetrics(capacity, allocatable map[string]string, at time.Time) []MetricSeries {
+	var out []MetricSeries
+	for _, item := range []struct {
+		key, label, raw, unit string
+		semantic              MetricSemantic
+	}{
+		{"cpu.capacity", "CPU capacity", capacity["cpu"], "mCPU", MetricCapacity},
+		{"cpu.allocatable", "CPU allocatable", allocatable["cpu"], "mCPU", MetricAllocatable},
+		{"memory.capacity", "Memory capacity", capacity["memory"], "bytes", MetricCapacity},
+		{"memory.allocatable", "Memory allocatable", allocatable["memory"], "bytes", MetricAllocatable},
+	} {
+		if metric, ok := quantityMetric(item.key, item.label, item.raw, item.unit, item.semantic, "kubernetes", "snapshot", at); ok {
+			out = append(out, metric)
+		}
+	}
+	return out
+}
+
+func declaredContainerMetrics(containers []inventory.Container, at time.Time) []MetricSeries {
+	values := map[string]float64{}
+	for _, container := range containers {
+		for _, item := range []struct{ source, key, unit string }{
+			{"requests.cpu", "cpu.request", "mCPU"},
+			{"limits.cpu", "cpu.limit", "mCPU"},
+			{"requests.memory", "memory.request", "bytes"},
+			{"limits.memory", "memory.limit", "bytes"},
+		} {
+			if value, ok := quantityValue(container.Resources[item.source], item.unit); ok {
+				values[item.key] += value
+			}
+		}
+	}
+	labels := map[string]string{"cpu.request": "CPU request", "cpu.limit": "CPU limit", "memory.request": "Memory request", "memory.limit": "Memory limit"}
+	units := map[string]string{"cpu.request": "mCPU", "cpu.limit": "mCPU", "memory.request": "bytes", "memory.limit": "bytes"}
+	keys := []string{"cpu.request", "cpu.limit", "memory.request", "memory.limit"}
+	var out []MetricSeries
+	for _, key := range keys {
+		if value, ok := values[key]; ok {
+			out = append(out, pointMetric(key, labels[key], value, units[key], MetricDeclared, "kubernetes", "snapshot regular-container sum", at))
+		}
+	}
+	return out
+}
+
+func quantityMetric(key, label, raw, unit string, semantic MetricSemantic, provider, sampling string, at time.Time) (MetricSeries, bool) {
+	value, ok := quantityValue(raw, unit)
+	if !ok {
+		return MetricSeries{}, false
+	}
+	return pointMetric(key, label, value, unit, semantic, provider, sampling, at), true
+}
+
+func quantityValue(raw, unit string) (float64, bool) {
+	if strings.TrimSpace(raw) == "" {
+		return 0, false
+	}
+	quantity, err := resource.ParseQuantity(raw)
+	if err != nil {
+		return 0, false
+	}
+	if unit == "mCPU" {
+		return float64(quantity.MilliValue()), true
+	}
+	return float64(quantity.Value()), true
+}
+
+func pointMetric(key, label string, value float64, unit string, semantic MetricSemantic, provider, sampling string, at time.Time) MetricSeries {
+	start, end := at, at
+	return MetricSeries{Key: key, Label: label, Provider: provider, Semantic: semantic, Unit: unit, Sampling: sampling, Freshness: "current", WindowStart: &start, WindowEnd: &end, Samples: []MetricSample{{At: at, Value: value}}}
 }
 
 func topologyInsightScope(insight inventory.EKSInsight) string {
@@ -348,6 +486,7 @@ func findObjectID(ids map[string]string, ref inventory.ObjectRef) string {
 
 func attachFindings(graph *Graph, ids map[string]string, report advisor.Report) {
 	for _, capability := range report.Capabilities {
+		findingRef := findingReference(capability.RuleID, capability.Scope)
 		var referenced []string
 		for _, evidence := range capability.Evidence {
 			if id := findObjectID(ids, evidence.Resource); id != "" {
@@ -356,7 +495,7 @@ func attachFindings(graph *Graph, ids map[string]string, report advisor.Report) 
 		}
 		for i := range graph.Nodes {
 			if contains(referenced, graph.Nodes[i].ID) {
-				graph.Nodes[i].FindingRefs = appendUnique(graph.Nodes[i].FindingRefs, capability.RuleID)
+				graph.Nodes[i].FindingRefs = appendUnique(graph.Nodes[i].FindingRefs, findingRef)
 			}
 		}
 		if len(referenced) < 2 {
@@ -364,10 +503,16 @@ func attachFindings(graph *Graph, ids map[string]string, report advisor.Report) 
 		}
 		for i := range graph.Edges {
 			if contains(referenced, graph.Edges[i].Source) && contains(referenced, graph.Edges[i].Target) {
-				graph.Edges[i].FindingRefs = appendUnique(graph.Edges[i].FindingRefs, capability.RuleID)
+				graph.Edges[i].FindingRefs = appendUnique(graph.Edges[i].FindingRefs, findingRef)
 			}
 		}
 	}
+}
+
+// findingReference identifies one deterministic advisor result, rather than
+// only the rule that produced it. A rule can emit one result per object scope.
+func findingReference(ruleID, scope string) string {
+	return ruleID + "::" + scope
 }
 
 func appendUnique(values []string, value string) []string {

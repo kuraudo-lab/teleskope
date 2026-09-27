@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kuraudo-lab/teleskope/internal/advisor"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 )
 
@@ -19,6 +20,90 @@ func TestStableIdentityEscapesSegments(t *testing.T) {
 	}
 	if id != NodeID("kubernetes", "arn:aws:eks:region:123:cluster/prod", "Deployment", "app/team", "web/api") {
 		t.Fatal("NodeID is not stable")
+	}
+}
+
+func TestProjectAddsEvidenceAwareSnapshotMetrics(t *testing.T) {
+	now := time.Date(2026, 9, 27, 10, 0, 0, 0, time.UTC)
+	snapshot := &inventory.Snapshot{CollectedAt: now, Kubernetes: inventory.Kubernetes{
+		Context: "prod",
+		Nodes:   []inventory.Node{{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "node-a", UID: "node-uid"}, Capacity: map[string]string{"cpu": "2", "memory": "4Gi"}, Allocatable: map[string]string{"cpu": "1750m", "memory": "3584Mi"}}},
+		Pods:    []inventory.Pod{{ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "app", Name: "api-0", UID: "pod-uid"}, Containers: []inventory.Container{{Name: "api", Resources: map[string]string{"requests.cpu": "500m", "limits.cpu": "1", "requests.memory": "256Mi", "limits.memory": "512Mi"}}}}},
+	}}
+	graph := Project(snapshot, 1)
+	if err := graph.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	metricsByNode := map[string]map[string]MetricSeries{}
+	for _, node := range graph.Nodes {
+		metricsByNode[node.Name] = map[string]MetricSeries{}
+		for _, metric := range node.Metrics {
+			metricsByNode[node.Name][metric.Key] = metric
+		}
+	}
+	if got := metricsByNode["node-a"]["cpu.capacity"].Samples[0].Value; got != 2000 {
+		t.Fatalf("node CPU capacity = %v, want 2000m", got)
+	}
+	if got := metricsByNode["node-a"]["memory.capacity"].Samples[0].Value; got != 4*1024*1024*1024 {
+		t.Fatalf("node memory capacity = %v", got)
+	}
+	request := metricsByNode["api-0"]["cpu.request"]
+	if request.Semantic != MetricDeclared || request.Provider != "kubernetes" || request.Sampling != "snapshot regular-container sum" || request.Samples[0].Value != 500 {
+		t.Fatalf("pod request metric = %+v", request)
+	}
+}
+
+func TestProjectDoesNotCollapseObjectsWithAmbiguousUIDs(t *testing.T) {
+	snapshot := &inventory.Snapshot{Kubernetes: inventory.Kubernetes{
+		Context: "recorded",
+		Nodes: []inventory.Node{
+			{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "node-a", UID: "sanitized-zero"}},
+			{ObjectRef: inventory.ObjectRef{Kind: "Node", Name: "node-b", UID: "sanitized-zero"}},
+		},
+		Pods: []inventory.Pod{{
+			ObjectRef: inventory.ObjectRef{Kind: "Pod", Namespace: "app", Name: "api-0", UID: "sanitized-zero"},
+			NodeName:  "node-b",
+		}},
+	}}
+	graph := Project(snapshot, 1)
+	if err := graph.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, node := range graph.Nodes {
+		seen[node.Name] = true
+	}
+	for _, name := range []string{"node-a", "node-b", "api-0"} {
+		if !seen[name] {
+			t.Fatalf("ambiguous UID projection lost %s: %+v", name, graph.Nodes)
+		}
+	}
+	var scheduledToNodeB bool
+	for _, edge := range graph.Edges {
+		if edge.Relation == "scheduled-to" && strings.HasSuffix(edge.Target, "/node-b") {
+			scheduledToNodeB = true
+		}
+	}
+	if !scheduledToNodeB {
+		t.Fatalf("ambiguous UID lookup attached pod to the wrong node: %+v", graph.Edges)
+	}
+}
+
+func TestMetricSeriesValidationCoversWindowAndOrdering(t *testing.T) {
+	start := time.Date(2026, 9, 27, 10, 0, 0, 0, time.UTC)
+	end := start.Add(time.Minute)
+	graph := updateTestGraph(1)
+	graph.Nodes[0].Metrics = []MetricSeries{{
+		Key: "cpu.usage", Label: "CPU usage", Provider: "metrics-api", Semantic: MetricUsage, Unit: "mCPU", Sampling: "30s", Freshness: "stale",
+		WindowStart: &start, WindowEnd: &end,
+		Samples: []MetricSample{{At: start, Value: 100}, {At: end, Value: 150}},
+	}}
+	if err := graph.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	graph.Nodes[0].Metrics[0].Samples[0], graph.Nodes[0].Metrics[0].Samples[1] = graph.Nodes[0].Metrics[0].Samples[1], graph.Nodes[0].Metrics[0].Samples[0]
+	if err := graph.Validate(); err == nil || !strings.Contains(err.Error(), "not ordered") {
+		t.Fatalf("unordered samples error = %v", err)
 	}
 }
 
@@ -218,7 +303,7 @@ func TestProjectAttachesDeterministicFindingsToEvidenceNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, node := range graph.Nodes {
-		if node.Name == "nginx" && contains(node.FindingRefs, "networking.ingress/v1") {
+		if node.Name == "nginx" && contains(node.FindingRefs, findingReference("networking.ingress/v1", "nginx")) {
 			return
 		}
 	}
@@ -246,15 +331,42 @@ func TestProjectAttachesEKSNodegroupFindingWithoutDuplicateNode(t *testing.T) {
 			nodeID = node.ID
 		}
 	}
-	if len(groups) != 1 || groups[0].Scope.Provider != "eks" || !contains(groups[0].FindingRefs, "eks.nodegroup/v1") {
+	if len(groups) != 1 || groups[0].Scope.Provider != "eks" || !contains(groups[0].FindingRefs, findingReference("eks.nodegroup/v1", "system")) {
 		t.Fatalf("nodegroups = %+v", groups)
 	}
 	for _, edge := range graph.Edges {
-		if edge.Source == groupID && edge.Target == nodeID && contains(edge.FindingRefs, "eks.nodegroup/v1") {
+		if edge.Source == groupID && edge.Target == nodeID && contains(edge.FindingRefs, findingReference("eks.nodegroup/v1", "system")) {
 			return
 		}
 	}
 	t.Fatalf("nodegroup finding edge missing: %+v", graph.Edges)
+}
+
+func TestAttachFindingsKeepsSameRuleScopesDistinct(t *testing.T) {
+	cluster := "prod"
+	oneID := NodeID("eks", cluster, "addon", "", "one")
+	twoID := NodeID("eks", cluster, "addon", "", "two")
+	graph := Graph{Nodes: []Node{
+		{ID: oneID, Kind: "addon", Name: "one"},
+		{ID: twoID, Kind: "addon", Name: "two"},
+	}}
+	ids := map[string]string{
+		objectKey(inventory.ObjectRef{Name: "one"}, "addon"): oneID,
+		objectKey(inventory.ObjectRef{Name: "two"}, "addon"): twoID,
+	}
+	report := advisor.Report{Capabilities: []advisor.Capability{
+		{RuleID: "eks.addon/v1", Scope: "one", Summary: "first evidence", Evidence: []advisor.Evidence{{Resource: inventory.ObjectRef{Kind: "Addon", Name: "one"}}}},
+		{RuleID: "eks.addon/v1", Scope: "two", Summary: "second evidence", Evidence: []advisor.Evidence{{Resource: inventory.ObjectRef{Kind: "Addon", Name: "two"}}}},
+	}}
+
+	attachFindings(&graph, ids, report)
+
+	if got := graph.Nodes[0].FindingRefs; len(got) != 1 || got[0] != "eks.addon/v1::one" {
+		t.Fatalf("first finding refs = %v", got)
+	}
+	if got := graph.Nodes[1].FindingRefs; len(got) != 1 || got[0] != "eks.addon/v1::two" {
+		t.Fatalf("second finding refs = %v", got)
+	}
 }
 
 func TestNormalizeOrdersCompleteEvidenceAndFields(t *testing.T) {

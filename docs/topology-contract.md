@@ -39,6 +39,8 @@ Nodes contain:
   are never part of the graph.
 - `pseudoKind` for `unresolved`, `external-endpoint`, or `internet` identities
   that preserve a relationship when its target is not a collected API object.
+- optional provider-neutral metric series with explicit semantic, unit,
+  sampling, freshness, time window, and ordered numeric samples.
 
 Edges contain:
 
@@ -96,6 +98,66 @@ Relationship rules:
 
 A Service selector therefore cannot become an `observed` connection merely
 because it matches a workload or endpoint.
+
+## Metrics
+
+Metrics are evidence, not decoration. Each node series declares a stable key,
+label, provider, semantic (`capacity`, `allocatable`, `declared`, or `usage`),
+unit, sampling description, freshness, optional window, and one or more
+timestamped numeric samples. Duplicate keys, unordered/non-finite samples, and
+samples outside the declared window are invalid.
+
+The Kubernetes snapshot projector currently emits:
+
+- Node CPU/memory capacity and allocatable values from the Node API.
+- Workload and Pod regular-container CPU/memory requests and limits as declared
+  sums. Init-container scheduling semantics and Pod overhead are not inferred.
+
+These are single-snapshot capacity/declared series and are never described as
+observed utilization. A single sample displays a point value with `history
+unavailable`; it is not expanded into a fake sparkline. Two or more ordered
+samples may render a sparkline with their provider, sampling, freshness, and
+window still visible. Runtime usage remains unavailable unless an explicit
+external metrics provider supplies a bounded `usage` series.
+
+One metric key may be pinned to graph cards through the `topologyMetric` URL
+state. Nodes without that series say `metric unavailable`. The pin survives
+graph/table navigation, reload, and accepted live revisions. If a revision no
+longer carries the pinned key, the URL state remains intact and the Inspector
+states that the pinned metric is unavailable; it never substitutes a different
+series.
+
+## Contextual Inspector
+
+Selecting a node or edge keeps the topology visible and populates the
+persistent Inspector. Node context includes:
+
+- stable identity, health, relationship count, finding references, and
+  collected display metadata;
+- parent, child, sibling, upstream, downstream, and cross-layer relatives,
+  presented in a sortable native table whose object buttons navigate in place;
+  navigation switches semantic view when the target is outside the current
+  view, and restored URL selections apply the same rule;
+- deterministic Advisor findings with assessment, basis, coverage, freshness,
+  summary, constraints, resource evidence, and collection status;
+- the selected metric value, window, sampling, freshness, and honest
+  single-point or sparkline behavior;
+- evidence and graph coverage, followed by expandable raw node, relationship,
+  resolved finding, metric, and coverage JSON.
+
+Edge context includes its source and target as navigable objects, evidence
+tier, provider, relation metadata, deterministic finding evidence, and raw
+relationship evidence. Graph edges are pointer- and keyboard-selectable, and
+their selection is restorable through the `topologyEdge` URL state.
+
+A finding reference identifies one Advisor result as `ruleId::scope`, not only
+the rule. This keeps evidence distinct when one rule emits results for several
+add-ons, nodegroups, or other scoped objects.
+
+Topology selection does not open the legacy drawer. That drawer remains
+available for explicit raw/full object inspection and non-topology detail
+flows. Neither surface includes exec, logs, edit, delete, scale, restart,
+terminal, or lifecycle controls.
 
 ## Coverage
 

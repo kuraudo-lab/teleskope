@@ -23,16 +23,16 @@
       "roleArn": "arn:aws:iam::000000000000:role/demo-eks-cluster-role",
       "createdAt": "2026-09-15T02:22:11.106Z",
       "vpc": {
-        "vpcId": "vpc-11111111111111111",
+        "vpcId": "vpc-00000000000000001",
         "subnetIds": [
-          "subnet-11111111111111111",
-          "subnet-22222222222222222",
-          "subnet-33333333333333333"
+          "subnet-00000000000000001",
+          "subnet-00000000000000002",
+          "subnet-00000000000000003"
         ],
         "securityGroupIds": [
-          "sg-22222222222222222"
+          "sg-00000000000000001"
         ],
-        "clusterSecurityGroupId": "sg-11111111111111111",
+        "clusterSecurityGroupId": "sg-00000000000000002",
         "endpointPublicAccess": true,
         "endpointPrivateAccess": true,
         "publicAccessCidrs": [
@@ -66,7 +66,7 @@
           "resources": [
             "secrets"
           ],
-          "keyArn": "arn:aws:kms:eu-west-1:000000000000:key/00000000-0000-0000-0000-000000000000"
+          "keyArn": "arn:aws:kms:eu-west-1:000000000000:key/demo-uuid-ebec6ee98f9f90ff7987cd22"
         }
       ],
       "oidcIssuer": "https://oidc.eks.eu-west-1.amazonaws.com/id/DEMOOIDC",
@@ -137,9 +137,9 @@
         "capacityType": "ON_DEMAND",
         "nodeRoleArn": "arn:aws:iam::000000000000:role/demo-role",
         "subnets": [
-          "subnet-11111111111111111",
-          "subnet-22222222222222222",
-          "subnet-33333333333333333"
+          "subnet-00000000000000001",
+          "subnet-00000000000000002",
+          "subnet-00000000000000003"
         ],
         "instanceTypes": [
           "m6i.large"
@@ -150,7 +150,7 @@
         "autoScalingGroups": [
           "eks-demo-nodegroup"
         ],
-        "launchTemplateId": "lt-11111111111111111",
+        "launchTemplateId": "lt-00000000000000001",
         "launchTemplateName": "demo-nodegroup",
         "launchTemplateVersion": "1",
         "tags": {
@@ -164,24 +164,24 @@
     "infrastructure": {
       "instances": [
         {
-          "instanceId": "i-11111111111111111",
+          "instanceId": "i-00000000000000001",
           "name": "demo-node-1",
           "state": "running",
           "instanceType": "m6i.large",
           "architecture": "x86_64",
           "availabilityZone": "eu-west-1b",
-          "privateIp": "192.0.2.21",
-          "subnetId": "subnet-22222222222222222",
-          "vpcId": "vpc-11111111111111111",
+          "privateIp": "demo-ip",
+          "subnetId": "subnet-00000000000000002",
+          "vpcId": "vpc-00000000000000001",
           "securityGroupIds": [
-            "sg-33333333333333333"
+            "sg-00000000000000003"
           ],
           "nodegroupName": "demo-nodegroup",
           "autoScalingGroupName": "eks-demo-nodegroup",
           "kubernetesNodeName": "demo-node-1",
-          "launchTemplateId": "lt-11111111111111111",
+          "launchTemplateId": "lt-00000000000000001",
           "launchTemplateVersion": "1",
-          "imageId": "ami-11111111111111111",
+          "imageId": "ami-00000000000000001",
           "tags": {
             "Name": "demo-node-1",
             "eks:cluster-name": "demo-eks",
@@ -189,24 +189,24 @@
           }
         },
         {
-          "instanceId": "i-22222222222222222",
+          "instanceId": "i-00000000000000002",
           "name": "demo-node-2",
           "state": "running",
           "instanceType": "m6i.large",
           "architecture": "x86_64",
           "availabilityZone": "eu-west-1c",
-          "privateIp": "192.0.2.85",
-          "subnetId": "subnet-33333333333333333",
-          "vpcId": "vpc-11111111111111111",
+          "privateIp": "demo-ip",
+          "subnetId": "subnet-00000000000000003",
+          "vpcId": "vpc-00000000000000001",
           "securityGroupIds": [
-            "sg-33333333333333333"
+            "sg-00000000000000003"
           ],
           "nodegroupName": "demo-nodegroup",
           "autoScalingGroupName": "eks-demo-nodegroup",
           "kubernetesNodeName": "demo-node-2",
-          "launchTemplateId": "lt-11111111111111111",
+          "launchTemplateId": "lt-00000000000000001",
           "launchTemplateVersion": "1",
-          "imageId": "ami-11111111111111111",
+          "imageId": "ami-00000000000000001",
           "tags": {
             "Name": "demo-node-2",
             "eks:cluster-name": "demo-eks",
@@ -217,7 +217,7 @@
       "autoScalingGroups": [
         {
           "name": "eks-demo-nodegroup",
-          "arn": "arn:aws:autoscaling:eu-west-1:000000000000:autoScalingGroup:00000000-0000-0000-0000-000000000000:autoScalingGroupName/eks-demo-nodegroup",
+          "arn": "arn:aws:autoscaling:eu-west-1:000000000000:autoScalingGroup:demo-uuid-ebec6ee98f9f90ff7987cd22:autoScalingGroupName/eks-demo-nodegroup",
           "nodegroupName": "demo-nodegroup",
           "minSize": 2,
           "maxSize": 5,
@@ -228,28 +228,28 @@
             "eu-west-1c"
           ],
           "subnetIds": [
-            "subnet-11111111111111111",
-            "subnet-22222222222222222",
-            "subnet-33333333333333333"
+            "subnet-00000000000000001",
+            "subnet-00000000000000002",
+            "subnet-00000000000000003"
           ],
           "instanceIds": [
-            "i-11111111111111111",
-            "i-22222222222222222"
+            "i-00000000000000001",
+            "i-00000000000000002"
           ],
-          "launchTemplateId": "lt-11111111111111111",
+          "launchTemplateId": "lt-00000000000000001",
           "launchTemplateVersion": "1",
           "healthCheckType": "EC2"
         }
       ],
       "vpcs": [
         {
-          "vpcId": "vpc-11111111111111111",
-          "cidr": "192.0.2.0/24",
+          "vpcId": "vpc-00000000000000001",
+          "cidr": "demo-cidr",
           "state": "available",
           "tenancy": "default",
           "dnsSupport": true,
           "dnsHostnames": true,
-          "dhcpOptionsId": "dopt-11111111111111111",
+          "dhcpOptionsId": "dopt-00000000000000001",
           "tags": {
             "Name": "demo-eks-vpc",
             "kubernetes.io/cluster/demo-eks": "shared"
@@ -258,17 +258,17 @@
       ],
       "subnets": [
         {
-          "subnetId": "subnet-11111111111111111",
-          "vpcId": "vpc-11111111111111111",
-          "cidr": "192.0.2.0/26",
+          "subnetId": "subnet-00000000000000001",
+          "vpcId": "vpc-00000000000000001",
+          "cidr": "demo-cidr",
           "availabilityZone": "eu-west-1a",
           "availabilityZoneId": "euw1-az1",
           "state": "available",
           "availableIpAddressCount": 48,
           "mapPublicIpOnLaunch": false,
-          "routeTableId": "rtb-11111111111111111",
+          "routeTableId": "rtb-00000000000000001",
           "natGatewayIds": [
-            "nat-11111111111111111"
+            "nat-00000000000000001"
           ],
           "tags": {
             "Name": "demo-eks-private-a",
@@ -276,17 +276,17 @@
           }
         },
         {
-          "subnetId": "subnet-22222222222222222",
-          "vpcId": "vpc-11111111111111111",
-          "cidr": "192.0.2.64/26",
+          "subnetId": "subnet-00000000000000002",
+          "vpcId": "vpc-00000000000000001",
+          "cidr": "demo-cidr",
           "availabilityZone": "eu-west-1b",
           "availabilityZoneId": "euw1-az2",
           "state": "available",
           "availableIpAddressCount": 42,
           "mapPublicIpOnLaunch": false,
-          "routeTableId": "rtb-22222222222222222",
+          "routeTableId": "rtb-00000000000000002",
           "natGatewayIds": [
-            "nat-22222222222222222"
+            "nat-00000000000000002"
           ],
           "tags": {
             "Name": "demo-eks-private-b",
@@ -294,17 +294,17 @@
           }
         },
         {
-          "subnetId": "subnet-33333333333333333",
-          "vpcId": "vpc-11111111111111111",
-          "cidr": "192.0.2.128/26",
+          "subnetId": "subnet-00000000000000003",
+          "vpcId": "vpc-00000000000000001",
+          "cidr": "demo-cidr",
           "availabilityZone": "eu-west-1c",
           "availabilityZoneId": "euw1-az3",
           "state": "available",
           "availableIpAddressCount": 41,
           "mapPublicIpOnLaunch": false,
-          "routeTableId": "rtb-33333333333333333",
+          "routeTableId": "rtb-00000000000000003",
           "natGatewayIds": [
-            "nat-33333333333333333"
+            "nat-00000000000000003"
           ],
           "tags": {
             "Name": "demo-eks-private-c",
@@ -314,10 +314,10 @@
       ],
       "securityGroups": [
         {
-          "groupId": "sg-11111111111111111",
+          "groupId": "sg-00000000000000002",
           "groupName": "eks-cluster-sg-demo-eks",
           "description": "EKS cluster security group",
-          "vpcId": "vpc-11111111111111111",
+          "vpcId": "vpc-00000000000000001",
           "ingressRuleCount": 2,
           "egressRuleCount": 1,
           "tags": {
@@ -325,10 +325,10 @@
           }
         },
         {
-          "groupId": "sg-22222222222222222",
+          "groupId": "sg-00000000000000001",
           "groupName": "demo-eks-control-plane",
           "description": "Additional control plane security group",
-          "vpcId": "vpc-11111111111111111",
+          "vpcId": "vpc-00000000000000001",
           "ingressRuleCount": 1,
           "egressRuleCount": 1,
           "tags": {
@@ -336,10 +336,10 @@
           }
         },
         {
-          "groupId": "sg-33333333333333333",
+          "groupId": "sg-00000000000000003",
           "groupName": "demo-eks-nodes",
           "description": "Managed nodegroup security group",
-          "vpcId": "vpc-11111111111111111",
+          "vpcId": "vpc-00000000000000001",
           "ingressRuleCount": 3,
           "egressRuleCount": 1,
           "tags": {
@@ -1712,7 +1712,7 @@
       {
         "apiVersion": "apiextensions.k8s.io/v1",
         "name": "applicationnetworkpolicies.networking.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-635085bff4caae10b7f289e7",
         "group": "networking.k8s.aws",
         "scope": "Namespaced",
         "kind": "ApplicationNetworkPolicy",
@@ -1728,7 +1728,7 @@
       {
         "apiVersion": "apiextensions.k8s.io/v1",
         "name": "clusternetworkpolicies.networking.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-2e9f2b3f309adb19000757f1",
         "group": "networking.k8s.aws",
         "scope": "Cluster",
         "kind": "ClusterNetworkPolicy",
@@ -1744,7 +1744,7 @@
       {
         "apiVersion": "apiextensions.k8s.io/v1",
         "name": "clusterpolicyendpoints.networking.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-b81ef94bcc9b62cc4087e464",
         "group": "networking.k8s.aws",
         "scope": "Cluster",
         "kind": "ClusterPolicyEndpoint",
@@ -1760,7 +1760,7 @@
       {
         "apiVersion": "apiextensions.k8s.io/v1",
         "name": "cninodes.vpcresources.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-a902df5ac22b70faa2e5c1c9",
         "group": "vpcresources.k8s.aws",
         "scope": "Cluster",
         "kind": "CNINode",
@@ -1776,7 +1776,7 @@
       {
         "apiVersion": "apiextensions.k8s.io/v1",
         "name": "eniconfigs.crd.k8s.amazonaws.com",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-bb02c18cdff819d6e88f676c",
         "group": "crd.k8s.amazonaws.com",
         "scope": "Cluster",
         "kind": "ENIConfig",
@@ -1792,7 +1792,7 @@
       {
         "apiVersion": "apiextensions.k8s.io/v1",
         "name": "policyendpoints.networking.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-dd4d107b73a32ff4a264fd8f",
         "group": "networking.k8s.aws",
         "scope": "Namespaced",
         "kind": "PolicyEndpoint",
@@ -1808,7 +1808,7 @@
       {
         "apiVersion": "apiextensions.k8s.io/v1",
         "name": "securitygrouppolicies.vpcresources.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-f5ddff5f8772b77b385c1f99",
         "group": "vpcresources.k8s.aws",
         "scope": "Namespaced",
         "kind": "SecurityGroupPolicy",
@@ -1827,7 +1827,7 @@
         "apiVersion": "vpcresources.k8s.aws/v1alpha1",
         "kind": "CNINode",
         "name": "demo-node-1",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-6fd6e230286b59ea5696355d",
         "crdName": "cninodes.vpcresources.k8s.aws",
         "crdGroup": "vpcresources.k8s.aws",
         "crdVersion": "v1alpha1",
@@ -1841,7 +1841,7 @@
             "apiVersion": "v1",
             "kind": "Node",
             "name": "demo-node-1",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-da9de186c19024a88f2ed8f3"
           }
         ]
       },
@@ -1849,7 +1849,7 @@
         "apiVersion": "vpcresources.k8s.aws/v1alpha1",
         "kind": "CNINode",
         "name": "demo-node-2",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-329db2bc8540daf71d62428d",
         "crdName": "cninodes.vpcresources.k8s.aws",
         "crdGroup": "vpcresources.k8s.aws",
         "crdVersion": "v1alpha1",
@@ -1863,7 +1863,7 @@
             "apiVersion": "v1",
             "kind": "Node",
             "name": "demo-node-2",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-8cab47d28130d96c0181aacc"
           }
         ]
       }
@@ -1938,7 +1938,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-1afa9d7241c5fcacc11a8c08",
         "version": "v1",
         "available": "True"
       },
@@ -1946,7 +1946,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.admissionregistration.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-dc0d73b97b94648ab6a2e6bb",
         "group": "admissionregistration.k8s.io",
         "version": "v1",
         "available": "True"
@@ -1955,7 +1955,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.apiextensions.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-e3297b17ce85f5d5fb22476d",
         "group": "apiextensions.k8s.io",
         "version": "v1",
         "available": "True"
@@ -1964,7 +1964,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.apps",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-0a2e847d3c787648034a6162",
         "group": "apps",
         "version": "v1",
         "available": "True"
@@ -1973,7 +1973,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.authentication.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-a2611e7a91c6be4a3afd3d8c",
         "group": "authentication.k8s.io",
         "version": "v1",
         "available": "True"
@@ -1982,7 +1982,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.authorization.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-39f1ad0e89ca995258b6a74b",
         "group": "authorization.k8s.io",
         "version": "v1",
         "available": "True"
@@ -1991,7 +1991,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.autoscaling",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-709c39fbf30fae73b8d036d8",
         "group": "autoscaling",
         "version": "v1",
         "available": "True"
@@ -2000,7 +2000,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.batch",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-1aa50974e694d7bb7e305668",
         "group": "batch",
         "version": "v1",
         "available": "True"
@@ -2009,7 +2009,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.certificates.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-6b562065c7d52e944c07f528",
         "group": "certificates.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2018,7 +2018,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.coordination.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-825a4ae051f63999aa0e53c1",
         "group": "coordination.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2027,7 +2027,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.discovery.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-c5cf1ca06a6e56b2d09ca074",
         "group": "discovery.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2036,7 +2036,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.events.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-879cee864ecff65d423f6686",
         "group": "events.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2045,7 +2045,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.flowcontrol.apiserver.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-e4c72e3d62fc963445be430a",
         "group": "flowcontrol.apiserver.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2054,7 +2054,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.metrics.eks.amazonaws.com",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-62e2ec8ba7bdda472b903eb7",
         "group": "metrics.eks.amazonaws.com",
         "version": "v1",
         "serviceNamespace": "kube-system",
@@ -2065,7 +2065,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.networking.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-d6e8351d6184ef211c4352bd",
         "group": "networking.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2074,7 +2074,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.node.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-6beaf68936b4f229a40b66fc",
         "group": "node.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2083,7 +2083,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.policy",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-59d66027b06ae5567251343f",
         "group": "policy",
         "version": "v1",
         "available": "True"
@@ -2092,7 +2092,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.rbac.authorization.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-49dd229c14429582de88511e",
         "group": "rbac.authorization.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2101,7 +2101,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.scheduling.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-be6f35d4064b2ef9a4bab81c",
         "group": "scheduling.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2110,7 +2110,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1.storage.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-dd8486e1ba5fa130f613e12f",
         "group": "storage.k8s.io",
         "version": "v1",
         "available": "True"
@@ -2119,7 +2119,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1alpha1.crd.k8s.amazonaws.com",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-2df5dc7d5ee3eaa6c9c1f87d",
         "group": "crd.k8s.amazonaws.com",
         "version": "v1alpha1",
         "available": "True"
@@ -2128,7 +2128,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1alpha1.networking.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-2f01fefc6d4f06d5cbdd264f",
         "group": "networking.k8s.aws",
         "version": "v1alpha1",
         "available": "True"
@@ -2137,7 +2137,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1alpha1.vpcresources.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-20d4ca40b5d26660d6a3dead",
         "group": "vpcresources.k8s.aws",
         "version": "v1alpha1",
         "available": "True"
@@ -2146,7 +2146,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1beta1.resource.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-125017e3ce74b499f085b1b8",
         "group": "resource.k8s.io",
         "version": "v1beta1",
         "available": "True"
@@ -2155,7 +2155,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1beta1.storage.k8s.io",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-8f8401c9f0c2814a21350913",
         "group": "storage.k8s.io",
         "version": "v1beta1",
         "available": "True"
@@ -2164,7 +2164,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v1beta1.vpcresources.k8s.aws",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-f0f6f48551a46d607eaed064",
         "group": "vpcresources.k8s.aws",
         "version": "v1beta1",
         "available": "True"
@@ -2173,7 +2173,7 @@
         "apiVersion": "apiregistration.k8s.io/v1",
         "kind": "APIService",
         "name": "v2.autoscaling",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-086d26ba081e9bc9dffd5d79",
         "group": "autoscaling",
         "version": "v2",
         "available": "True"
@@ -2184,7 +2184,7 @@
         "apiVersion": "v1",
         "kind": "Namespace",
         "name": "default",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-da827f003d878cb0a869c826",
         "phase": "Active",
         "labels": {
           "kubernetes.io/metadata.name": "default"
@@ -2194,7 +2194,7 @@
         "apiVersion": "v1",
         "kind": "Namespace",
         "name": "kube-node-lease",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-b9383bf292b2cd4125576cd1",
         "phase": "Active",
         "labels": {
           "kubernetes.io/metadata.name": "kube-node-lease"
@@ -2204,7 +2204,7 @@
         "apiVersion": "v1",
         "kind": "Namespace",
         "name": "kube-public",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-25c857eb883c1e0898cb508d",
         "phase": "Active",
         "labels": {
           "kubernetes.io/metadata.name": "kube-public"
@@ -2214,7 +2214,7 @@
         "apiVersion": "v1",
         "kind": "Namespace",
         "name": "kube-system",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-0b0db9adb79ead640f0fe64c",
         "phase": "Active",
         "labels": {
           "kubernetes.io/metadata.name": "kube-system"
@@ -2226,16 +2226,16 @@
         "apiVersion": "v1",
         "kind": "Node",
         "name": "demo-node-1",
-        "uid": "00000000-0000-0000-0000-000000000000",
-        "providerId": "aws:///eu-west-1b/i-11111111111111111",
+        "uid": "demo-uid-da9de186c19024a88f2ed8f3",
+        "providerId": "aws:///eu-west-1b/i-00000000000000001",
         "labels": {
           "beta.kubernetes.io/arch": "amd64",
           "beta.kubernetes.io/instance-type": "m6i.large",
           "beta.kubernetes.io/os": "linux",
           "eks.amazonaws.com/capacityType": "ON_DEMAND",
           "eks.amazonaws.com/nodegroup": "demo-nodegroup",
-          "eks.amazonaws.com/nodegroup-image": "ami-11111111111111111",
-          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-11111111111111111",
+          "eks.amazonaws.com/nodegroup-image": "ami-00000000000000001",
+          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-00000000000000001",
           "eks.amazonaws.com/sourceLaunchTemplateVersion": "1",
           "failure-domain.beta.kubernetes.io/region": "eu-west-1",
           "failure-domain.beta.kubernetes.io/zone": "eu-west-1b",
@@ -2282,16 +2282,16 @@
         "apiVersion": "v1",
         "kind": "Node",
         "name": "demo-node-2",
-        "uid": "00000000-0000-0000-0000-000000000000",
-        "providerId": "aws:///eu-west-1c/i-22222222222222222",
+        "uid": "demo-uid-8cab47d28130d96c0181aacc",
+        "providerId": "aws:///eu-west-1c/i-00000000000000002",
         "labels": {
           "beta.kubernetes.io/arch": "amd64",
           "beta.kubernetes.io/instance-type": "m6i.large",
           "beta.kubernetes.io/os": "linux",
           "eks.amazonaws.com/capacityType": "ON_DEMAND",
           "eks.amazonaws.com/nodegroup": "demo-nodegroup",
-          "eks.amazonaws.com/nodegroup-image": "ami-11111111111111111",
-          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-11111111111111111",
+          "eks.amazonaws.com/nodegroup-image": "ami-00000000000000001",
+          "eks.amazonaws.com/sourceLaunchTemplateId": "lt-00000000000000001",
           "eks.amazonaws.com/sourceLaunchTemplateVersion": "1",
           "failure-domain.beta.kubernetes.io/region": "eu-west-1",
           "failure-domain.beta.kubernetes.io/zone": "eu-west-1c",
@@ -2341,308 +2341,308 @@
         "kind": "ServiceAccount",
         "namespace": "default",
         "name": "default",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-0255052821d73d5c83d83846"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-node-lease",
         "name": "default",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-68048c2eab9aa84f54b968bb"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-public",
         "name": "default",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-68176e7ce162277699ee58f8"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "attachdetach-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-2920b67edcc798e52941f22f"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "aws-cloud-provider",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-f0988c5ab0173b9b46be0dc9"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "aws-node",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-820d6debecf80c9f7c297e4c"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "certificate-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-b47282960e592de2dddce2b0"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "clusterrole-aggregation-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-29f1625aaf9116904c0d8eb0"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "coredns",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-fa63285366fa049b0e43fbea"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "cronjob-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-9f8424dc3ac9c48bc60e5a1c"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "daemon-set-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-117f09ea3d619ff575313f9a"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "default",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-c77b240f8bd82f19d93fe91b"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "deployment-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-aeda282d6c7c451e1c2a48da"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "disruption-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-d559b167f5545f7189363d58"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "endpoint-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-296314ce815f9e44a08133b3"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "endpointslice-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-00806d91f6a51de9e08989d2"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "endpointslicemirroring-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-1b0148a5e0c18fe29bae708a"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "ephemeral-volume-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-6f1be1738217d12e6c6eb403"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "expand-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-fb89aa1383ad6971d1037a85"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "generic-garbage-collector",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-ec2e32a7f9bbb01265f79827"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "horizontal-pod-autoscaler",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-4434b16f78c63a057e34346e"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "job-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-22cca51ef8a4e16de30a9151"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "kube-proxy",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-e94f469b9ed57d306bef5910"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "legacy-service-account-token-cleaner",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-af907068701a6a4cabea63e7"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "namespace-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-2714ac0abb3e675455ef3f7e"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "node-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-af3ba31b91359e27894f9bb1"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "persistent-volume-binder",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-563d0626905224738c28e9cd"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "pod-garbage-collector",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-9383dc7f2065f6829637b165"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "pv-protection-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-964726f29907580e9af7d2d4"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "pvc-protection-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-365d4fdde1b920296552d988"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "replicaset-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-595244c9e17a69dc3b2ab0f1"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "replication-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-b52da3fd9816e18a36ed2ac0"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "resource-claim-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-07ff21554690ec4a45331dc6"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "resourcequota-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-548578440d153625b026bf33"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "root-ca-cert-publisher",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-ebe236db2cea9b8b362c4258"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "service-account-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-4e0dd4f74d1b22f62a45bd32"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "service-cidrs-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-6ee1941f65834b6f6b157d39"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "service-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-e0cf0aa75176c6a454def691"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "statefulset-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-bc84e459d4adcb57c871d678"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "tagging-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-61ae551a47ecc6e2d722a301"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "ttl-after-finished-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-9834f6f2d4b42724f6a7189f"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "ttl-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-dd9f1da48276c6fe3d679709"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "validatingadmissionpolicy-status-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-bad9933f5fde8057ba39ec46"
       },
       {
         "apiVersion": "v1",
         "kind": "ServiceAccount",
         "namespace": "kube-system",
         "name": "volumeattributesclass-protection-controller",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-53bbaac02860cc9112d83509"
       }
     ],
     "workloads": [
@@ -2651,7 +2651,7 @@
         "kind": "Deployment",
         "namespace": "kube-system",
         "name": "coredns",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-f1459c2f4875d77ca7d2c1cf",
         "replicas": 2,
         "readyReplicas": 2,
         "availableReplicas": 2,
@@ -2697,7 +2697,7 @@
         "kind": "DaemonSet",
         "namespace": "kube-system",
         "name": "aws-node",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-75a7889e878052105deaf614",
         "readyReplicas": 2,
         "availableReplicas": 2,
         "updatedReplicas": 2,
@@ -2781,7 +2781,7 @@
         "kind": "DaemonSet",
         "namespace": "kube-system",
         "name": "eks-pod-identity-agent",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-89268e4a06930f07db34766e",
         "readyReplicas": 2,
         "availableReplicas": 2,
         "updatedReplicas": 2,
@@ -2819,7 +2819,7 @@
         "kind": "DaemonSet",
         "namespace": "kube-system",
         "name": "kube-proxy",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-c23729cc38c2ef9d5cace37e",
         "readyReplicas": 2,
         "availableReplicas": 2,
         "updatedReplicas": 2,
@@ -2890,7 +2890,7 @@
         "kind": "ReplicaSet",
         "namespace": "kube-system",
         "name": "coredns-7c86fcd5ff",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-63e1540eedf5f62ea05b23a3",
         "replicas": 2,
         "readyReplicas": 2,
         "availableReplicas": 2,
@@ -2935,7 +2935,7 @@
             "apiVersion": "apps/v1",
             "kind": "Deployment",
             "name": "coredns",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-f1459c2f4875d77ca7d2c1cf"
           }
         ]
       }
@@ -2946,7 +2946,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "aws-node-ff6ee0",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-f8f441c0a73f4a0d7a646d9b",
         "phase": "Running",
         "nodeName": "demo-node-2",
         "serviceAccountName": "aws-node",
@@ -3062,7 +3062,7 @@
             "apiVersion": "apps/v1",
             "kind": "DaemonSet",
             "name": "aws-node",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-75a7889e878052105deaf614"
           }
         ]
       },
@@ -3071,7 +3071,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "aws-node-9ebf82",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-75e458274b32f4e7a978e49a",
         "phase": "Running",
         "nodeName": "demo-node-1",
         "serviceAccountName": "aws-node",
@@ -3187,7 +3187,7 @@
             "apiVersion": "apps/v1",
             "kind": "DaemonSet",
             "name": "aws-node",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-75a7889e878052105deaf614"
           }
         ]
       },
@@ -3196,7 +3196,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "coredns-7c86fcd5ff-10cbe3",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-3133975b4022546dd0c678bb",
         "phase": "Running",
         "nodeName": "demo-node-2",
         "serviceAccountName": "coredns",
@@ -3253,7 +3253,7 @@
             "apiVersion": "apps/v1",
             "kind": "ReplicaSet",
             "name": "coredns-7c86fcd5ff",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-63e1540eedf5f62ea05b23a3"
           }
         ]
       },
@@ -3262,7 +3262,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "coredns-7c86fcd5ff-537510",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-7176d6ba1744ee2618201784",
         "phase": "Running",
         "nodeName": "demo-node-1",
         "serviceAccountName": "coredns",
@@ -3319,7 +3319,7 @@
             "apiVersion": "apps/v1",
             "kind": "ReplicaSet",
             "name": "coredns-7c86fcd5ff",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-63e1540eedf5f62ea05b23a3"
           }
         ]
       },
@@ -3328,7 +3328,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "eks-pod-identity-agent-a3e376",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-7b4786b054d0d0f155c5f515",
         "phase": "Running",
         "nodeName": "demo-node-2",
         "serviceAccountName": "default",
@@ -3393,7 +3393,7 @@
             "apiVersion": "apps/v1",
             "kind": "DaemonSet",
             "name": "eks-pod-identity-agent",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-89268e4a06930f07db34766e"
           }
         ]
       },
@@ -3402,7 +3402,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "eks-pod-identity-agent-19f604",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-4076f55804abace2aa00d46e",
         "phase": "Running",
         "nodeName": "demo-node-1",
         "serviceAccountName": "default",
@@ -3467,7 +3467,7 @@
             "apiVersion": "apps/v1",
             "kind": "DaemonSet",
             "name": "eks-pod-identity-agent",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-89268e4a06930f07db34766e"
           }
         ]
       },
@@ -3476,7 +3476,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "kube-proxy-9e1db7",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-6d06acfdd1fc87822ccc3460",
         "phase": "Running",
         "nodeName": "demo-node-2",
         "serviceAccountName": "kube-proxy",
@@ -3552,7 +3552,7 @@
             "apiVersion": "apps/v1",
             "kind": "DaemonSet",
             "name": "kube-proxy",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-c23729cc38c2ef9d5cace37e"
           }
         ]
       },
@@ -3561,7 +3561,7 @@
         "kind": "Pod",
         "namespace": "kube-system",
         "name": "kube-proxy-57aada",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-e90252220a9cd59fa358292a",
         "phase": "Running",
         "nodeName": "demo-node-1",
         "serviceAccountName": "kube-proxy",
@@ -3637,7 +3637,7 @@
             "apiVersion": "apps/v1",
             "kind": "DaemonSet",
             "name": "kube-proxy",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-c23729cc38c2ef9d5cace37e"
           }
         ]
       }
@@ -3647,7 +3647,7 @@
         "apiVersion": "admissionregistration.k8s.io/v1",
         "kind": "MutatingWebhookConfiguration",
         "name": "pod-identity-webhook",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-1fa27a1f61fa8d0cfdce19bf",
         "webhooks": [
           {
             "name": "iam-for-pods.amazonaws.com",
@@ -3677,7 +3677,7 @@
         "apiVersion": "admissionregistration.k8s.io/v1",
         "kind": "MutatingWebhookConfiguration",
         "name": "vpc-resource-mutating-webhook",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-469dba8e4d82fb4bb41a0749",
         "webhooks": [
           {
             "name": "mpod.vpc.k8s.aws",
@@ -3707,7 +3707,7 @@
         "apiVersion": "admissionregistration.k8s.io/v1",
         "kind": "ValidatingWebhookConfiguration",
         "name": "vpc-resource-validating-webhook",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-668728df5208689f0f9f1eef",
         "webhooks": [
           {
             "name": "vpod.vpc.k8s.aws",
@@ -3777,7 +3777,7 @@
             "kind": "DaemonSet",
             "namespace": "kube-system",
             "name": "aws-node",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-75a7889e878052105deaf614"
           }
         ]
       },
@@ -3800,7 +3800,7 @@
             "kind": "DaemonSet",
             "namespace": "kube-system",
             "name": "aws-node",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-75a7889e878052105deaf614"
           }
         ]
       },
@@ -3823,7 +3823,7 @@
             "kind": "Deployment",
             "namespace": "kube-system",
             "name": "coredns",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-f1459c2f4875d77ca7d2c1cf"
           }
         ]
       },
@@ -3846,7 +3846,7 @@
             "kind": "DaemonSet",
             "namespace": "kube-system",
             "name": "eks-pod-identity-agent",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-89268e4a06930f07db34766e"
           }
         ]
       },
@@ -3869,7 +3869,7 @@
             "kind": "DaemonSet",
             "namespace": "kube-system",
             "name": "kube-proxy",
-            "uid": "00000000-0000-0000-0000-000000000000"
+            "uid": "demo-uid-c23729cc38c2ef9d5cace37e"
           }
         ]
       }
@@ -3893,14 +3893,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "serviceAccount": "aws-node"
       },
@@ -3922,14 +3922,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "serviceAccount": "aws-node"
       },
@@ -3951,14 +3951,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "serviceAccount": "aws-node"
       },
@@ -3980,14 +3980,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-75a7889e878052105deaf614"
         },
         "serviceAccount": "aws-node"
       },
@@ -4009,14 +4009,14 @@
           "kind": "ReplicaSet",
           "namespace": "kube-system",
           "name": "coredns-7c86fcd5ff",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-63e1540eedf5f62ea05b23a3"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "Deployment",
           "namespace": "kube-system",
           "name": "coredns",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f1459c2f4875d77ca7d2c1cf"
         },
         "serviceAccount": "coredns"
       },
@@ -4038,14 +4038,14 @@
           "kind": "ReplicaSet",
           "namespace": "kube-system",
           "name": "coredns-7c86fcd5ff",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-63e1540eedf5f62ea05b23a3"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "Deployment",
           "namespace": "kube-system",
           "name": "coredns",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f1459c2f4875d77ca7d2c1cf"
         },
         "serviceAccount": "coredns"
       },
@@ -4067,14 +4067,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "eks-pod-identity-agent",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-89268e4a06930f07db34766e"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "eks-pod-identity-agent",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-89268e4a06930f07db34766e"
         },
         "serviceAccount": "default"
       },
@@ -4096,14 +4096,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "eks-pod-identity-agent",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-89268e4a06930f07db34766e"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "eks-pod-identity-agent",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-89268e4a06930f07db34766e"
         },
         "serviceAccount": "default"
       },
@@ -4125,14 +4125,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "kube-proxy",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c23729cc38c2ef9d5cace37e"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "kube-proxy",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c23729cc38c2ef9d5cace37e"
         },
         "serviceAccount": "kube-proxy"
       },
@@ -4154,14 +4154,14 @@
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "kube-proxy",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c23729cc38c2ef9d5cace37e"
         },
         "workload": {
           "apiVersion": "apps/v1",
           "kind": "DaemonSet",
           "namespace": "kube-system",
           "name": "kube-proxy",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c23729cc38c2ef9d5cace37e"
         },
         "serviceAccount": "kube-proxy"
       }
@@ -4172,7 +4172,7 @@
         "kind": "Service",
         "namespace": "default",
         "name": "kubernetes",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-b86677974d3b3d36bfd6b34f",
         "type": "ClusterIP",
         "clusterIp": "demo-ip",
         "ports": [
@@ -4189,7 +4189,7 @@
         "kind": "Service",
         "namespace": "kube-system",
         "name": "eks-extension-metrics-api",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-39f5d80f636b4afd75f71a3a",
         "type": "ClusterIP",
         "clusterIp": "demo-ip",
         "ports": [
@@ -4206,7 +4206,7 @@
         "kind": "Service",
         "namespace": "kube-system",
         "name": "kube-dns",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-10dc53d69178d8aa15348402",
         "type": "ClusterIP",
         "clusterIp": "demo-ip",
         "selector": {
@@ -4240,7 +4240,7 @@
         "kind": "EndpointSlice",
         "namespace": "default",
         "name": "kubernetes",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-8b87f5cbabc2a508d0631c92",
         "addressType": "IPv4",
         "serviceName": "kubernetes",
         "ports": [
@@ -4276,7 +4276,7 @@
         "kind": "EndpointSlice",
         "namespace": "kube-system",
         "name": "eks-extension-metrics-api-019f47",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-c7ee7020387d04048b2dae8e",
         "addressType": "IPv4",
         "serviceName": "eks-extension-metrics-api",
         "ports": [
@@ -4303,7 +4303,7 @@
         "kind": "EndpointSlice",
         "namespace": "kube-system",
         "name": "kube-dns-883145",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-cfa14d99d2c76f0547d00b65",
         "addressType": "IPv4",
         "serviceName": "kube-dns",
         "ports": [
@@ -4334,8 +4334,8 @@
             "targetRef": {
               "kind": "Pod",
               "namespace": "kube-system",
-              "name": "coredns-7c86fcd5ff-2gzqs",
-              "uid": "00000000-0000-0000-0000-000000000000"
+              "name": "coredns-7c86fcd5ff-10cbe3",
+              "uid": "demo-uid-3133975b4022546dd0c678bb"
             }
           },
           {
@@ -4348,8 +4348,8 @@
             "targetRef": {
               "kind": "Pod",
               "namespace": "kube-system",
-              "name": "coredns-7c86fcd5ff-hznkn",
-              "uid": "00000000-0000-0000-0000-000000000000"
+              "name": "coredns-7c86fcd5ff-537510",
+              "uid": "demo-uid-7176d6ba1744ee2618201784"
             }
           }
         ]
@@ -4360,7 +4360,7 @@
         "apiVersion": "storage.k8s.io/v1",
         "kind": "StorageClass",
         "name": "gp2",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-d715db1908b9905e3c3df586",
         "provisioner": "kubernetes.io/aws-ebs",
         "parameters": {
           "fsType": "ext4",
@@ -4375,7 +4375,7 @@
         "apiVersion": "storage.k8s.io/v1",
         "kind": "CSIDriver",
         "name": "efs.csi.aws.com",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-038b42a5821e4930bb797cd1",
         "attachRequired": false,
         "podInfoOnMount": false,
         "volumeLifecycleModes": [
@@ -4388,13 +4388,13 @@
         "apiVersion": "storage.k8s.io/v1",
         "kind": "CSINode",
         "name": "demo-node-1",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-7cd6f473753429371bff3fee"
       },
       {
         "apiVersion": "storage.k8s.io/v1",
         "kind": "CSINode",
         "name": "demo-node-2",
-        "uid": "00000000-0000-0000-0000-000000000000"
+        "uid": "demo-uid-3be7c8f839804fa94aabb976"
       }
     ],
     "configMaps": [
@@ -4403,7 +4403,7 @@
         "kind": "ConfigMap",
         "namespace": "default",
         "name": "kube-root-ca.crt",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-19844ad48d7b9a5837ed53c4",
         "data": {
           "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIDMjCCAhqgAwIBAgIRANFEQpVqgqOpxtGFLwwmmiQwDQYJKoZIhvcNAQELBQAw\nJzEQMA4GA1UEChMHQVdTIEVLUzETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yNjA5\nMTUwMjIyMjBaFw0zMTA5MTQwMjIyMjBaMCcxEDAOBgNVBAoTB0FXUyBFS1MxEzAR\nBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB\nAQC/5lpWbqbwS1rVYuQvIyXYxHdEwkEJF6sQjRRRY+4vllaFkceWZhFDBf4Cxa6x\n6RjsB1BcBlyPW/HjdzQE52lQstlrjwSpreVAimROKA6xoQouTwogUX5/rPfgxdjY\nZvHkUCflD5QZmofmUALRLzJ3li/PJUq28ms3Srbmtg12ewcyhSwmE1eIAePctHY1\nT1x20Gmbdbfw/hIQbbuvYP4DNzo09aIe3H+mXnY0bKrSBMRUo3HjXLfdDnSpLq98\nAnuwM6PrxgLwav2X9xykryi5XkyX0KUTZ2Ns/rsFWwpSVYPCUHaotng1gbWo178r\nCOZ2E+j7K8ozFH2dxr4RGbWpAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAPBgNV\nHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQ/dBcb6LAmROVd6ZXYR/lyaZsKVzAVBgNV\nHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBymNLbzLRiTvTN\nGLTsxq7MWc6HgIwbvW8xH+QRgy5BVjXkWhDSZuntjFRtdrXHvvuhDGaM9CcVyGh+\neSTGbiKdXYHWlieiLfpQsn4+cC3Ti5Q3FqijPuRaagSqtcuesArojIrjAmXqeKkf\njOaYfU5l77IavJspb+/QlnQHz+vffS7u2w87VoLCrmV8N232bihdmf6l1rIal97y\n45iE2YYIJ2aqoSGjmLOPGeQDFXr/x83gQuoMB6vqkGOX35IGr7o0mJWH61KhqEWc\n/EHAJ5Gteqo3ecm8JqqyTutg4iV1Fflt21q/Z/OqROJPnBsweAOq19kgpr6uAacA\nH9262P2X\n-----END CERTIFICATE-----\n"
         }
@@ -4413,7 +4413,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-node-lease",
         "name": "kube-root-ca.crt",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-faf63d4555dc170dfeb8cd21",
         "data": {
           "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIDMjCCAhqgAwIBAgIRANFEQpVqgqOpxtGFLwwmmiQwDQYJKoZIhvcNAQELBQAw\nJzEQMA4GA1UEChMHQVdTIEVLUzETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yNjA5\nMTUwMjIyMjBaFw0zMTA5MTQwMjIyMjBaMCcxEDAOBgNVBAoTB0FXUyBFS1MxEzAR\nBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB\nAQC/5lpWbqbwS1rVYuQvIyXYxHdEwkEJF6sQjRRRY+4vllaFkceWZhFDBf4Cxa6x\n6RjsB1BcBlyPW/HjdzQE52lQstlrjwSpreVAimROKA6xoQouTwogUX5/rPfgxdjY\nZvHkUCflD5QZmofmUALRLzJ3li/PJUq28ms3Srbmtg12ewcyhSwmE1eIAePctHY1\nT1x20Gmbdbfw/hIQbbuvYP4DNzo09aIe3H+mXnY0bKrSBMRUo3HjXLfdDnSpLq98\nAnuwM6PrxgLwav2X9xykryi5XkyX0KUTZ2Ns/rsFWwpSVYPCUHaotng1gbWo178r\nCOZ2E+j7K8ozFH2dxr4RGbWpAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAPBgNV\nHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQ/dBcb6LAmROVd6ZXYR/lyaZsKVzAVBgNV\nHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBymNLbzLRiTvTN\nGLTsxq7MWc6HgIwbvW8xH+QRgy5BVjXkWhDSZuntjFRtdrXHvvuhDGaM9CcVyGh+\neSTGbiKdXYHWlieiLfpQsn4+cC3Ti5Q3FqijPuRaagSqtcuesArojIrjAmXqeKkf\njOaYfU5l77IavJspb+/QlnQHz+vffS7u2w87VoLCrmV8N232bihdmf6l1rIal97y\n45iE2YYIJ2aqoSGjmLOPGeQDFXr/x83gQuoMB6vqkGOX35IGr7o0mJWH61KhqEWc\n/EHAJ5Gteqo3ecm8JqqyTutg4iV1Fflt21q/Z/OqROJPnBsweAOq19kgpr6uAacA\nH9262P2X\n-----END CERTIFICATE-----\n"
         }
@@ -4423,7 +4423,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-public",
         "name": "kube-root-ca.crt",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-f302565fd4ad3fdc96b7aa95",
         "data": {
           "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIDMjCCAhqgAwIBAgIRANFEQpVqgqOpxtGFLwwmmiQwDQYJKoZIhvcNAQELBQAw\nJzEQMA4GA1UEChMHQVdTIEVLUzETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yNjA5\nMTUwMjIyMjBaFw0zMTA5MTQwMjIyMjBaMCcxEDAOBgNVBAoTB0FXUyBFS1MxEzAR\nBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB\nAQC/5lpWbqbwS1rVYuQvIyXYxHdEwkEJF6sQjRRRY+4vllaFkceWZhFDBf4Cxa6x\n6RjsB1BcBlyPW/HjdzQE52lQstlrjwSpreVAimROKA6xoQouTwogUX5/rPfgxdjY\nZvHkUCflD5QZmofmUALRLzJ3li/PJUq28ms3Srbmtg12ewcyhSwmE1eIAePctHY1\nT1x20Gmbdbfw/hIQbbuvYP4DNzo09aIe3H+mXnY0bKrSBMRUo3HjXLfdDnSpLq98\nAnuwM6PrxgLwav2X9xykryi5XkyX0KUTZ2Ns/rsFWwpSVYPCUHaotng1gbWo178r\nCOZ2E+j7K8ozFH2dxr4RGbWpAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAPBgNV\nHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQ/dBcb6LAmROVd6ZXYR/lyaZsKVzAVBgNV\nHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBymNLbzLRiTvTN\nGLTsxq7MWc6HgIwbvW8xH+QRgy5BVjXkWhDSZuntjFRtdrXHvvuhDGaM9CcVyGh+\neSTGbiKdXYHWlieiLfpQsn4+cC3Ti5Q3FqijPuRaagSqtcuesArojIrjAmXqeKkf\njOaYfU5l77IavJspb+/QlnQHz+vffS7u2w87VoLCrmV8N232bihdmf6l1rIal97y\n45iE2YYIJ2aqoSGjmLOPGeQDFXr/x83gQuoMB6vqkGOX35IGr7o0mJWH61KhqEWc\n/EHAJ5Gteqo3ecm8JqqyTutg4iV1Fflt21q/Z/OqROJPnBsweAOq19kgpr6uAacA\nH9262P2X\n-----END CERTIFICATE-----\n"
         }
@@ -4433,7 +4433,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "amazon-vpc-cni",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-d55ef17860c441a0c2ce5c25",
         "data": {
           "branch-eni-cooldown": "60",
           "enable-network-policy-controller": "false",
@@ -4449,7 +4449,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "aws-auth",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-39a7816036dcc59bad8d3fa3",
         "data": {
           "mapRoles": "- rolearn: arn:aws:iam::000000000000:role/demo-role\n  groups:\n  - system:bootstrappers\n  - system:nodes\n  username: system:node:{{EC2PrivateDNSName}}\n"
         }
@@ -4459,7 +4459,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "coredns",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-79d5848d3640795908f0aecc",
         "data": {
           "Corefile": ".:53 {\n    errors\n    health {\n        lameduck 5s\n      }\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n      pods insecure\n      fallthrough in-addr.arpa ip6.arpa\n    }\n    prometheus :9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n}\n"
         }
@@ -4469,7 +4469,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "extension-apiserver-authentication",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-1a7ec8d8a514df6d29ed275c",
         "data": {
           "client-ca-file": "-----BEGIN CERTIFICATE-----\nMIIDBTCCAe2gAwIBAgIIDu7QBGYWVTMwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjA5MTUwMjIxMTBaFw0zNjA5MTIwMjI2MTBaMBUx\nEzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\nAoIBAQDLFtRV7YCe0Zq99cWdWpiyLqawRwezMUalDFrTvESSDKyF5gZxSv6vDOQX\nJeisJ4vatuLoeNKGVjuICZP1nH8OCVx29ig6cEaOUMh8NA2xmsDmQRTiaz5o4Ik9\nkzo+Y+/GIKRt5x6Ofdx3Wy2izSUiLrAWIu4Ckv4gK56DsAOTyMY3cBP2EDIWf3tQ\n++5wyc2sLToDu37Y641Idx+Xcv9keaLqTxwk7rIQGDqK9nWYWLAx9FOlVD5YLbZO\nbYHL3T4amnkYUNjBsyhjDghv8LI//+5GJxY+xUCSEuon8oXVVQrP/tNl1n+dyZrL\nB45GtoN9bXdKGZcOYAyLaDndbGkRAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQY1UIaLk8DcnxPN6H4dhz9QAccYzAV\nBgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBI6lIozK/a\nkY1NjKj0o/Fm6KAXyzL4m+aKZsxDCIC6hp/tW1BVpPKVpCzU+EILZh1f65WAqcZt\nhTwQAf31LfycJ9mlNss/luDVRmLOWGZttUH2GC6VZB2dZl93H6g19ZN1z/vr8+Dp\nX1Bu6KCxQuuPyV2d4K0W0/vuhbEi6JfNqvEZ9p8BaoxbzqVjV5Q3n2SLjhTIWoJT\nsaKGH5olctuKx+rACNAfuVhbCYCMV9xHR2iaSyl2WGNq+V/qyEV04ag1imosAOou\n6iCULtKixVl6+9clE86AOSGufSCJiIJhvraQISBsdK+Qc8ftbBmw32lCHfgjUBiF\nZ9zE53yUf2pR\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIDBTCCAe2gAwIBAgIIFvuS+sJ/9/AwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjA5MTUwMjI2MDhaFw0zNjA5MTIwMjMxMDhaMBUx\nEzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\nAoIBAQDODJiKi6DOXVbNMHJhvVTZujF5HvFnlWpiDazfFtXYu507xh3VcvSFKl7c\nSDLFT2Y8LEMKpXOCcv6tD/Ccxraw1n5RZ1towLGgSbxym8wG98sEouIRFcUJgryh\nPwfQ6U29/WpUxKTXYS3kitcwglkXj8WTUsE5kESX3aGbf6TNOG+yS40ihXLquV7h\n3oHYb4W0fD/B7g/h4DIhScGfy8dmVeR6ZJExThv6711MHifkXr11FU2XANqimFNC\nGPx9X34PaZeN2CSKMl+I/XEJKjCINqQSsyeZG9eXGXQnr3OzLMCgJHDnMK5NeqaD\npze1FN0KmQbxrOHmr9ygeysWyk9/AgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBRh5CuC+LfIObsNE01H4r698nkyQTAV\nBgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBdTPbRZgPh\nI/iZMhLqR/aJB1Ia2eMb/6fNBasD67qZLFNLcbm027j2L0GqkwpUaheoUKS6roR2\nXghICJqde2fJYYyfBY2J68hPHZEzpVkuVlcVOzlg6HJU4hgxwVgMPHy9uiPPJ5Dc\nazToI807sCqAa5XQ/qkgUjsnqGyHYh73MsebPl8UisDIDD1JNfjvs9AqbIk9kDKe\nZjH3tohrR1SwWO5G0rP2TDRGi1tp2gKayq/Xa5Ag0M8KNR4KiljQmYU6m4HFhT64\nLZtjCJWk77Zp09FKSduDcVNQxjS/HhZ5/YTFJ3sG0dQ4jMGbbw+UoKxMKyAH1zsO\n8XF6GB5kWk/9\n-----END CERTIFICATE-----\n",
           "requestheader-allowed-names": "[\"front-proxy-client\"]",
@@ -4484,7 +4484,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "kube-apiserver-legacy-service-account-token-tracking",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-9873e7967ce2adee2bd78bbf",
         "data": {
           "since": "2026-09-15"
         }
@@ -4494,7 +4494,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "kube-proxy",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-c0d61fa186005c6a30612c2c",
         "data": {
           "kubeconfig": "kind: Config\napiVersion: v1\nclusters:\n- cluster:\n    certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n    server: https://demo-eks.example.invalid\n  name: default\ncontexts:\n- context:\n    cluster: default\n    namespace: default\n    user: default\n  name: default\ncurrent-context: default\nusers:\n- name: default\n  user:\n    tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token"
         }
@@ -4504,7 +4504,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "kube-proxy-config",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-564c359a84e22bc8b480ff8d",
         "data": {
           "config": "apiVersion: kubeproxy.config.k8s.io/v1alpha1\nbindAddress: demo-ip\nclientConnection:\n  acceptContentTypes: \"\"\n  burst: 10\n  contentType: application/vnd.kubernetes.protobuf\n  kubeconfig: /var/lib/kube-proxy/kubeconfig\n  qps: 5\nclusterCIDR: \"\"\nconfigSyncPeriod: 15m0s\nconntrack:\n  maxPerCore: 32768\n  min: 131072\n  tcpCloseWaitTimeout: 1h0m0s\n  tcpEstablishedTimeout: 24h0m0s\nenableProfiling: false\nhealthzBindAddress: demo-ip:10256\nhostnameOverride: \"\"\niptables:\n  masqueradeAll: false\n  masqueradeBit: 14\n  minSyncPeriod: 0s\n  syncPeriod: 30s\nipvs:\n  excludeCIDRs: null\n  minSyncPeriod: 0s\n  scheduler: \"\"\n  syncPeriod: 30s\nkind: KubeProxyConfiguration\nmetricsBindAddress: demo-ip:10249\nmode: \"iptables\"\nnodePortAddresses: null\noomScoreAdj: -998\nportRange: \"\""
         }
@@ -4514,7 +4514,7 @@
         "kind": "ConfigMap",
         "namespace": "kube-system",
         "name": "kube-root-ca.crt",
-        "uid": "00000000-0000-0000-0000-000000000000",
+        "uid": "demo-uid-d37b4cf4a918551934405618",
         "data": {
           "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIDMjCCAhqgAwIBAgIRANFEQpVqgqOpxtGFLwwmmiQwDQYJKoZIhvcNAQELBQAw\nJzEQMA4GA1UEChMHQVdTIEVLUzETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yNjA5\nMTUwMjIyMjBaFw0zMTA5MTQwMjIyMjBaMCcxEDAOBgNVBAoTB0FXUyBFS1MxEzAR\nBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB\nAQC/5lpWbqbwS1rVYuQvIyXYxHdEwkEJF6sQjRRRY+4vllaFkceWZhFDBf4Cxa6x\n6RjsB1BcBlyPW/HjdzQE52lQstlrjwSpreVAimROKA6xoQouTwogUX5/rPfgxdjY\nZvHkUCflD5QZmofmUALRLzJ3li/PJUq28ms3Srbmtg12ewcyhSwmE1eIAePctHY1\nT1x20Gmbdbfw/hIQbbuvYP4DNzo09aIe3H+mXnY0bKrSBMRUo3HjXLfdDnSpLq98\nAnuwM6PrxgLwav2X9xykryi5XkyX0KUTZ2Ns/rsFWwpSVYPCUHaotng1gbWo178r\nCOZ2E+j7K8ozFH2dxr4RGbWpAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAPBgNV\nHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQ/dBcb6LAmROVd6ZXYR/lyaZsKVzAVBgNV\nHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQBymNLbzLRiTvTN\nGLTsxq7MWc6HgIwbvW8xH+QRgy5BVjXkWhDSZuntjFRtdrXHvvuhDGaM9CcVyGh+\neSTGbiKdXYHWlieiLfpQsn4+cC3Ti5Q3FqijPuRaagSqtcuesArojIrjAmXqeKkf\njOaYfU5l77IavJspb+/QlnQHz+vffS7u2w87VoLCrmV8N232bihdmf6l1rIal97y\n45iE2YYIJ2aqoSGjmLOPGeQDFXr/x83gQuoMB6vqkGOX35IGr7o0mJWH61KhqEWc\n/EHAJ5Gteqo3ecm8JqqyTutg4iV1Fflt21q/Z/OqROJPnBsweAOq19kgpr6uAacA\nH9262P2X\n-----END CERTIFICATE-----\n"
         }
@@ -4527,112 +4527,112 @@
           "kind": "Role",
           "namespace": "kube-public",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f390f52d4b470087d49963ab"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks-vpc-resource-controller-role",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-0f6e20fbb1be4785d455c3ef"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c0817e19aecbb588bae89985"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:authenticator",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-0356516cebac59524e4a484d"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-8398c0ff228fb013ef41aa96"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b5ab99de10984e9df6992b74"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-4dd28bbe230098883e2d1c18"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-18d7748bd0be5e384d315bd0"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-351e7c02e891851e4aa6856c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:service-operations-configmaps",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ac05b618dd1b4482e781db72"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "extension-apiserver-authentication-reader",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-8d37e7da4d036d135f218e68"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-df67115b3157976ab4472eb3"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-83a072d7d6b28cadee6624bc"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-71bddd9b4597055b8651b16d"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system:controller:cloud-provider",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-6c5f4244f14fd32f86215c41"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system:controller:token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-baffb0a66aafb9695ffd952c"
         }
       ],
       "roleBindings": [
@@ -4641,112 +4641,112 @@
           "kind": "RoleBinding",
           "namespace": "kube-public",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-063473cf1d4df0c60b656400"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks-vpc-resource-controller-rolebinding",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-d0d3c436793edb6c8dead251"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-21d5556913fee24485610b08"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:authenticator",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c5e13f9cc751dc063e787ba9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c3c8203e658266de4c0e209a"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-effde26bc7123cb8ad1b7228"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-083174dd803e7988d2e9af1c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-22a752907ae1f536af8f64d6"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-0731a96a52a1b56fdf364624"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:service-operations",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b3edd23548f660e22ff0abb2"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system::extension-apiserver-authentication-reader",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-67b79a6ca3b7a25b7d125587"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f5ef68ba7dcad6ce77229770"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-5fd6510a41022b30235e5d39"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-4a843690184e27bc17ed7859"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system:controller:cloud-provider",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bedb15ba6a7c7c21135193a8"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system:controller:token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-01dc80821968288f7885f8ff"
         }
       ],
       "clusterRoles": [
@@ -4754,529 +4754,529 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "admin",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9f0ca4537629825e7bd42f25"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-36992cba3e71a56ea53d9522"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "cluster-admin",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b10bf0831a65d275a71a1551"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "edit",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-77ef85c2c0c3a6f0f56651d7"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bd70b6f3b0a4a267d05a7123"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-a3d21702d3c8b23957caf877"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:cloud-provider-extraction-migration",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-91a2ee2b2fffe58ee0581368"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:cluster-event-watcher",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-6869819fcbf536c0ecd369b8"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-34abfca38e4bf811452b1999"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:extension-metrics-apiserver",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bd8c7a998bde32606c5f757f"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-22d518f430e40834b92006f7"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:fargate-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-127b63de29d1a06f761fe716"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:kms-storage-migrator",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c8fcfaa8d33ce42e9cc98fa9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-89fbb869fd2b21909d95eb98"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:network-webhooks",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-e42309db6619f22bf2760b8f"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:node-bootstrapper",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-0ff356f1473ff21256004b87"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-a3cf2cb5678dc260f8a6d411"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:nodewatcher",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ba11f50a1b3f047d6d709536"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:pod-identity-mutating-webhook",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-1eb0a1db8d606f9096cfc5cc"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:service-operations",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-66b9c56eaccd2920bbce464d"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:tagging-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-473dfa63eeefda246c6f8b32"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:aggregate-to-admin",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-83c635b977620ec51b41ac9e"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:aggregate-to-edit",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-2a6d2163e59410954a1c5d45"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:aggregate-to-view",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-eb4c884141e47edeb9200e93"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:auth-delegator",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-46095ac7012d04fa16328585"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:basic-user",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bf01f671fca97fc2868467a8"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:certificatesigningrequests:nodeclient",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-041c848f3af2e3233cd28a6f"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:certificatesigningrequests:selfnodeclient",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bf727b986e813d75750f43ce"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:kube-apiserver-client-approver",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9262db15473533c9d206f1a1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:kube-apiserver-client-kubelet-approver",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-2c9a62d59aa3788034068560"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:kubelet-serving-approver",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-7bd2f48734ad18173c939c68"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:legacy-unknown-approver",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-3d1506fedc1bf64a99933130"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:attachdetach-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-64fd9f9d7c63aaa3ae48bfad"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:certificate-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f1ed17092f0166ea98e153ff"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:clusterrole-aggregation-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9371545aa7349337e47ec790"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:cronjob-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f2c4a48943043cd8c959af8f"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:daemon-set-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-398deba4984d94e0785c7593"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:deployment-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-5a4aec616bc9eec6bc320089"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:disruption-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-d176ae54aea7960b619bbd9b"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:endpoint-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-2bb40c64b56bd204bfe6d664"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:endpointslice-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-632f5b27b644aa238e09262f"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:endpointslicemirroring-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ad775733341247ef1b498fa1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:ephemeral-volume-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f30662d52348d84713f9af36"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:expand-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-22efb3e5befdb4f6ebab0b47"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:generic-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-1f95670624459e054b3475f7"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:horizontal-pod-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-7e9d2eec35a1ba5d98fdcf63"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:job-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-4d24667cb51e4de81e261b6b"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:legacy-service-account-token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-dd60506b30404a968d8f6221"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:namespace-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9770e3f7959dd92989bfacfb"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:node-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-215fe62b687c66a929305c59"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:persistent-volume-binder",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-21f9f21394ae9284e5c20dfb"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:pod-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-7ec4e57d3409f5a85bb06f14"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:pv-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-5280ce3f1bba42c886ff0897"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:pvc-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-232956f5479f1d5f43c95560"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:replicaset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-6cb897b4c61cf74380255d97"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:replication-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-1eaf7947cdcd1c278411181c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:resource-claim-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-49fa5abe374e8d89da7ea6b1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:resourcequota-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-fd359e53f0d28d873c0db400"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:root-ca-cert-publisher",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-744ec80429f38c01863331b9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:route-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-0ffda525e49899b3d1e777cd"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:selinux-warning-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-02b9655140470c3af2a8a09e"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:service-account-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-462e8c6577c13386334bdf5c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:service-cidrs-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-82d3559921c40e03866727f2"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:service-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b2f8a609220321d3be5a6fda"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:statefulset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-013159ad1b50cd6f7be7ef89"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:ttl-after-finished-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-5ed5272e637b3a33118fd19a"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:ttl-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-a084e3b66c66b4944ad81ac7"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:validatingadmissionpolicy-status-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ae975279257737a7f77fd58e"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:volumeattributesclass-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-8c36a5dbd858aed89f69e551"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:coredns",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9a29305bcafcc9814c356079"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:discovery",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-5b71daa3bfd0a2cfabf575f2"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:heapster",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-de2a90ca8f59304912a75453"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-aggregator",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-dd8bd6cd8321d6413861b91e"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-256934db14f8b422ae0de631"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-dns",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ed29ae6f8b84b61f6ee3acdc"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b8528550cdf034e1031120ce"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kubelet-api-admin",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-828f8d2fd835631b604a4fb2"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:monitoring",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-0a54d350af0a53605c552a02"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-2f3780b9e9fb4019dfb0553c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node-bootstrapper",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-3de28aef77f622341a2a9040"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node-problem-detector",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-faf02bec88cb0728b1dd7b5d"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node-proxier",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9e05780166363432e7a8fa22"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:persistent-volume-provisioner",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-60147c254a3a2adc800d2ae9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:public-info-viewer",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-2697315ffc0bb1790f5fd78c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:service-account-issuer-discovery",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-6bd33de1cd17ec9d8448c6bf"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:volume-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ee265a291755b898dd108476"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "view",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-7c57f3de3ef0b32597e0ab30"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "vpc-resource-controller-role",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-95bb8359e3dd1b24dce65cbe"
         }
       ],
       "clusterRoleBindings": [
@@ -5284,433 +5284,433 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-70c76f929306b90ef18684c1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "cluster-admin",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-1c529337c113f3420d145065"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:addon-cluster-admin",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-5db53d3f868c7ea2d26e4eac"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bb9e003f1a104ea597d56de4"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-33de72532f4d9e3c7b6b9860"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:cloud-provider-extraction-migration",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-d47f53bc7c3e31707b19e092"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:cluster-event-watcher",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-805747911801ae6c374767b7"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-872ed5ecd28d067a6d72c477"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-4585e361afd018e11e682f62"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:fargate-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-61155c5d996c7b85772f6d59"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kms-storage-migrator",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-79e811c3158d5f83e3f850e4"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kube-proxy",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-eefdfbc1d77e53c73406e66e"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kube-proxy-fargate",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-6b7ce9e005adcfb8aa3bcade"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kube-proxy-windows",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-02394bab22ae040ae02ded77"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-052f97fa84d3952f5be539d9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:network-webhooks",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-a86abf5e1ac003c93dd5324b"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:node-bootstrapper",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f7aa7e8162295d868a9bf711"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ecf8f4241bbb28d3dac3e253"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:nodewatcher",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-99ecb348752c73a666afdbe0"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:pod-identity-mutating-webhook",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-3c43b6c004d71476535c53c5"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:service-operations",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-3f72a7435da5ab47c1d99198"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:tagging-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b34cad22fcecfcb6f177190a"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:basic-user",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-461632b326137d3c092a88ab"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:attachdetach-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-88bdf0984225ed79f4e279d9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:certificate-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-08e4490b965394dcd24adad6"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:clusterrole-aggregation-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-d88bea2b35d2170325f9089d"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:cronjob-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-88ab88834601fc2d2caccf4c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:daemon-set-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-a9142034dca18610b25ed4e8"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:deployment-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-353e2155b8e3375336ea2671"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:disruption-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-5d0e26e1ee682f5aaa5be24e"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:endpoint-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-e12405f236b18c3ce28e5194"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:endpointslice-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-1af29cb9bd297246d9bd1afd"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:endpointslicemirroring-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-27d57c8ebf4387f3b73dc301"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:ephemeral-volume-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-d85f6f078641bb27586a59a4"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:expand-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9abe4c5632168e3de221eb09"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:generic-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-99d7ddcdbbe04e645e01f5a7"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:horizontal-pod-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b6e4af3d2d12bf6b74572b2d"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:job-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-30e160eef77cee5c2b706098"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:legacy-service-account-token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-44be226ad6541ea5a8b6d02a"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:namespace-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-8ab2194ea2b53be9ed4fdd30"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:node-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-094f289699889c12456a04e1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:persistent-volume-binder",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-fa771725a154cbc0da1951c9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:pod-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-eb0cb7604955f532396f46cc"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:pv-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9250fc4b5c3afc7f7f8bb091"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:pvc-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-d4bf1e9026f0fa39fb2e5101"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:replicaset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bf920baad059c9814185cd79"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:replication-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-39eaf5a0595d2fd9e5f5d489"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:resource-claim-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-76c0f553dc40e34e181c6d78"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:resourcequota-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-f565a23d41eee4a6e415eeb9"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:root-ca-cert-publisher",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-57665ca2378cc5ec699be42c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:route-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-33c24ee266d64561212f9858"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:selinux-warning-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c852c51170b02f09722204c4"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:service-account-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9d2311906cfd41d19c9946cf"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:service-cidrs-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-e4df7ccf0bddffa83006619a"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:service-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-be4a08285126b9bac84f2e60"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:statefulset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9e5e3b73d3a7a77a905adab5"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:ttl-after-finished-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-b5060f859ae57ca965d4dd18"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:ttl-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-194387dfe2866484228b3421"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:validatingadmissionpolicy-status-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-13c0c39d7726edd27ae3c85c"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:volumeattributesclass-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-440567e0d7c777a50b27ba54"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:coredns",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-1899de42922143be2da7cde5"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:discovery",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-6960304ef942f2d327b23505"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-13f7aff5c5c168de641c649f"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:kube-dns",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-0706efc8e3109ec4ea0b1247"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-9ef1c3e8976bd0a7dd3d7953"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:monitoring",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-08924c3493d5cbdf5ea20ec3"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:node",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-2a13126bf6a10f1509382bc1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:node-proxier",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-ce452a3b7759b64fb0305ed1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:public-info-viewer",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-3b1ad86d9c9f5c031c7ce596"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:service-account-issuer-discovery",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-c5ecff63606c424aaac9cca2"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:volume-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-02e3c5d3d71341c6d97ec3d1"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "vpc-resource-controller-rolebinding",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-fc92da7e64e4b55b7f341c11"
         }
       ],
       "roleDetails": [
@@ -5719,7 +5719,7 @@
           "kind": "Role",
           "namespace": "kube-public",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-f390f52d4b470087d49963ab",
           "rules": [
             {
               "apiGroups": [
@@ -5769,7 +5769,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks-vpc-resource-controller-role",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-0f6e20fbb1be4785d455c3ef",
           "rules": [
             {
               "apiGroups": [
@@ -5876,7 +5876,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-c0817e19aecbb588bae89985",
           "rules": [
             {
               "apiGroups": [
@@ -6016,7 +6016,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:authenticator",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-0356516cebac59524e4a484d",
           "rules": [
             {
               "apiGroups": [
@@ -6054,7 +6054,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-8398c0ff228fb013ef41aa96",
           "rules": [
             {
               "apiGroups": [
@@ -6094,7 +6094,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b5ab99de10984e9df6992b74",
           "rules": [
             {
               "apiGroups": [
@@ -6192,7 +6192,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-4dd28bbe230098883e2d1c18",
           "rules": [
             {
               "apiGroups": [
@@ -6241,7 +6241,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-18d7748bd0be5e384d315bd0",
           "rules": [
             {
               "apiGroups": [
@@ -6305,7 +6305,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-351e7c02e891851e4aa6856c",
           "rules": [
             {
               "apiGroups": [
@@ -6353,7 +6353,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "eks:service-operations-configmaps",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ac05b618dd1b4482e781db72",
           "rules": [
             {
               "apiGroups": [
@@ -6397,7 +6397,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "extension-apiserver-authentication-reader",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-8d37e7da4d036d135f218e68",
           "rules": [
             {
               "apiGroups": [
@@ -6422,7 +6422,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-df67115b3157976ab4472eb3",
           "rules": [
             {
               "apiGroups": [
@@ -6487,7 +6487,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-83a072d7d6b28cadee6624bc",
           "rules": [
             {
               "apiGroups": [
@@ -6552,7 +6552,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-71bddd9b4597055b8651b16d",
           "rules": [
             {
               "apiGroups": [
@@ -6574,7 +6574,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system:controller:cloud-provider",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-6c5f4244f14fd32f86215c41",
           "rules": [
             {
               "apiGroups": [
@@ -6597,7 +6597,7 @@
           "kind": "Role",
           "namespace": "kube-system",
           "name": "system:controller:token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-baffb0a66aafb9695ffd952c",
           "rules": [
             {
               "apiGroups": [
@@ -6636,7 +6636,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-public",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-063473cf1d4df0c60b656400",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6656,7 +6656,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks-vpc-resource-controller-rolebinding",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-d0d3c436793edb6c8dead251",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6676,7 +6676,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-21d5556913fee24485610b08",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6696,7 +6696,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:authenticator",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-c5e13f9cc751dc063e787ba9",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6716,7 +6716,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-c3c8203e658266de4c0e209a",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6736,7 +6736,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-effde26bc7123cb8ad1b7228",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6756,7 +6756,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-083174dd803e7988d2e9af1c",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6776,7 +6776,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-22a752907ae1f536af8f64d6",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6796,7 +6796,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-0731a96a52a1b56fdf364624",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6816,7 +6816,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "eks:service-operations",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b3edd23548f660e22ff0abb2",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6836,7 +6836,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system::extension-apiserver-authentication-reader",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-67b79a6ca3b7a25b7d125587",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6861,7 +6861,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-f5ef68ba7dcad6ce77229770",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6891,7 +6891,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system::leader-locking-kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-5fd6510a41022b30235e5d39",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6916,7 +6916,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system:controller:bootstrap-signer",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-4a843690184e27bc17ed7859",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6936,7 +6936,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system:controller:cloud-provider",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-bedb15ba6a7c7c21135193a8",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6956,7 +6956,7 @@
           "kind": "RoleBinding",
           "namespace": "kube-system",
           "name": "system:controller:token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-01dc80821968288f7885f8ff",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
@@ -6977,7 +6977,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "admin",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9f0ca4537629825e7bd42f25",
           "rules": [
             {
               "apiGroups": [
@@ -7440,7 +7440,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-36992cba3e71a56ea53d9522",
           "rules": [
             {
               "apiGroups": [
@@ -7563,7 +7563,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "cluster-admin",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b10bf0831a65d275a71a1551",
           "rules": [
             {
               "apiGroups": [
@@ -7590,7 +7590,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "edit",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-77ef85c2c0c3a6f0f56651d7",
           "rules": [
             {
               "apiGroups": [
@@ -8023,7 +8023,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-bd70b6f3b0a4a267d05a7123",
           "rules": [
             {
               "apiGroups": [
@@ -8459,7 +8459,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-a3d21702d3c8b23957caf877",
           "rules": [
             {
               "apiGroups": [
@@ -8508,7 +8508,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:cloud-provider-extraction-migration",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-91a2ee2b2fffe58ee0581368",
           "rules": [
             {
               "apiGroups": [
@@ -8544,7 +8544,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:cluster-event-watcher",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-6869819fcbf536c0ecd369b8",
           "rules": [
             {
               "apiGroups": [
@@ -8566,7 +8566,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-34abfca38e4bf811452b1999",
           "rules": [
             {
               "apiGroups": [
@@ -8597,13 +8597,13 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:extension-metrics-apiserver",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-bd8c7a998bde32606c5f757f"
         },
         {
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-22d518f430e40834b92006f7",
           "rules": [
             {
               "apiGroups": [
@@ -8649,7 +8649,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:fargate-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-127b63de29d1a06f761fe716",
           "rules": [
             {
               "apiGroups": [
@@ -8777,7 +8777,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:kms-storage-migrator",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-c8fcfaa8d33ce42e9cc98fa9",
           "rules": [
             {
               "apiGroups": [
@@ -8828,7 +8828,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-89fbb869fd2b21909d95eb98",
           "rules": [
             {
               "apiGroups": [
@@ -8968,7 +8968,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:network-webhooks",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-e42309db6619f22bf2760b8f",
           "rules": [
             {
               "apiGroups": [
@@ -9002,7 +9002,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:node-bootstrapper",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-0ff356f1473ff21256004b87",
           "rules": [
             {
               "apiGroups": [
@@ -9022,7 +9022,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-a3cf2cb5678dc260f8a6d411",
           "rules": [
             {
               "apiGroups": [
@@ -9095,7 +9095,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:nodewatcher",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ba11f50a1b3f047d6d709536",
           "rules": [
             {
               "apiGroups": [
@@ -9116,7 +9116,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:pod-identity-mutating-webhook",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-1eb0a1db8d606f9096cfc5cc",
           "rules": [
             {
               "apiGroups": [
@@ -9137,7 +9137,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:service-operations",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-66b9c56eaccd2920bbce464d",
           "rules": [
             {
               "verbs": [
@@ -9476,7 +9476,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "eks:tagging-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-473dfa63eeefda246c6f8b32",
           "rules": [
             {
               "apiGroups": [
@@ -9496,7 +9496,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:aggregate-to-admin",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-83c635b977620ec51b41ac9e",
           "rules": [
             {
               "apiGroups": [
@@ -9534,7 +9534,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:aggregate-to-edit",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-2a6d2163e59410954a1c5d45",
           "rules": [
             {
               "apiGroups": [
@@ -9776,7 +9776,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:aggregate-to-view",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-eb4c884141e47edeb9200e93",
           "rules": [
             {
               "apiGroups": [
@@ -9975,7 +9975,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:auth-delegator",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-46095ac7012d04fa16328585",
           "rules": [
             {
               "apiGroups": [
@@ -10005,7 +10005,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:basic-user",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-bf01f671fca97fc2868467a8",
           "rules": [
             {
               "apiGroups": [
@@ -10036,7 +10036,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:certificatesigningrequests:nodeclient",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-041c848f3af2e3233cd28a6f",
           "rules": [
             {
               "apiGroups": [
@@ -10055,7 +10055,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:certificatesigningrequests:selfnodeclient",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-bf727b986e813d75750f43ce",
           "rules": [
             {
               "apiGroups": [
@@ -10074,7 +10074,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:kube-apiserver-client-approver",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9262db15473533c9d206f1a1",
           "rules": [
             {
               "apiGroups": [
@@ -10096,7 +10096,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:kube-apiserver-client-kubelet-approver",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-2c9a62d59aa3788034068560",
           "rules": [
             {
               "apiGroups": [
@@ -10118,7 +10118,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:kubelet-serving-approver",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-7bd2f48734ad18173c939c68",
           "rules": [
             {
               "apiGroups": [
@@ -10140,7 +10140,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:certificates.k8s.io:legacy-unknown-approver",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-3d1506fedc1bf64a99933130",
           "rules": [
             {
               "apiGroups": [
@@ -10162,7 +10162,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:attachdetach-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-64fd9f9d7c63aaa3ae48bfad",
           "rules": [
             {
               "apiGroups": [
@@ -10275,7 +10275,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:certificate-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-f1ed17092f0166ea98e153ff",
           "rules": [
             {
               "apiGroups": [
@@ -10365,7 +10365,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:clusterrole-aggregation-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9371545aa7349337e47ec790",
           "rules": [
             {
               "apiGroups": [
@@ -10389,7 +10389,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:cronjob-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-f2c4a48943043cd8c959af8f",
           "rules": [
             {
               "apiGroups": [
@@ -10477,7 +10477,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:daemon-set-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-398deba4984d94e0785c7593",
           "rules": [
             {
               "apiGroups": [
@@ -10592,7 +10592,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:deployment-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-5a4aec616bc9eec6bc320089",
           "rules": [
             {
               "apiGroups": [
@@ -10685,7 +10685,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:disruption-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-d176ae54aea7960b619bbd9b",
           "rules": [
             {
               "apiGroups": [
@@ -10808,7 +10808,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:endpoint-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-2bb40c64b56bd204bfe6d664",
           "rules": [
             {
               "apiGroups": [
@@ -10871,7 +10871,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:endpointslice-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-632f5b27b644aa238e09262f",
           "rules": [
             {
               "apiGroups": [
@@ -10935,7 +10935,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:endpointslicemirroring-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ad775733341247ef1b498fa1",
           "rules": [
             {
               "apiGroups": [
@@ -11009,7 +11009,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:ephemeral-volume-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-f30662d52348d84713f9af36",
           "rules": [
             {
               "apiGroups": [
@@ -11069,7 +11069,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:expand-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-22efb3e5befdb4f6ebab0b47",
           "rules": [
             {
               "apiGroups": [
@@ -11142,7 +11142,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:generic-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-1f95670624459e054b3475f7",
           "rules": [
             {
               "apiGroups": [
@@ -11180,7 +11180,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:horizontal-pod-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-7e9d2eec35a1ba5d98fdcf63",
           "rules": [
             {
               "apiGroups": [
@@ -11288,7 +11288,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:job-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-4d24667cb51e4de81e261b6b",
           "rules": [
             {
               "apiGroups": [
@@ -11362,7 +11362,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:legacy-service-account-token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-dd60506b30404a968d8f6221",
           "rules": [
             {
               "apiGroups": [
@@ -11396,7 +11396,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:namespace-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9770e3f7959dd92989bfacfb",
           "rules": [
             {
               "apiGroups": [
@@ -11445,7 +11445,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:node-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-215fe62b687c66a929305c59",
           "rules": [
             {
               "apiGroups": [
@@ -11521,7 +11521,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:persistent-volume-binder",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-21f9f21394ae9284e5c20dfb",
           "rules": [
             {
               "apiGroups": [
@@ -11657,7 +11657,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:pod-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-7ec4e57d3409f5a85bb06f14",
           "rules": [
             {
               "apiGroups": [
@@ -11702,7 +11702,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:pv-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-5280ce3f1bba42c886ff0897",
           "rules": [
             {
               "apiGroups": [
@@ -11738,7 +11738,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:pvc-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-232956f5479f1d5f43c95560",
           "rules": [
             {
               "apiGroups": [
@@ -11787,7 +11787,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:replicaset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-6cb897b4c61cf74380255d97",
           "rules": [
             {
               "apiGroups": [
@@ -11863,7 +11863,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:replication-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-1eaf7947cdcd1c278411181c",
           "rules": [
             {
               "apiGroups": [
@@ -11936,7 +11936,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:resource-claim-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-49fa5abe374e8d89da7ea6b1",
           "rules": [
             {
               "apiGroups": [
@@ -12022,7 +12022,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:resourcequota-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-fd359e53f0d28d873c0db400",
           "rules": [
             {
               "apiGroups": [
@@ -12067,7 +12067,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:root-ca-cert-publisher",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-744ec80429f38c01863331b9",
           "rules": [
             {
               "apiGroups": [
@@ -12101,7 +12101,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:route-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-0ffda525e49899b3d1e777cd",
           "rules": [
             {
               "apiGroups": [
@@ -12146,7 +12146,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:selinux-warning-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-02b9655140470c3af2a8a09e",
           "rules": [
             {
               "apiGroups": [
@@ -12220,7 +12220,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:service-account-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-462e8c6577c13386334bdf5c",
           "rules": [
             {
               "apiGroups": [
@@ -12253,7 +12253,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:service-cidrs-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-82d3559921c40e03866727f2",
           "rules": [
             {
               "apiGroups": [
@@ -12327,7 +12327,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:service-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b2f8a609220321d3be5a6fda",
           "rules": [
             {
               "apiGroups": [
@@ -12386,7 +12386,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:statefulset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-013159ad1b50cd6f7be7ef89",
           "rules": [
             {
               "apiGroups": [
@@ -12524,7 +12524,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:ttl-after-finished-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-5ed5272e637b3a33118fd19a",
           "rules": [
             {
               "apiGroups": [
@@ -12560,7 +12560,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:ttl-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-a084e3b66c66b4944ad81ac7",
           "rules": [
             {
               "apiGroups": [
@@ -12596,7 +12596,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:validatingadmissionpolicy-status-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ae975279257737a7f77fd58e",
           "rules": [
             {
               "apiGroups": [
@@ -12644,7 +12644,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:controller:volumeattributesclass-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-8c36a5dbd858aed89f69e551",
           "rules": [
             {
               "apiGroups": [
@@ -12706,7 +12706,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:coredns",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9a29305bcafcc9814c356079",
           "rules": [
             {
               "apiGroups": [
@@ -12752,7 +12752,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:discovery",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-5b71daa3bfd0a2cfabf575f2",
           "rules": [
             {
               "verbs": [
@@ -12778,7 +12778,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:heapster",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-de2a90ca8f59304912a75453",
           "rules": [
             {
               "apiGroups": [
@@ -12815,7 +12815,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-aggregator",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-dd8bd6cd8321d6413861b91e",
           "rules": [
             {
               "apiGroups": [
@@ -12837,7 +12837,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-256934db14f8b422ae0de631",
           "rules": [
             {
               "apiGroups": [
@@ -12979,7 +12979,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-dns",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ed29ae6f8b84b61f6ee3acdc",
           "rules": [
             {
               "apiGroups": [
@@ -13000,7 +13000,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b8528550cdf034e1031120ce",
           "rules": [
             {
               "apiGroups": [
@@ -13358,7 +13358,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:kubelet-api-admin",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-828f8d2fd835631b604a4fb2",
           "rules": [
             {
               "apiGroups": [
@@ -13417,7 +13417,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:monitoring",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-0a54d350af0a53605c552a02",
           "rules": [
             {
               "verbs": [
@@ -13440,7 +13440,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-2f3780b9e9fb4019dfb0553c",
           "rules": [
             {
               "apiGroups": [
@@ -13747,7 +13747,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node-bootstrapper",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-3de28aef77f622341a2a9040",
           "rules": [
             {
               "apiGroups": [
@@ -13769,7 +13769,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node-problem-detector",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-faf02bec88cb0728b1dd7b5d",
           "rules": [
             {
               "apiGroups": [
@@ -13813,7 +13813,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:node-proxier",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9e05780166363432e7a8fa22",
           "rules": [
             {
               "apiGroups": [
@@ -13885,7 +13885,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:persistent-volume-provisioner",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-60147c254a3a2adc800d2ae9",
           "rules": [
             {
               "apiGroups": [
@@ -13960,7 +13960,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:public-info-viewer",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-2697315ffc0bb1790f5fd78c",
           "rules": [
             {
               "verbs": [
@@ -13980,7 +13980,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:service-account-issuer-discovery",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-6bd33de1cd17ec9d8448c6bf",
           "rules": [
             {
               "verbs": [
@@ -13999,7 +13999,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "system:volume-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ee265a291755b898dd108476",
           "rules": [
             {
               "apiGroups": [
@@ -14050,7 +14050,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "view",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-7c57f3de3ef0b32597e0ab30",
           "rules": [
             {
               "apiGroups": [
@@ -14249,7 +14249,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRole",
           "name": "vpc-resource-controller-role",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-95bb8359e3dd1b24dce65cbe",
           "rules": [
             {
               "apiGroups": [
@@ -14393,7 +14393,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "aws-node",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-70c76f929306b90ef18684c1",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14411,7 +14411,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "cluster-admin",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-1c529337c113f3420d145065",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14429,7 +14429,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:addon-cluster-admin",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-5db53d3f868c7ea2d26e4eac",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14447,7 +14447,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:addon-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-bb9e003f1a104ea597d56de4",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14465,7 +14465,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:az-poller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-33de72532f4d9e3c7b6b9860",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14483,7 +14483,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:cloud-provider-extraction-migration",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-d47f53bc7c3e31707b19e092",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14501,7 +14501,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:cluster-event-watcher",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-805747911801ae6c374767b7",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14519,7 +14519,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:coredns-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-872ed5ecd28d067a6d72c477",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14537,7 +14537,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:fargate-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-4585e361afd018e11e682f62",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14555,7 +14555,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:fargate-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-61155c5d996c7b85772f6d59",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14573,7 +14573,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kms-storage-migrator",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-79e811c3158d5f83e3f850e4",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14591,7 +14591,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kube-proxy",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-eefdfbc1d77e53c73406e66e",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14609,7 +14609,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kube-proxy-fargate",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-6b7ce9e005adcfb8aa3bcade",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14627,7 +14627,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:kube-proxy-windows",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-02394bab22ae040ae02ded77",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14645,7 +14645,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:network-policy-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-052f97fa84d3952f5be539d9",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14663,7 +14663,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:network-webhooks",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-a86abf5e1ac003c93dd5324b",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14681,7 +14681,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:node-bootstrapper",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-f7aa7e8162295d868a9bf711",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14704,7 +14704,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:node-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ecf8f4241bbb28d3dac3e253",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14722,7 +14722,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:nodewatcher",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-99ecb348752c73a666afdbe0",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14740,7 +14740,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:pod-identity-mutating-webhook",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-3c43b6c004d71476535c53c5",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14758,7 +14758,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:service-operations",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-3f72a7435da5ab47c1d99198",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14776,7 +14776,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "eks:tagging-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b34cad22fcecfcb6f177190a",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14794,7 +14794,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:basic-user",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-461632b326137d3c092a88ab",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14812,7 +14812,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:attachdetach-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-88bdf0984225ed79f4e279d9",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14830,7 +14830,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:certificate-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-08e4490b965394dcd24adad6",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14848,7 +14848,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:clusterrole-aggregation-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-d88bea2b35d2170325f9089d",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14866,7 +14866,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:cronjob-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-88ab88834601fc2d2caccf4c",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14884,7 +14884,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:daemon-set-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-a9142034dca18610b25ed4e8",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14902,7 +14902,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:deployment-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-353e2155b8e3375336ea2671",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14920,7 +14920,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:disruption-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-5d0e26e1ee682f5aaa5be24e",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14938,7 +14938,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:endpoint-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-e12405f236b18c3ce28e5194",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14956,7 +14956,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:endpointslice-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-1af29cb9bd297246d9bd1afd",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14974,7 +14974,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:endpointslicemirroring-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-27d57c8ebf4387f3b73dc301",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -14992,7 +14992,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:ephemeral-volume-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-d85f6f078641bb27586a59a4",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15010,7 +15010,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:expand-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9abe4c5632168e3de221eb09",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15028,7 +15028,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:generic-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-99d7ddcdbbe04e645e01f5a7",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15046,7 +15046,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:horizontal-pod-autoscaler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b6e4af3d2d12bf6b74572b2d",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15064,7 +15064,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:job-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-30e160eef77cee5c2b706098",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15082,7 +15082,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:legacy-service-account-token-cleaner",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-44be226ad6541ea5a8b6d02a",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15100,7 +15100,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:namespace-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-8ab2194ea2b53be9ed4fdd30",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15118,7 +15118,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:node-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-094f289699889c12456a04e1",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15136,7 +15136,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:persistent-volume-binder",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-fa771725a154cbc0da1951c9",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15154,7 +15154,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:pod-garbage-collector",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-eb0cb7604955f532396f46cc",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15172,7 +15172,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:pv-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9250fc4b5c3afc7f7f8bb091",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15190,7 +15190,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:pvc-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-d4bf1e9026f0fa39fb2e5101",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15208,7 +15208,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:replicaset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-bf920baad059c9814185cd79",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15226,7 +15226,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:replication-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-39eaf5a0595d2fd9e5f5d489",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15244,7 +15244,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:resource-claim-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-76c0f553dc40e34e181c6d78",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15262,7 +15262,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:resourcequota-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-f565a23d41eee4a6e415eeb9",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15280,7 +15280,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:root-ca-cert-publisher",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-57665ca2378cc5ec699be42c",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15298,7 +15298,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:route-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-33c24ee266d64561212f9858",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15316,7 +15316,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:selinux-warning-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-c852c51170b02f09722204c4",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15334,7 +15334,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:service-account-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9d2311906cfd41d19c9946cf",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15352,7 +15352,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:service-cidrs-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-e4df7ccf0bddffa83006619a",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15370,7 +15370,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:service-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-be4a08285126b9bac84f2e60",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15388,7 +15388,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:statefulset-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9e5e3b73d3a7a77a905adab5",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15406,7 +15406,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:ttl-after-finished-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-b5060f859ae57ca965d4dd18",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15424,7 +15424,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:ttl-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-194387dfe2866484228b3421",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15442,7 +15442,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:validatingadmissionpolicy-status-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-13c0c39d7726edd27ae3c85c",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15460,7 +15460,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:controller:volumeattributesclass-protection-controller",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-440567e0d7c777a50b27ba54",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15478,7 +15478,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:coredns",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-1899de42922143be2da7cde5",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15496,7 +15496,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:discovery",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-6960304ef942f2d327b23505",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15514,7 +15514,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:kube-controller-manager",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-13f7aff5c5c168de641c649f",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15532,7 +15532,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:kube-dns",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-0706efc8e3109ec4ea0b1247",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15550,7 +15550,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:kube-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-9ef1c3e8976bd0a7dd3d7953",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15568,7 +15568,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:monitoring",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-08924c3493d5cbdf5ea20ec3",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15586,7 +15586,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:node",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-2a13126bf6a10f1509382bc1",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15597,7 +15597,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:node-proxier",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-ce452a3b7759b64fb0305ed1",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15615,7 +15615,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:public-info-viewer",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-3b1ad86d9c9f5c031c7ce596",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15638,7 +15638,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:service-account-issuer-discovery",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-c5ecff63606c424aaac9cca2",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15656,7 +15656,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "system:volume-scheduler",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-02e3c5d3d71341c6d97ec3d1",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15674,7 +15674,7 @@
           "apiVersion": "rbac.authorization.k8s.io/v1",
           "kind": "ClusterRoleBinding",
           "name": "vpc-resource-controller-rolebinding",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-fc92da7e64e4b55b7f341c11",
           "roleRef": {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "ClusterRole",
@@ -15697,7 +15697,7 @@
           "kind": "PodDisruptionBudget",
           "namespace": "kube-system",
           "name": "coredns",
-          "uid": "00000000-0000-0000-0000-000000000000"
+          "uid": "demo-uid-7ad02de5303cab94411dd33f"
         }
       ],
       "podDisruptionBudgetDetails": [
@@ -15706,7 +15706,7 @@
           "kind": "PodDisruptionBudget",
           "namespace": "kube-system",
           "name": "coredns",
-          "uid": "00000000-0000-0000-0000-000000000000",
+          "uid": "demo-uid-7ad02de5303cab94411dd33f",
           "maxUnavailable": "1",
           "selector": {
             "eks.amazonaws.com/component": "coredns",

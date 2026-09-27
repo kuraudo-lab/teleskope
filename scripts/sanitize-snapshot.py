@@ -25,6 +25,8 @@ EXTRA_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = []
 
 RESOURCE_ID_PATTERN = re.compile(r"\b(vpc|subnet|sg|i|lt|ami|rtb|nat|dopt)-[0-9a-f]+\b")
 RESOURCE_ID_MAPS: dict[str, dict[str, str]] = {}
+UUID_PATTERN = re.compile(r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b", re.IGNORECASE)
+UUID_MAP: dict[str, str] = {}
 
 
 PATTERN_REPLACEMENTS = [
@@ -62,10 +64,6 @@ PATTERN_REPLACEMENTS = [
         "arn:aws:sts::000000000000:assumed-role/demo-role/demo-session",
     ),
     (
-        re.compile(r"arn:aws:kms:([a-z0-9-]+):\d{12}:key/[0-9a-f-]+"),
-        r"arn:aws:kms:\1:000000000000:key/00000000-0000-0000-0000-000000000000",
-    ),
-    (
         re.compile(r"https://[a-z0-9]+\.([a-z0-9-]+\.)?([a-z0-9-]+)\.eks\.amazonaws\.com", re.IGNORECASE),
         "https://demo-eks.example.invalid",
     ),
@@ -81,13 +79,13 @@ PATTERN_REPLACEMENTS = [
     (re.compile(r"\bip-\d+-\d+-\d+-\d+\.[a-z0-9-]+\.compute\.internal\b"), "demo-node.internal"),
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}/\d{1,2}\b"), "demo-cidr"),
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"), "demo-ip"),
-    (re.compile(r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b"), "00000000-0000-0000-0000-000000000000"),
 ]
 
 
 def sanitize_string(value: str) -> str:
     out = value
     out = RESOURCE_ID_PATTERN.sub(pseudonymize_resource_id, out)
+    out = UUID_PATTERN.sub(pseudonymize_uuid, out)
     for pattern, replacement in [*PATTERN_REPLACEMENTS, *EXTRA_REPLACEMENTS]:
         out = pattern.sub(replacement, out)
     return out
@@ -100,6 +98,18 @@ def pseudonymize_resource_id(match: re.Match[str]) -> str:
     if original not in mapping:
         mapping[original] = f"{prefix}-{len(mapping) + 1:017x}"
     return mapping[original]
+
+
+def stable_identifier(kind: str, value: str) -> str:
+    digest = hashlib.sha256(f"teleskope-fixture:{kind}:{value}".encode("utf-8")).hexdigest()[:24]
+    return f"demo-{kind}-{digest}"
+
+
+def pseudonymize_uuid(match: re.Match[str]) -> str:
+    original = match.group(0)
+    if original not in UUID_MAP:
+        UUID_MAP[original] = stable_identifier("uuid", original.lower())
+    return UUID_MAP[original]
 
 
 def sanitize(value: Any) -> Any:
@@ -175,14 +185,75 @@ def replace_exact_strings(value: Any, replacements: dict[str, str]) -> None:
 
 def normalize_generated_names(snapshot: dict[str, Any]) -> None:
     kubernetes = snapshot.get("kubernetes") or {}
+    renamed: dict[tuple[str, str, str], str] = {}
     for pod in kubernetes.get("pods") or []:
         name = pod.get("name")
         if isinstance(name, str) and re.search(r"-[a-z0-9]{5}$", name):
-            pod["name"] = stable_name(name.rsplit("-", 1)[0], name)
+            new = stable_name(name.rsplit("-", 1)[0], name)
+            renamed[("pod", pod.get("namespace") or "", name)] = new
+            pod["name"] = new
     for endpoint_slice in kubernetes.get("endpointSlices") or []:
         name = endpoint_slice.get("name")
         if isinstance(name, str) and re.search(r"-[a-z0-9]{5}$", name):
-            endpoint_slice["name"] = stable_name(name.rsplit("-", 1)[0], name)
+            new = stable_name(name.rsplit("-", 1)[0], name)
+            renamed[("endpointslice", endpoint_slice.get("namespace") or "", name)] = new
+            endpoint_slice["name"] = new
+
+    existing = {
+        (str(obj.get("kind") or "").lower(), str(obj.get("namespace") or ""), str(obj.get("name") or ""))
+        for collection in ("nodes", "workloads", "pods", "services", "endpointSlices")
+        for obj in kubernetes.get(collection) or []
+    }
+
+    for workload in kubernetes.get("workloads") or []:
+        normalize_references(workload.get("ownerReferences") or [], workload.get("namespace") or "", renamed, existing)
+    for pod in kubernetes.get("pods") or []:
+        normalize_references(pod.get("ownerReferences") or [], pod.get("namespace") or "", renamed, existing)
+    for endpoint_slice in kubernetes.get("endpointSlices") or []:
+        namespace = endpoint_slice.get("namespace") or ""
+        for endpoint in endpoint_slice.get("endpoints") or []:
+            target = endpoint.get("targetRef") or {}
+            normalize_references([target], target.get("namespace") or namespace, renamed, existing)
+
+
+def normalize_references(
+    refs: list[dict[str, Any]],
+    namespace: str,
+    renamed: dict[tuple[str, str, str], str],
+    existing: set[tuple[str, str, str]],
+) -> None:
+    for ref in refs:
+        kind = str(ref.get("kind") or "").lower()
+        name = ref.get("name")
+        if not isinstance(name, str):
+            continue
+        ref_namespace = str(ref.get("namespace") or namespace)
+        new = renamed.get((kind, ref_namespace, name))
+        if not new and re.search(r"-[a-z0-9]{5}$", name):
+            candidate = stable_name(name.rsplit("-", 1)[0], name)
+            if (kind, ref_namespace, candidate) in existing:
+                new = candidate
+        if new:
+            ref["name"] = new
+
+
+def normalize_kubernetes_uids(snapshot: dict[str, Any]) -> None:
+    kubernetes = snapshot.get("kubernetes") or {}
+
+    def rewrite(value: Any, namespace: str = "") -> None:
+        if isinstance(value, dict):
+            current_namespace = str(value.get("namespace") or namespace)
+            kind = str(value.get("kind") or "").lower()
+            name = str(value.get("name") or "")
+            if "uid" in value and kind and name:
+                value["uid"] = stable_identifier("uid", f"kubernetes:{kind}:{current_namespace}:{name}")
+            for item in value.values():
+                rewrite(item, current_namespace)
+        elif isinstance(value, list):
+            for item in value:
+                rewrite(item, namespace)
+
+    rewrite(kubernetes)
 
 
 def normalize_top_level(snapshot: dict[str, Any]) -> None:
@@ -212,6 +283,15 @@ def normalize_top_level(snapshot: dict[str, Any]) -> None:
         kubernetes["server"] = "https://demo-eks.example.invalid"
 
 
+def sanitize_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+    normalize_nodes(snapshot)
+    normalize_generated_names(snapshot)
+    snapshot = sanitize(snapshot)
+    normalize_kubernetes_uids(snapshot)
+    normalize_top_level(snapshot)
+    return snapshot
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
@@ -227,10 +307,7 @@ def main() -> None:
 
     with args.input.open() as fh:
         snapshot = json.load(fh)
-    normalize_nodes(snapshot)
-    normalize_generated_names(snapshot)
-    snapshot = sanitize(snapshot)
-    normalize_top_level(snapshot)
+    snapshot = sanitize_snapshot(snapshot)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w") as fh:
