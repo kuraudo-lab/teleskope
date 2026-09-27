@@ -123,9 +123,70 @@ and stable union of reasons are retained.
 - Consumers must ignore unknown fields and reject unsupported major schema
   versions.
 
-Incremental graph deltas, layout state, aggregation, and view-specific
-projection are intentionally deferred to the follow-up issues. This contract
-defines the full graph revision on which those capabilities depend.
+## Incremental Updates And Resynchronization
+
+Live and hub pages use conditional HTTP fetch. A topology endpoint accepts the
+client's last applied revision as `since` and returns
+`teleskope.io/topology-update/v1alpha1`:
+
+- `full` contains a complete graph and resets the client baseline. It is used
+  for first load, expired history, a future/out-of-order client revision,
+  cluster/schema mismatch, or a revision collision.
+- `delta` declares `baseRevision` and contains canonical node/edge upserts,
+  explicit node/edge deletion IDs, and the complete coverage set for the new
+  revision.
+- `unchanged` confirms that the requested revision is current.
+
+Live uses `/api/topology?since=<revision>`. Hub drilldown uses
+`/api/cluster/topology?id=<cluster>&since=<revision>`. `GET` and `HEAD` are
+supported and responses carry an ETag. `/api/snapshot` remains the compatible
+full-state fallback and is the resynchronization path if a client cannot apply
+a delta.
+
+Updates are idempotent: applying an already accepted target revision is a
+no-op. A delta is rejected unless its cluster, schema, and base revision match
+the current graph. The final graph is validated after every apply, so dangling
+edges or incomplete deletion sets force a full resync rather than corrupting
+browser state.
+
+Stores retain at most 16 graph revisions per live server or hub cluster. This
+is a bounded replay window, not an event log. Collector publications are
+coalescing boundaries; status-only changes do not fabricate topology
+revisions. Stale or failed collection retains the previous graph and its
+source-specific coverage.
+
+The browser keys layout anchors by canonical node ID. Existing nodes retain
+their lane rank when other nodes are inserted, filtered, or removed; selection,
+filters, viewport, paused state, and drawer context survive accepted updates.
+New nodes are appended to their semantic lane and deleted identities are
+pruned from the bounded layout map. WebSocket/SSE transport and force-directed
+motion are not required for this publication model.
+
+### Publication And Reconnect Lifecycle
+
+- Polling collectors remain sequential and non-overlapping. Watch-backed
+  collectors debounce object churn before publishing one immutable snapshot;
+  the live store increments its revision once per accepted publication.
+- The browser starts its next five-second conditional fetch only after the
+  previous request finishes and gives each request a ten-second timeout. This
+  bounds client backpressure without a request queue. Pausing the page skips UI
+  fetch/apply while background collection continues.
+- A disconnect retains the last graph, selection, viewport, and evidence. The
+  browser clears its snapshot ETag and retries; on return it requests a delta
+  from the retained graph revision. Missing history or any apply failure uses
+  the full graph already carried by `/api/snapshot`.
+- Kubernetes, AWS, metrics, and external providers keep their own timestamps
+  in source status, coverage, and evidence. Graph `generatedAt` identifies the
+  combined publication only; it does not make older provider evidence fresh.
+- Deletion becomes visible only in an accepted publication and is encoded as
+  explicit edge and node IDs. Collection failure, reconnect, or permission
+  regression retains prior evidence under stale/partial status instead of
+  emitting deletion churn.
+
+Protocol tests cover disconnect-equivalent expired history, future and
+out-of-order revisions, duplicate apply, explicit deletion, invalid query
+input, and burst retention beyond the 16-revision window. Browser acceptance
+checks refresh stability and full-reset fallback against the Recorded server.
 
 ## Security Boundary
 

@@ -37,6 +37,7 @@ func LiveHTML() string {
 // LiveHTMLOptions overrides API paths for live-style pages backed by another server.
 type LiveHTMLOptions struct {
 	SnapshotPath       string
+	TopologyPath       string
 	AnalyzePath        string
 	ExportSnapshotPath string
 	ExportSummaryPath  string
@@ -48,6 +49,7 @@ func LiveHTMLWithOptions(opts LiveHTMLOptions) string {
 		Mode: UIModeLive,
 		Endpoints: UIEndpoints{
 			Snapshot:       firstNonEmpty(opts.SnapshotPath, "/api/snapshot"),
+			Topology:       firstNonEmpty(opts.TopologyPath, "/api/topology"),
 			Analyze:        firstNonEmpty(opts.AnalyzePath, "/api/analyze"),
 			ExportSnapshot: firstNonEmpty(opts.ExportSnapshotPath, "/api/export/snapshot.json"),
 			ExportSummary:  firstNonEmpty(opts.ExportSummaryPath, "/api/export/summary.md"),

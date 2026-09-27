@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -77,7 +78,10 @@ type entry struct {
 	snapshot *inventory.Snapshot
 }
 
-const maxEvents = 200
+const (
+	maxEvents         = 200
+	maxGraphRevisions = 16
+)
 
 // Store owns all mutable state; handlers receive pre-encoded immutable responses.
 type Store struct {
@@ -88,6 +92,7 @@ type Store struct {
 	events        []Event
 	eventSeq      uint64
 	revision      uint64
+	graphs        []topology.Graph
 	body          []byte
 	etag          string
 	analysisCache *analysis.RunCache
@@ -205,6 +210,27 @@ func (s *Store) View() (Response, error) {
 		return Response{}, err
 	}
 	return out, nil
+}
+
+// TopologyUpdate returns a delta from an explicitly retained revision, or a
+// full reset when the requested baseline is absent or incompatible.
+func (s *Store) TopologyUpdate(since uint64) (topology.Update, error) {
+	s.mu.RLock()
+	if len(s.graphs) == 0 {
+		s.mu.RUnlock()
+		return topology.Update{}, fmt.Errorf("topology unavailable")
+	}
+	current := s.graphs[len(s.graphs)-1]
+	var base *topology.Graph
+	for i := range s.graphs {
+		if s.graphs[i].Revision == since {
+			candidate := s.graphs[i]
+			base = &candidate
+			break
+		}
+	}
+	s.mu.RUnlock()
+	return topology.Diff(base, current)
 }
 
 func (s *Store) publishLatest() {
@@ -453,6 +479,7 @@ func (s *Store) encode() {
 		graph := topology.Project(out.Snapshot, out.Revision)
 		if graph.Validate() == nil {
 			out.Graph = &graph
+			s.rememberGraphLocked(graph)
 		}
 		analysis := advisor.Analyze(out.Snapshot)
 		state := "unavailable"
@@ -469,6 +496,17 @@ func (s *Store) encode() {
 	out.Events = append([]Event(nil), s.events...)
 	s.body, _ = json.Marshal(out)
 	s.etag = fmt.Sprintf("\"%x\"", sha256.Sum256(s.body))
+}
+
+func (s *Store) rememberGraphLocked(graph topology.Graph) {
+	if len(s.graphs) > 0 && s.graphs[len(s.graphs)-1].Revision == graph.Revision {
+		return
+	}
+	s.graphs = append(s.graphs, graph)
+	if len(s.graphs) > maxGraphRevisions {
+		copy(s.graphs, s.graphs[len(s.graphs)-maxGraphRevisions:])
+		s.graphs = s.graphs[:maxGraphRevisions]
+	}
 }
 
 func (s *Store) combinedModeLocked() string {
@@ -532,6 +570,41 @@ func (s *Store) HandlerWithOptions(opts HandlerOptions) http.Handler {
 			s.mu.RLock()
 			body, etag := s.body, s.etag
 			s.mu.RUnlock()
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("ETag", etag)
+			if r.Header.Get("If-None-Match") == etag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			if r.Method == http.MethodGet {
+				_, _ = w.Write(body)
+			}
+		case "/api/topology":
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			since := uint64(0)
+			if raw := r.URL.Query().Get("since"); raw != "" {
+				value, err := strconv.ParseUint(raw, 10, 64)
+				if err != nil {
+					http.Error(w, "invalid topology revision", http.StatusBadRequest)
+					return
+				}
+				since = value
+			}
+			update, err := s.TopologyUpdate(since)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+			body, err := json.Marshal(update)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			etag := fmt.Sprintf("\"%x\"", sha256.Sum256(body))
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("ETag", etag)
 			if r.Header.Get("If-None-Match") == etag {

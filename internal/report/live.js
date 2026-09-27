@@ -100,6 +100,39 @@ function detailKey(obj) {
   if (obj.uid) return 'uid:' + obj.uid;
   return JSON.stringify([obj.apiVersion, obj.kind, obj.namespace, obj.name, obj.image, obj.pod, obj.container, obj.crdName, obj.principalArn, obj.serviceAccount, obj.roleArn]);
 }
+function applyTopologyUpdate(current, update) {
+  if (!update || update.schemaVersion !== 'teleskope.io/topology-update/v1alpha1') return null;
+  if (update.kind === 'full') {
+    const graph = update.graph;
+    if (!graph || graph.clusterId !== update.clusterId || graph.revision !== update.revision) return null;
+    return graph;
+  }
+  if (!current || current.clusterId !== update.clusterId) return null;
+  if (current.revision === update.revision) return current; // Idempotent replay.
+  if (current.revision !== update.baseRevision) return null;
+  if (update.kind === 'unchanged') return current;
+  if (update.kind !== 'delta') return null;
+  const nodes = new Map(arr(current.nodes).map(node => [node.id, node]));
+  const edges = new Map(arr(current.edges).map(edge => [edge.id, edge]));
+  arr(update.deleteNodeIds).forEach(id => nodes.delete(id));
+  arr(update.deleteEdgeIds).forEach(id => edges.delete(id));
+  arr(update.upsertNodes).forEach(node => nodes.set(node.id, node));
+  arr(update.upsertEdges).forEach(edge => edges.set(edge.id, edge));
+  if ([...edges.values()].some(edge => !nodes.has(edge.source) || !nodes.has(edge.target))) return null;
+  return {...current, revision:update.revision, generatedAt:update.generatedAt,
+    nodes:[...nodes.values()].sort((a,b) => a.id.localeCompare(b.id)),
+    edges:[...edges.values()].sort((a,b) => a.id.localeCompare(b.id)),
+    coverage:arr(update.coverage)};
+}
+async function fetchTopologyUpdate() {
+  const endpoint = bootConfig.endpoints?.topology;
+  if (!endpoint) return null;
+  const url = new URL(endpoint, location.href);
+  url.searchParams.set('since', String(Number(topologyGraph?.revision) || 0));
+  const result = await fetch(url, {cache:'no-store', signal:AbortSignal.timeout(10000)});
+  if (!result.ok) throw new Error('topology HTTP ' + result.status);
+  return applyTopologyUpdate(topologyGraph, await result.json());
+}
 function applyLiveSnapshot(next) {
   const scrolls = [...document.querySelectorAll('.scroll')].map(el => [el, el.scrollTop, el.scrollLeft]);
   snapshot = next.snapshot || next;
@@ -228,8 +261,11 @@ async function refreshLivePage() {
           advisorReport = data.advisor || {};
           renderAdvisor();
           if (data.snapshot && data.revision !== liveRevision) {
+            let incrementalGraph = null;
+            try { incrementalGraph = await fetchTopologyUpdate(); } catch (_) { /* Full graph below is the resync path. */ }
+            if (incrementalGraph) topologyGraph = incrementalGraph;
             liveRevision = data.revision;
-            applyLiveSnapshot(data);
+            applyLiveSnapshot({...data, graph:incrementalGraph ? null : data.graph});
           }
           renderLiveStatus(data.sources, data.events);
           liveETag = result.headers.get('ETag') || '';

@@ -2884,6 +2884,7 @@ let topologyGroupReplicas = topologyURL.get('topologyGroup') !== 'false';
 let topologySort = topologyURL.get('topologySort') || 'kind', topologySortDirection = topologyURL.get('topologyDirection') === 'desc' ? 'desc' : 'asc';
 let topologyView = {scale:Math.max(.35, Math.min(4, topologyNumberParam('topologyScale', 1))), x:topologyNumberParam('topologyX', 0), y:topologyNumberParam('topologyY', 0)};
 let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0, nodeId:'', detail:''};
+const topologyLayoutRanks = new Map();
 function syncTopologyURL() {
   const url = new URL(location.href);
   const set = (key, value, defaultValue='') => { if (value === defaultValue || value === '' || value === false) url.searchParams.delete(key); else url.searchParams.set(key, String(value)); };
@@ -3374,6 +3375,21 @@ function topologyLayer(node) {
   if (['endpoint-slice','pod','node'].includes(kind)) return 'runtime';
   return 'infrastructure';
 }
+function firstFreeTopologyRank(used) { let rank=0; while (used.has(rank)) rank++; return rank; }
+function syncTopologyLayoutRanks() {
+  const liveNodes = arr(topologyGraph?.nodes), liveIDs = new Set(liveNodes.map(node => node.id));
+  for (const id of topologyLayoutRanks.keys()) if (!liveIDs.has(id)) topologyLayoutRanks.delete(id);
+  const byLayer = new Map();
+  liveNodes.forEach(node => { const layer=topologyLayer(node), current=topologyLayoutRanks.get(node.id); if (current && current.layer !== layer) topologyLayoutRanks.delete(node.id); if (!byLayer.has(layer)) byLayer.set(layer,[]); byLayer.get(layer).push(node); });
+  byLayer.forEach((items,layer) => {
+    const used = new Set([...topologyLayoutRanks.values()].filter(item => item.layer === layer).map(item => item.rank));
+    items.sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id)).forEach(node => {
+      const current = topologyLayoutRanks.get(node.id);
+      if (!current) { const rank=firstFreeTopologyRank(used); used.add(rank); topologyLayoutRanks.set(node.id,{layer,rank}); }
+    });
+  });
+}
+function topologyLayoutRank(node) { return topologyLayoutRanks.get(node.id)?.rank ?? 0; }
 function topologyIconID(kind) { return ({service:'icon-service',workload:'icon-workload',pod:'icon-pod',node:'icon-node',ingress:'icon-gateway',gateway:'icon-gateway','endpoint-slice':'icon-service','ec2-instance':'icon-node',nodegroup:'icon-node'}[kind] || 'icon-workload'); }
 function topologyOrthogonalPath(A, B) { const x1=A.x+A.w,y1=A.y+A.h/2,x2=B.x,y2=B.y+B.h/2,mid=(x1+x2)/2; return `M${x1} ${y1} H${mid} V${y2} H${x2}`; }
 function renderTopologyTable(nodes, edges, nodeById) {
@@ -3386,6 +3402,7 @@ function renderTopologyTable(nodes, edges, nodeById) {
   byId('topology').querySelectorAll('[data-topology-sort]').forEach(button => button.addEventListener('click', () => { const key = button.dataset.topologySort; topologySortDirection = topologySort === key && topologySortDirection === 'asc' ? 'desc' : 'asc'; topologySort = key; syncTopologyURL(); renderTopology(); }));
 }
 function renderTopology() {
+  syncTopologyLayoutRanks();
   const graph = topologyFilteredGraph(), {nodes,edges,nodeById} = graph, selected = nodeById.get(topologySelectedNodeId), incident = selected ? arr(topologyGraph?.edges).filter(edge => edge.source === selected.id || edge.target === selected.id) : [];
   document.querySelectorAll('[data-topology-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyView === topologySemanticView)));
   document.querySelectorAll('[data-topology-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyMode === topologyMode)));
@@ -3397,9 +3414,9 @@ function renderTopology() {
   if (topologyMode === 'table') { renderTopologyTable(nodes,edges,nodeById); return; }
   const layers=['application','workload','runtime','infrastructure'], laneNodes=new Map(layers.map(layer=>[layer,[]])); nodes.forEach(node=>laneNodes.get(topologyLayer(node)).push(node));
   const groupOrder = node => topologyGroupReplicas ? topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById) : '';
-  laneNodes.forEach(items => items.sort((a,b)=>groupOrder(a).localeCompare(groupOrder(b)) || a.name.localeCompare(b.name)));
+  laneNodes.forEach(items => items.sort((a,b)=>topologyLayoutRank(a)-topologyLayoutRank(b) || groupOrder(a).localeCompare(groupOrder(b)) || a.name.localeCompare(b.name)));
   const active=layers.filter(layer=>laneNodes.get(layer).length), W=byId('topology').clientWidth||900,H=byId('topology').clientHeight||560,gap=22,margin=22,nodeH=62,rowGap=10,top=54,laneW=260;
-  const drawn=new Map(); active.forEach((layer,index)=>laneNodes.get(layer).forEach((node,row)=>drawn.set(node.id,{...node,x:margin+index*(laneW+gap)+12,y:top+row*(nodeH+rowGap),w:laneW-24,h:nodeH}))); const contentW=Math.max(W,margin*2+active.length*laneW+Math.max(0,active.length-1)*gap),contentH=Math.max(H,top+Math.max(...active.map(layer=>laneNodes.get(layer).length))*(nodeH+rowGap)+56);
+  const drawn=new Map(); active.forEach((layer,index)=>laneNodes.get(layer).forEach(node=>drawn.set(node.id,{...node,x:margin+index*(laneW+gap)+12,y:top+topologyLayoutRank(node)*(nodeH+rowGap),w:laneW-24,h:nodeH}))); const maxRank=Math.max(0,...nodes.map(topologyLayoutRank)); const contentW=Math.max(W,margin*2+active.length*laneW+Math.max(0,active.length-1)*gap),contentH=Math.max(H,top+(maxRank+1)*(nodeH+rowGap)+56);
   byId('topology').style.minWidth=(contentW+36)+'px'; byId('topology').style.minHeight=(contentH+36)+'px';
   const laneSVG=active.map((layer,index)=>`<g class="topology-lane"><rect x="${margin+index*(laneW+gap)}" y="18" width="${laneW}" height="${contentH-42}"/><text x="${margin+index*(laneW+gap)+12}" y="40">${layer.toUpperCase()} (${laneNodes.get(layer).length})</text></g>`).join('');
   const edgeSVG=edges.map(edge=>{const A=drawn.get(edge.source),B=drawn.get(edge.target);if(!A||!B)return'';const hot=topologySelectedNodeId&&(edge.source===topologySelectedNodeId||edge.target===topologySelectedNodeId);return `<path class="link ${esc(edge.kind)}${hot?' hot':''}" d="${topologyOrthogonalPath(A,B)}"><title>${esc(`${edge.kind} · ${edge.provider} · ${edge.relation || ''}`)}</title></path>`}).join('');

@@ -19,6 +19,7 @@ const (
 
 type UIEndpoints struct {
 	Snapshot       string `json:"snapshot,omitempty"`
+	Topology       string `json:"topology,omitempty"`
 	Analyze        string `json:"analyze,omitempty"`
 	ExportSnapshot string `json:"exportSnapshot,omitempty"`
 	ExportSummary  string `json:"exportSummary,omitempty"`

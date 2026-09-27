@@ -8,13 +8,17 @@ import (
 	"sync"
 
 	"github.com/kuraudo-lab/teleskope/internal/analysis"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
+
+const maxGraphRevisions = 16
 
 // Store keeps the latest accepted envelope for every cluster.
 type Store struct {
 	mu       sync.RWMutex
 	revision uint64
 	latest   map[string]Envelope
+	graphs   map[string][]topology.Graph
 	body     []byte
 	etag     string
 	analysis *analysis.RunCache
@@ -44,9 +48,39 @@ func (s *Store) Put(env Envelope) (accepted bool, stored Envelope, err error) {
 		return false, current, nil
 	}
 	s.latest[env.Cluster.ID] = cloneEnvelope(env)
+	if storedGraph := s.latest[env.Cluster.ID].Graph; storedGraph != nil {
+		history := append(s.graphs[env.Cluster.ID], *storedGraph)
+		if len(history) > maxGraphRevisions {
+			history = append([]topology.Graph(nil), history[len(history)-maxGraphRevisions:]...)
+		}
+		s.graphs[env.Cluster.ID] = history
+	}
 	s.revision++
 	s.encodeLocked()
 	return true, s.latest[env.Cluster.ID], nil
+}
+
+// TopologyUpdate returns a cluster-scoped delta or a full reset when the
+// requested revision is no longer retained.
+func (s *Store) TopologyUpdate(id string, since uint64) (topology.Update, bool, error) {
+	s.mu.RLock()
+	history := s.graphs[id]
+	if len(history) == 0 {
+		s.mu.RUnlock()
+		return topology.Update{}, false, nil
+	}
+	current := history[len(history)-1]
+	var base *topology.Graph
+	for i := range history {
+		if history[i].Revision == since {
+			candidate := history[i]
+			base = &candidate
+			break
+		}
+	}
+	s.mu.RUnlock()
+	update, err := topology.Diff(base, current)
+	return update, true, err
 }
 
 // Get returns a copy of one cluster's latest envelope.
@@ -100,7 +134,11 @@ func (s *Store) encodedFleet() ([]byte, string) {
 func (s *Store) ensure() {
 	if s.latest == nil {
 		s.latest = map[string]Envelope{}
+		s.graphs = map[string][]topology.Graph{}
 		s.encodeLocked()
+	}
+	if s.graphs == nil {
+		s.graphs = map[string][]topology.Graph{}
 	}
 	if s.analysis == nil {
 		s.analysis = &analysis.RunCache{}

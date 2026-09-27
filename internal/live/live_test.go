@@ -151,6 +151,85 @@ func TestLiveGraphMergesDuplicateCoverageBeforePublication(t *testing.T) {
 		t.Fatalf("Pods coverage entries = %d: %+v", pods, view.Graph.Coverage)
 	}
 }
+
+func TestTopologyEndpointReturnsDeltaAndFullResync(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	firstSnapshot := podSnapshot(1, "complete")
+	firstSnapshot.Kubernetes.Context = "prod"
+	s.finish("kubernetes", firstSnapshot, nil, time.Now())
+	first := readView(t, s)
+	secondSnapshot := podSnapshot(0, "complete")
+	secondSnapshot.Kubernetes.Context = "prod"
+	s.finish("kubernetes", secondSnapshot, nil, time.Now())
+	second := readView(t, s)
+
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/topology?since=1", nil))
+	if w.Code != http.StatusOK || w.Header().Get("ETag") == "" {
+		t.Fatalf("topology response = %d etag=%q body=%s", w.Code, w.Header().Get("ETag"), w.Body.String())
+	}
+	var update topology.Update
+	if err := json.Unmarshal(w.Body.Bytes(), &update); err != nil {
+		t.Fatal(err)
+	}
+	if update.Kind != topology.UpdateDelta || update.BaseRevision != 1 || update.Revision != 2 || len(update.DeleteNodeIDs) == 0 {
+		t.Fatalf("update = %+v", update)
+	}
+	conditional := httptest.NewRequest(http.MethodGet, "/api/topology?since=1", nil)
+	conditional.Header.Set("If-None-Match", w.Header().Get("ETag"))
+	cached := httptest.NewRecorder()
+	s.Handler().ServeHTTP(cached, conditional)
+	if cached.Code != http.StatusNotModified || cached.Body.Len() != 0 {
+		t.Fatalf("conditional topology = %d body=%q", cached.Code, cached.Body.String())
+	}
+	applied, err := topology.Apply(first.Graph, update)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if applied.Revision != second.Graph.Revision || len(applied.Nodes) != len(second.Graph.Nodes) {
+		t.Fatalf("applied graph = revision %d nodes %d, want revision %d nodes %d", applied.Revision, len(applied.Nodes), second.Graph.Revision, len(second.Graph.Nodes))
+	}
+
+	full := httptest.NewRecorder()
+	s.Handler().ServeHTTP(full, httptest.NewRequest(http.MethodGet, "/api/topology?since=99", nil))
+	if err := json.Unmarshal(full.Body.Bytes(), &update); err != nil {
+		t.Fatal(err)
+	}
+	if update.Kind != topology.UpdateFull || update.Graph == nil || update.Graph.Revision != 2 {
+		t.Fatalf("future baseline did not receive full reset: %+v", update)
+	}
+
+	head := httptest.NewRecorder()
+	s.Handler().ServeHTTP(head, httptest.NewRequest(http.MethodHead, "/api/topology?since=2", nil))
+	if head.Code != http.StatusOK || head.Body.Len() != 0 {
+		t.Fatalf("topology HEAD = %d body=%q", head.Code, head.Body.String())
+	}
+	bad := httptest.NewRecorder()
+	s.Handler().ServeHTTP(bad, httptest.NewRequest(http.MethodGet, "/api/topology?since=bogus", nil))
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("invalid topology revision = %d", bad.Code)
+	}
+}
+
+func TestTopologyHistoryIsBounded(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	for i := 0; i < maxGraphRevisions+3; i++ {
+		snapshot := podSnapshot(1, "complete")
+		snapshot.Kubernetes.Context = "prod"
+		snapshot.CollectedAt = time.Date(2026, 9, 27, 9, i, 0, 0, time.UTC)
+		s.finish("kubernetes", snapshot, nil, time.Now())
+	}
+	if len(s.graphs) != maxGraphRevisions {
+		t.Fatalf("graph history = %d, want %d", len(s.graphs), maxGraphRevisions)
+	}
+	update, err := s.TopologyUpdate(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if update.Kind != topology.UpdateFull {
+		t.Fatalf("expired baseline update = %s, want full", update.Kind)
+	}
+}
 func TestPartialInitialDataAndIndependentSources(t *testing.T) {
 	s := newTestStore(t, "kubernetes", "eks")
 	partial := podSnapshot(1, "complete")

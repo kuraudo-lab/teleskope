@@ -329,8 +329,50 @@ func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 		!strings.Contains(drilldown.Body.String(), "Analyze with AI") ||
 		!strings.Contains(drilldown.Body.String(), `<script id="boot-config" type="application/json">`) ||
 		!strings.Contains(drilldown.Body.String(), `"/api/cluster/snapshot?id=prod-a"`) ||
+		!strings.Contains(drilldown.Body.String(), `"/api/cluster/topology?id=prod-a"`) ||
 		!strings.Contains(drilldown.Body.String(), `"/api/cluster/analyze?id=prod-a"`) {
 		t.Fatalf("drilldown = %d: %s", drilldown.Code, drilldown.Body.String())
+	}
+}
+
+func TestHTTPClusterTopologyDeltaAndResync(t *testing.T) {
+	store := &Store{}
+	if accepted, _, err := store.Put(testEnvelope("prod-a", 1)); err != nil || !accepted {
+		t.Fatalf("first put accepted=%v err=%v", accepted, err)
+	}
+	second := testEnvelope("prod-a", 2)
+	second.Snapshot.Kubernetes.Pods = append(second.Snapshot.Kubernetes.Pods, inventory.Pod{ObjectRef: inventory.ObjectRef{Name: "worker-abc", Namespace: "jobs"}})
+	if accepted, _, err := store.Put(second); err != nil || !accepted {
+		t.Fatalf("second put accepted=%v err=%v", accepted, err)
+	}
+	handler := store.Handler(HandlerOptions{})
+
+	delta := httptest.NewRecorder()
+	handler.ServeHTTP(delta, httptest.NewRequest(http.MethodGet, "/api/cluster/topology?id=prod-a&since=1", nil))
+	var update topology.Update
+	if delta.Code != http.StatusOK || delta.Header().Get("ETag") == "" {
+		t.Fatalf("delta = %d etag=%q body=%s", delta.Code, delta.Header().Get("ETag"), delta.Body.String())
+	}
+	if err := json.Unmarshal(delta.Body.Bytes(), &update); err != nil {
+		t.Fatal(err)
+	}
+	if update.Kind != topology.UpdateDelta || update.BaseRevision != 1 || update.Revision != 2 || len(update.UpsertNodes) == 0 {
+		t.Fatalf("hub topology update = %+v", update)
+	}
+
+	full := httptest.NewRecorder()
+	handler.ServeHTTP(full, httptest.NewRequest(http.MethodGet, "/api/cluster/topology?id=prod-a&since=99", nil))
+	if err := json.Unmarshal(full.Body.Bytes(), &update); err != nil {
+		t.Fatal(err)
+	}
+	if update.Kind != topology.UpdateFull || update.Graph == nil || update.Graph.Revision != 2 {
+		t.Fatalf("hub full resync = %+v", update)
+	}
+
+	missing := httptest.NewRecorder()
+	handler.ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/api/cluster/topology?id=missing&since=1", nil))
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing cluster topology = %d", missing.Code)
 	}
 }
 

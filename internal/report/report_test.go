@@ -2,6 +2,7 @@ package report
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -535,6 +536,14 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		"bootConfig.endpoints?.analyze",
 		"normalizedAnalysisPage(pageId)",
 		"bootConfig.endpoints?.snapshot",
+		"bootConfig.endpoints?.topology",
+		"function applyTopologyUpdate",
+		"function fetchTopologyUpdate",
+		"teleskope.io/topology-update/v1alpha1",
+		"const topologyLayoutRanks = new Map()",
+		"function syncTopologyLayoutRanks",
+		"function firstFreeTopologyRank(used)",
+		"const rank=firstFreeTopologyRank(used)",
 		"bootConfig.endpoints?.exportSummary",
 		"bootConfig.endpoints?.exportSnapshot",
 		"function renderAnalysis",
@@ -575,12 +584,14 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 func TestLiveHTMLWithOptionsRendersEndpointConfig(t *testing.T) {
 	html := LiveHTMLWithOptions(LiveHTMLOptions{
 		SnapshotPath:       "/custom/snapshot?id=prod-a",
+		TopologyPath:       "/custom/topology?id=prod-a",
 		AnalyzePath:        "/custom/analyze?id=prod-a",
 		ExportSnapshotPath: "/custom/export/snapshot.json?id=prod-a",
 		ExportSummaryPath:  "/custom/export/summary.md?id=prod-a",
 	})
 	for _, want := range []string{
 		`"snapshot":"/custom/snapshot?id=prod-a"`,
+		`"topology":"/custom/topology?id=prod-a"`,
 		`"analyze":"/custom/analyze?id=prod-a"`,
 		`"exportSnapshot":"/custom/export/snapshot.json?id=prod-a"`,
 		`"exportSummary":"/custom/export/summary.md?id=prod-a"`,
@@ -595,6 +606,52 @@ func TestLiveHTMLWithOptionsRendersEndpointConfig(t *testing.T) {
 	} {
 		if strings.Contains(html, old) {
 			t.Fatalf("endpoint was inlined into script instead of boot config: %q", old)
+		}
+	}
+}
+
+func TestTopologyLayoutRankContractReusesFreedSlots(t *testing.T) {
+	if !strings.Contains(reportHTMLTemplate, "const rank=firstFreeTopologyRank(used)") || strings.Contains(reportHTMLTemplate, "Math.max(-1,...[...topologyLayoutRanks.values()]") {
+		t.Fatal("topology layout must allocate the first free rank instead of an ever-increasing maximum")
+	}
+	ranks := map[string]int{}
+	syncRanks := func(ids []string) {
+		live := map[string]bool{}
+		for _, id := range ids {
+			live[id] = true
+		}
+		for id := range ranks {
+			if !live[id] {
+				delete(ranks, id)
+			}
+		}
+		used := map[int]bool{}
+		for _, rank := range ranks {
+			used[rank] = true
+		}
+		for _, id := range ids {
+			if _, ok := ranks[id]; ok {
+				continue
+			}
+			rank := 0
+			for used[rank] {
+				rank++
+			}
+			ranks[id], used[rank] = rank, true
+		}
+	}
+	syncRanks([]string{"n0", "n1"})
+	for i := 1; i < 1000; i++ {
+		survivor := fmt.Sprintf("n%d", i)
+		previousRank := ranks[survivor]
+		syncRanks([]string{survivor, fmt.Sprintf("n%d", i+1)})
+		if ranks[survivor] != previousRank {
+			t.Fatalf("surviving node %s moved from rank %d to %d", survivor, previousRank, ranks[survivor])
+		}
+		for _, rank := range ranks {
+			if rank > 1 {
+				t.Fatalf("two-node churn grew rank to %d at iteration %d", rank, i)
+			}
 		}
 	}
 }

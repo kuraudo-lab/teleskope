@@ -1,11 +1,13 @@
 package hub
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -76,6 +78,11 @@ func (s *Store) Handler(opts HandlerOptions) http.Handler {
 				return
 			}
 			s.writeClusterSnapshot(w, r, r.URL.Query().Get("id"), opts)
+		case r.URL.Path == "/api/cluster/topology":
+			if !allow(w, r, http.MethodGet, http.MethodHead) {
+				return
+			}
+			s.writeClusterTopology(w, r, r.URL.Query().Get("id"))
 		case r.URL.Path == "/api/cluster/analyze":
 			if !allow(w, r, http.MethodPost) {
 				return
@@ -193,6 +200,7 @@ func (s *Store) writeClusterHTML(w http.ResponseWriter, r *http.Request, id stri
 	query := "?id=" + urlQueryEscape(id)
 	html := report.LiveHTMLWithOptions(report.LiveHTMLOptions{
 		SnapshotPath:       "/api/cluster/snapshot" + query,
+		TopologyPath:       "/api/cluster/topology" + query,
 		AnalyzePath:        "/api/cluster/analyze" + query,
 		ExportSnapshotPath: "/api/cluster/export/snapshot.json" + query,
 		ExportSummaryPath:  "/api/cluster/export/summary.md" + query,
@@ -200,6 +208,42 @@ func (s *Store) writeClusterHTML(w http.ResponseWriter, r *http.Request, id stri
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if r.Method == http.MethodGet {
 		_, _ = strings.NewReader(html).WriteTo(w)
+	}
+}
+
+func (s *Store) writeClusterTopology(w http.ResponseWriter, r *http.Request, id string) {
+	since := uint64(0)
+	if raw := r.URL.Query().Get("since"); raw != "" {
+		value, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid topology revision", http.StatusBadRequest)
+			return
+		}
+		since = value
+	}
+	update, ok, err := s.TopologyUpdate(id, since)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	body, err := json.Marshal(update)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	etag := fmt.Sprintf("\"%x\"", sha256.Sum256(body))
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("ETag", etag)
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	if r.Method == http.MethodGet {
+		_, _ = w.Write(body)
 	}
 }
 
