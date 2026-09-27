@@ -16,6 +16,7 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/advisor"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 // Options configures report artifact creation.
@@ -81,6 +82,13 @@ func WriteDirectory(snapshot *inventory.Snapshot, opts Options) (*Artifact, erro
 		return nil, err
 	}
 	if err := artifact.writeJSON("coverage.json", snapshot.Coverage); err != nil {
+		return nil, err
+	}
+	graph := topology.Project(snapshot, 1)
+	if err := graph.Validate(); err != nil {
+		return nil, fmt.Errorf("build topology graph: %w", err)
+	}
+	if err := artifact.writeJSON("topology.json", graph); err != nil {
 		return nil, err
 	}
 	if err := artifact.writeText("summary.md", markdown(snapshot, target)); err != nil {

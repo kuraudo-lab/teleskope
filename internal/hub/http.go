@@ -212,6 +212,7 @@ func (s *Store) writeClusterSnapshot(w http.ResponseWriter, r *http.Request, id 
 	}
 	out := live.Response{
 		Advisor:  env.Advisor,
+		Graph:    env.Graph,
 		Revision: env.Revision,
 		Snapshot: env.Snapshot,
 		Sources:  env.Sources,

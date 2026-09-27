@@ -14,6 +14,7 @@ import (
 	"github.com/kuraudo-lab/teleskope/internal/analysis"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/live"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 type fakeAnalyzer struct {
@@ -102,6 +103,47 @@ func TestStoreAcceptsOnlyNewerClusterRevisions(t *testing.T) {
 	}
 	if fleet := store.Fleet(); fleet.Revision != 1 || len(fleet.Clusters) != 1 {
 		t.Fatalf("fleet = %+v", fleet)
+	}
+}
+
+func TestStoreRejectsEnvelopeGraphClusterMismatch(t *testing.T) {
+	store := &Store{}
+	env := testEnvelope("prod-a", 1)
+	graph := topology.ProjectForCluster(env.Snapshot, env.Revision, "other")
+	env.Graph = &graph
+	if accepted, _, err := store.Put(env); err == nil || accepted || !strings.Contains(err.Error(), "does not match envelope cluster") {
+		t.Fatalf("put accepted=%v err=%v", accepted, err)
+	}
+}
+
+func TestStoreValidatesSnapshotlessGraph(t *testing.T) {
+	store := &Store{}
+	env := Envelope{Cluster: Cluster{ID: "prod", Name: "prod"}, Revision: 1, CollectedAt: time.Date(2026, 9, 27, 1, 2, 3, 0, time.UTC), Graph: &topology.Graph{SchemaVersion: "unsupported"}}
+	if accepted, _, err := store.Put(env); err == nil || accepted || !strings.Contains(err.Error(), "unsupported topology schema") {
+		t.Fatalf("unsupported graph accepted=%v err=%v", accepted, err)
+	}
+	snapshot := &inventory.Snapshot{CollectedAt: env.CollectedAt, Kubernetes: inventory.Kubernetes{Context: "prod"}}
+	graph := topology.ProjectForCluster(snapshot, 2, "prod")
+	env.Graph = &graph
+	if accepted, _, err := store.Put(env); err == nil || accepted || !strings.Contains(err.Error(), "revision 2 does not match envelope revision 1") {
+		t.Fatalf("revision mismatch accepted=%v err=%v", accepted, err)
+	}
+}
+
+func TestHubGraphMergesDuplicateCoverage(t *testing.T) {
+	store := &Store{}
+	env := testEnvelope("prod", 1)
+	now := env.Snapshot.CollectedAt
+	env.Snapshot.Coverage = []inventory.CoverageItem{
+		{Area: "kubernetes", Resource: "Pods", Status: "complete", CollectedAt: now},
+		{Area: "kubernetes", Resource: "Pods", Status: "partial", Reason: "forbidden", CollectedAt: now.Add(-time.Minute)},
+	}
+	accepted, stored, err := store.Put(env)
+	if err != nil || !accepted || stored.Graph == nil {
+		t.Fatalf("put accepted=%v err=%v graph=%+v", accepted, err, stored.Graph)
+	}
+	if err := stored.Graph.Validate(); err != nil {
+		t.Fatalf("hub graph is invalid: %v", err)
 	}
 }
 
@@ -347,7 +389,7 @@ func TestHTTPClusterScopedSnapshotAndAnalyze(t *testing.T) {
 
 	snapshot := httptest.NewRecorder()
 	handler.ServeHTTP(snapshot, httptest.NewRequest(http.MethodGet, "/api/cluster/snapshot?id=prod-a", nil))
-	if snapshot.Code != http.StatusOK || !strings.Contains(snapshot.Body.String(), `"revision":3`) {
+	if snapshot.Code != http.StatusOK || !strings.Contains(snapshot.Body.String(), `"revision":3`) || !strings.Contains(snapshot.Body.String(), `"schemaVersion":"teleskope.io/topology/v1alpha1"`) {
 		t.Fatalf("snapshot = %d: %s", snapshot.Code, snapshot.Body.String())
 	}
 

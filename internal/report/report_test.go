@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
@@ -240,9 +242,18 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	if !strings.HasSuffix(artifact.Dir, "prod-cluster-20260907-080910") {
 		t.Fatalf("artifact dir = %q, want sanitized timestamped name", artifact.Dir)
 	}
-	for _, name := range []string{"snapshot.json", "source.json", "aws.json", "eks.json", "kubernetes.json", "coverage.json", "summary.md", "index.html"} {
+	for _, name := range []string{"snapshot.json", "source.json", "aws.json", "eks.json", "kubernetes.json", "coverage.json", "topology.json", "summary.md", "index.html"} {
 		if _, err := os.Stat(filepath.Join(artifact.Dir, name)); err != nil {
 			t.Fatalf("expected %s: %v", name, err)
+		}
+	}
+	topologyJSON, err := os.ReadFile(filepath.Join(artifact.Dir, "topology.json"))
+	if err != nil {
+		t.Fatalf("read topology.json: %v", err)
+	}
+	for _, want := range []string{`"schemaVersion": "teleskope.io/topology/v1alpha1"`, `"revision": 1`, `"capability": "runtime-connections"`, `"status": "unavailable"`} {
+		if !strings.Contains(string(topologyJSON), want) {
+			t.Fatalf("topology.json missing %q: %s", want, topologyJSON)
 		}
 	}
 
@@ -452,6 +463,29 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	}
 	if strings.Contains(string(html), "<h3>Coverage</h3>") {
 		t.Fatalf("index.html should not render coverage panel")
+	}
+}
+
+func TestWriteDirectoryMergesDuplicateTopologyCoverage(t *testing.T) {
+	now := time.Date(2026, 9, 27, 1, 2, 3, 0, time.UTC)
+	snapshot := &inventory.Snapshot{CollectedAt: now, Kubernetes: inventory.Kubernetes{Context: "prod"}, Coverage: []inventory.CoverageItem{
+		{Area: "kubernetes", Resource: "Pods", Status: "complete", CollectedAt: now},
+		{Area: "kubernetes", Resource: "Pods", Status: "partial", Reason: "forbidden", CollectedAt: now.Add(-time.Minute)},
+	}}
+	artifact, err := WriteDirectory(snapshot, Options{BaseDir: t.TempDir(), Target: "prod", Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(artifact.Dir, "topology.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var graph topology.Graph
+	if err := json.Unmarshal(data, &graph); err != nil {
+		t.Fatal(err)
+	}
+	if err := graph.Validate(); err != nil {
+		t.Fatalf("recorded graph is invalid: %v", err)
 	}
 }
 

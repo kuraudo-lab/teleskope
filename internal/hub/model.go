@@ -12,6 +12,7 @@ import (
 	"github.com/kuraudo-lab/teleskope/internal/advisor"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/live"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 // Cluster identifies one remote cluster in a hub fleet.
@@ -28,6 +29,7 @@ type Envelope struct {
 	Revision    uint64                 `json:"revision"`
 	CollectedAt time.Time              `json:"collectedAt"`
 	Snapshot    *inventory.Snapshot    `json:"snapshot,omitempty"`
+	Graph       *topology.Graph        `json:"graph,omitempty"`
 	Advisor     *advisor.Report        `json:"advisor,omitempty"`
 	Sources     map[string]live.Status `json:"sources,omitempty"`
 	Events      []live.Event           `json:"events,omitempty"`
@@ -107,6 +109,21 @@ func CompleteEnvelope(env Envelope) (Envelope, error) {
 				report.SetFreshness(state)
 			}
 			env.Advisor = &report
+		}
+		if env.Graph == nil {
+			graph := topology.ProjectForCluster(env.Snapshot, env.Revision, env.Cluster.ID)
+			env.Graph = &graph
+		}
+	}
+	if env.Graph != nil {
+		if err := env.Graph.Validate(); err != nil {
+			return Envelope{}, fmt.Errorf("topology graph: %w", err)
+		}
+		if env.Graph.Revision != env.Revision {
+			return Envelope{}, fmt.Errorf("topology graph revision %d does not match envelope revision %d", env.Graph.Revision, env.Revision)
+		}
+		if env.Cluster.ID != "" && env.Graph.ClusterID != env.Cluster.ID {
+			return Envelope{}, fmt.Errorf("topology graph cluster %q does not match envelope cluster %q", env.Graph.ClusterID, env.Cluster.ID)
 		}
 	}
 	if env.Cluster.ID == "" {

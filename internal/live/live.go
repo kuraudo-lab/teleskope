@@ -18,6 +18,7 @@ import (
 	"github.com/kuraudo-lab/teleskope/internal/buildinfo"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/report"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 // Source is a sequential polling task. Collect transfers ownership of its result.
@@ -97,6 +98,7 @@ type Store struct {
 type Response struct {
 	Advisor       *advisor.Report       `json:"advisor,omitempty"`
 	EKSProjection *report.EKSProjection `json:"eksProjection,omitempty"`
+	Graph         *topology.Graph       `json:"graph,omitempty"`
 	Revision      uint64                `json:"revision"`
 	Snapshot      *inventory.Snapshot   `json:"snapshot"`
 	Sources       map[string]Status     `json:"sources"`
@@ -448,6 +450,10 @@ func (s *Store) encode() {
 		}
 	}
 	if out.Snapshot != nil {
+		graph := topology.Project(out.Snapshot, out.Revision)
+		if graph.Validate() == nil {
+			out.Graph = &graph
+		}
 		analysis := advisor.Analyze(out.Snapshot)
 		state := "unavailable"
 		if source, ok := out.Sources["kubernetes"]; ok {

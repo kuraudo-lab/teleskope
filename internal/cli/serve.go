@@ -20,6 +20,7 @@ import (
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
 	"github.com/kuraudo-lab/teleskope/internal/k8s"
 	"github.com/kuraudo-lab/teleskope/internal/live"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 	"github.com/spf13/cobra"
 )
 
@@ -242,11 +243,14 @@ func newServeTarget(target string, stdout, stderr io.Writer) *cobra.Command {
 				}
 				name := firstNonEmpty(clusterName, awsOpts.ClusterName)
 				store.SetPublishHook(func(view live.Response) {
+					cluster := hub.DeriveCluster(view.Snapshot, clusterID, name, provider)
+					graph := topology.ProjectForCluster(view.Snapshot, view.Revision, cluster.ID)
 					writer.Publish(hub.Envelope{
-						Cluster:     hub.DeriveCluster(view.Snapshot, clusterID, name, provider),
+						Cluster:     cluster,
 						Revision:    view.Revision,
 						CollectedAt: view.Snapshot.CollectedAt,
 						Snapshot:    view.Snapshot,
+						Graph:       &graph,
 						Advisor:     view.Advisor,
 						Sources:     view.Sources,
 						Events:      view.Events,

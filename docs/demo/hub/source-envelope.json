@@ -490,6 +490,546 @@
       }
     ]
   },
+  "graph": {
+    "schemaVersion": "teleskope.io/topology/v1alpha1",
+    "clusterId": "source",
+    "revision": 1,
+    "generatedAt": "2026-09-25T00:00:00Z",
+    "nodes": [
+      {
+        "id": "eks/source/addon/_/aws-ebs-csi-driver",
+        "kind": "addon",
+        "name": "aws-ebs-csi-driver",
+        "identity": "aws-ebs-csi-driver",
+        "scope": {
+          "provider": "eks",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source",
+        "metadata": {
+          "status": "ACTIVE",
+          "version": "demo"
+        },
+        "findingRefs": [
+          "eks.addon/v1"
+        ]
+      },
+      {
+        "id": "eks/source/cluster/_/source",
+        "kind": "cluster",
+        "name": "source",
+        "identity": "source",
+        "scope": {
+          "provider": "eks",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        }
+      },
+      {
+        "id": "eks/source/nodegroup/_/demo-workers",
+        "kind": "nodegroup",
+        "name": "demo-workers",
+        "identity": "demo-workers",
+        "scope": {
+          "provider": "eks",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source",
+        "metadata": {
+          "status": "ACTIVE"
+        },
+        "findingRefs": [
+          "eks.nodegroup/v1"
+        ]
+      },
+      {
+        "id": "kubernetes/source/gatewayclass/_/demo-gateway",
+        "kind": "gatewayclass",
+        "name": "demo-gateway",
+        "identity": "demo-gateway",
+        "apiVersion": "gateway.networking.k8s.io/v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source",
+        "findingRefs": [
+          "networking.gateway/v1"
+        ]
+      },
+      {
+        "id": "kubernetes/source/namespace/_/checkout",
+        "kind": "namespace",
+        "name": "checkout",
+        "identity": "checkout",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source"
+      },
+      {
+        "id": "kubernetes/source/namespace/_/observability",
+        "kind": "namespace",
+        "name": "observability",
+        "identity": "observability",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source"
+      },
+      {
+        "id": "kubernetes/source/namespace/_/platform",
+        "kind": "namespace",
+        "name": "platform",
+        "identity": "platform",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source"
+      },
+      {
+        "id": "kubernetes/source/node/_/demo-node",
+        "kind": "node",
+        "name": "demo-node",
+        "identity": "demo-node",
+        "apiVersion": "v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source",
+        "metadata": {
+          "nodegroup": "demo-workers",
+          "ready": "True"
+        },
+        "findingRefs": [
+          "eks.nodegroup/v1"
+        ]
+      },
+      {
+        "id": "kubernetes/source/pod/checkout/checkout-api-demo",
+        "kind": "pod",
+        "name": "checkout-api-demo",
+        "identity": "checkout-api-demo",
+        "apiVersion": "v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "namespace": "checkout",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "kubernetes/source/namespace/_/checkout",
+        "metadata": {
+          "phase": "Running"
+        }
+      },
+      {
+        "id": "kubernetes/source/pod/checkout/orders-demo",
+        "kind": "pod",
+        "name": "orders-demo",
+        "identity": "orders-demo",
+        "apiVersion": "v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "namespace": "checkout",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "kubernetes/source/namespace/_/checkout",
+        "metadata": {
+          "phase": "Running"
+        }
+      },
+      {
+        "id": "kubernetes/source/service/checkout/checkout-api",
+        "kind": "service",
+        "name": "checkout-api",
+        "identity": "checkout-api",
+        "apiVersion": "v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "namespace": "checkout",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "kubernetes/source/namespace/_/checkout",
+        "metadata": {
+          "type": "ClusterIP"
+        }
+      },
+      {
+        "id": "kubernetes/source/storageclass/_/demo-block",
+        "kind": "storageclass",
+        "name": "demo-block",
+        "identity": "demo-block",
+        "apiVersion": "storage.k8s.io/v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "eks/source/cluster/_/source",
+        "findingRefs": [
+          "storage.expansion/v1",
+          "storage.rwx/v1"
+        ]
+      },
+      {
+        "id": "kubernetes/source/workload/checkout/deployment:checkout-api",
+        "kind": "workload",
+        "name": "checkout-api",
+        "identity": "deployment:checkout-api",
+        "apiVersion": "apps/v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "namespace": "checkout",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "kubernetes/source/namespace/_/checkout",
+        "metadata": {
+          "resourceKind": "Deployment"
+        }
+      },
+      {
+        "id": "kubernetes/source/workload/checkout/statefulset:orders",
+        "kind": "workload",
+        "name": "orders",
+        "identity": "statefulset:orders",
+        "apiVersion": "apps/v1",
+        "scope": {
+          "provider": "kubernetes",
+          "cluster": "source",
+          "namespace": "checkout",
+          "account": "000000000000",
+          "region": "eu-west-1"
+        },
+        "parentId": "kubernetes/source/namespace/_/checkout",
+        "metadata": {
+          "resourceKind": "StatefulSet"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "declared/kubernetes%2Fsource%2Fservice%2Fcheckout%2Fcheckout-api/kubernetes%2Fsource%2Fworkload%2Fcheckout%2Fdeployment:checkout-api/kubernetes",
+        "source": "kubernetes/source/service/checkout/checkout-api",
+        "target": "kubernetes/source/workload/checkout/deployment:checkout-api",
+        "kind": "declared",
+        "provider": "kubernetes",
+        "relation": "selects",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "service selector and workload selector are equal"
+          }
+        ]
+      },
+      {
+        "id": "ownership/eks%2Fsource%2Fcluster%2F_%2Fsource/eks%2Fsource%2Faddon%2F_%2Faws-ebs-csi-driver/eks",
+        "source": "eks/source/cluster/_/source",
+        "target": "eks/source/addon/_/aws-ebs-csi-driver",
+        "kind": "ownership",
+        "provider": "eks",
+        "relation": "contains",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "eks",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "EKS managed add-on belongs to cluster"
+          }
+        ]
+      },
+      {
+        "id": "ownership/eks%2Fsource%2Fcluster%2F_%2Fsource/eks%2Fsource%2Fnodegroup%2F_%2Fdemo-workers/eks",
+        "source": "eks/source/cluster/_/source",
+        "target": "eks/source/nodegroup/_/demo-workers",
+        "kind": "ownership",
+        "provider": "eks",
+        "relation": "contains",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "eks",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "EKS managed node group belongs to cluster"
+          }
+        ]
+      },
+      {
+        "id": "ownership/eks%2Fsource%2Fcluster%2F_%2Fsource/kubernetes%2Fsource%2Fnamespace%2F_%2Fcheckout/kubernetes",
+        "source": "eks/source/cluster/_/source",
+        "target": "kubernetes/source/namespace/_/checkout",
+        "kind": "ownership",
+        "provider": "kubernetes",
+        "relation": "contains",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "namespace belongs to cluster"
+          }
+        ]
+      },
+      {
+        "id": "ownership/eks%2Fsource%2Fcluster%2F_%2Fsource/kubernetes%2Fsource%2Fnamespace%2F_%2Fobservability/kubernetes",
+        "source": "eks/source/cluster/_/source",
+        "target": "kubernetes/source/namespace/_/observability",
+        "kind": "ownership",
+        "provider": "kubernetes",
+        "relation": "contains",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "namespace belongs to cluster"
+          }
+        ]
+      },
+      {
+        "id": "ownership/eks%2Fsource%2Fcluster%2F_%2Fsource/kubernetes%2Fsource%2Fnamespace%2F_%2Fplatform/kubernetes",
+        "source": "eks/source/cluster/_/source",
+        "target": "kubernetes/source/namespace/_/platform",
+        "kind": "ownership",
+        "provider": "kubernetes",
+        "relation": "contains",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "namespace belongs to cluster"
+          }
+        ]
+      },
+      {
+        "id": "ownership/kubernetes%2Fsource%2Fworkload%2Fcheckout%2Fdeployment:checkout-api/kubernetes%2Fsource%2Fpod%2Fcheckout%2Fcheckout-api-demo/kubernetes",
+        "source": "kubernetes/source/workload/checkout/deployment:checkout-api",
+        "target": "kubernetes/source/pod/checkout/checkout-api-demo",
+        "kind": "ownership",
+        "provider": "kubernetes",
+        "relation": "owns",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "metadata.ownerReferences"
+          }
+        ]
+      },
+      {
+        "id": "ownership/kubernetes%2Fsource%2Fworkload%2Fcheckout%2Fstatefulset:orders/kubernetes%2Fsource%2Fpod%2Fcheckout%2Forders-demo/kubernetes",
+        "source": "kubernetes/source/workload/checkout/statefulset:orders",
+        "target": "kubernetes/source/pod/checkout/orders-demo",
+        "kind": "ownership",
+        "provider": "kubernetes",
+        "relation": "owns",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "declared",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "metadata.ownerReferences"
+          }
+        ]
+      },
+      {
+        "id": "resolved/eks%2Fsource%2Fnodegroup%2F_%2Fdemo-workers/kubernetes%2Fsource%2Fnode%2F_%2Fdemo-node/kubernetes",
+        "source": "eks/source/nodegroup/_/demo-workers",
+        "target": "kubernetes/source/node/_/demo-node",
+        "kind": "resolved",
+        "provider": "kubernetes",
+        "relation": "manages",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "resolved",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "node label resolved to collected EKS node group"
+          }
+        ],
+        "findingRefs": [
+          "eks.nodegroup/v1"
+        ]
+      },
+      {
+        "id": "resolved/kubernetes%2Fsource%2Fpod%2Fcheckout%2Fcheckout-api-demo/kubernetes%2Fsource%2Fnode%2F_%2Fdemo-node/kubernetes",
+        "source": "kubernetes/source/pod/checkout/checkout-api-demo",
+        "target": "kubernetes/source/node/_/demo-node",
+        "kind": "resolved",
+        "provider": "kubernetes",
+        "relation": "scheduled-to",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "resolved",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "pod.spec.nodeName resolved to collected Node"
+          }
+        ]
+      },
+      {
+        "id": "resolved/kubernetes%2Fsource%2Fpod%2Fcheckout%2Forders-demo/kubernetes%2Fsource%2Fnode%2F_%2Fdemo-node/kubernetes",
+        "source": "kubernetes/source/pod/checkout/orders-demo",
+        "target": "kubernetes/source/node/_/demo-node",
+        "kind": "resolved",
+        "provider": "kubernetes",
+        "relation": "scheduled-to",
+        "directed": true,
+        "evidence": [
+          {
+            "provider": "kubernetes",
+            "basis": "resolved",
+            "freshness": "current",
+            "confidence": "high",
+            "summary": "pod.spec.nodeName resolved to collected Node"
+          }
+        ]
+      }
+    ],
+    "coverage": [
+      {
+        "provider": "eks",
+        "capability": "eks.insight",
+        "status": "unknown",
+        "reason": "Synthetic fixture intentionally omits upgrade insights; readiness is unknown.",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "external",
+        "capability": "runtime-connections",
+        "status": "unavailable",
+        "reason": "no external connection evidence provider configured"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "csidrivers",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "deployments",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "gatewayclasses",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "gateways",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "httproutes",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "namespaces",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "nodes",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "persistentvolumeclaims",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "persistentvolumes",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "pods",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "services",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "statefulsets",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      },
+      {
+        "provider": "kubernetes",
+        "capability": "storageclasses",
+        "status": "complete",
+        "observedAt": "2026-09-25T00:00:00Z"
+      }
+    ]
+  },
   "advisor": {
     "schemaVersion": "teleskope.io/advisor/v1alpha1",
     "ruleVersion": "1",

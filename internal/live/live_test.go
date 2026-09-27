@@ -15,6 +15,7 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/analysis"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 func newTestStore(t *testing.T, names ...string) *Store {
@@ -119,6 +120,35 @@ func TestRetainOnFailureAndCoverageRegressionThenAcceptDeletion(t *testing.T) {
 	got := readView(t, s)
 	if len(got.Snapshot.Kubernetes.Pods) != 0 || got.Sources["kubernetes"].State != "ready" || got.Revision != original.Revision+1 {
 		t.Fatalf("successful deletion: %+v", got)
+	}
+	if got.Graph == nil || got.Graph.Revision != got.Revision {
+		t.Fatalf("graph revision = %+v, live revision = %d", got.Graph, got.Revision)
+	}
+}
+
+func TestLiveGraphMergesDuplicateCoverageBeforePublication(t *testing.T) {
+	s := newTestStore(t, "kubernetes")
+	now := time.Date(2026, 9, 27, 1, 2, 3, 0, time.UTC)
+	snapshot := &inventory.Snapshot{CollectedAt: now, Kubernetes: inventory.Kubernetes{Context: "prod"}, Coverage: []inventory.CoverageItem{
+		{Area: "kubernetes", Resource: "Pods", Status: "complete", CollectedAt: now},
+		{Area: "kubernetes", Resource: "Pods", Status: "partial", Reason: "forbidden", CollectedAt: now.Add(-time.Minute)},
+	}}
+	s.finish("kubernetes", snapshot, nil, now)
+	view := readView(t, s)
+	if view.Graph == nil || view.Graph.SchemaVersion != topology.SchemaVersion {
+		t.Fatal("live response omitted graph")
+	}
+	if err := view.Graph.Validate(); err != nil {
+		t.Fatalf("live graph is invalid: %v", err)
+	}
+	var pods int
+	for _, coverage := range view.Graph.Coverage {
+		if coverage.Provider == "kubernetes" && coverage.Capability == "Pods" {
+			pods++
+		}
+	}
+	if pods != 1 {
+		t.Fatalf("Pods coverage entries = %d: %+v", pods, view.Graph.Coverage)
 	}
 }
 func TestPartialInitialDataAndIndependentSources(t *testing.T) {

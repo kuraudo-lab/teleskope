@@ -20,12 +20,16 @@ between collected inventory evidence and interactive topology presentation.
 ## Graph Document
 
 A graph document has a schema version, cluster identity, revision, generation
-time, nodes, edges, and graph-level coverage records. Arrays are emitted in
-stable identity order so equal evidence produces deterministic JSON.
+time, nodes, edges, and graph-level coverage records. Recorded snapshots use
+revision `1` for their single immutable full graph; live and hub revisions
+follow their publication sequence. Arrays are emitted in stable identity order
+so equal evidence produces deterministic JSON.
 
 Nodes contain:
 
 - `id`: canonical identity, not a renderer-specific key.
+- `identity`: the unescaped provider identity segment used to verify `id`;
+  this is the UID when available and otherwise a kind-qualified stable name.
 - `kind`: a stable topology kind such as cluster, namespace, workload, pod,
   service, node, EKS node group, EC2 instance, or external endpoint.
 - `scope`: provider, cluster, namespace, and optional account/region identity.
@@ -33,6 +37,8 @@ Nodes contain:
 - `parentId` for navigational containment only.
 - display metadata and evidence references; raw credentials and Secret values
   are never part of the graph.
+- `pseudoKind` for `unresolved`, `external-endpoint`, or `internet` identities
+  that preserve a relationship when its target is not a collected API object.
 
 Edges contain:
 
@@ -40,6 +46,7 @@ Edges contain:
 - `kind`: `ownership`, `declared`, `resolved`, `inferred`, or `observed`.
 - `directed` and optional relation metadata.
 - evidence references that explain why the edge exists.
+- finding references when a deterministic rule is supported by both endpoints.
 
 `parentId` is not a replacement for a typed relationship. It supplies stable
 drill-up/drill-down navigation while edges retain their evidence semantics.
@@ -57,6 +64,13 @@ Cluster-scoped resources use `_` as the namespace segment. External endpoints
 use the evidence provider plus its normalized endpoint identity. Edge IDs are
 derived from edge kind, source ID, target ID, and provider key. Duplicate IDs
 are invalid.
+
+An `unresolved` pseudo-node preserves a collected reference whose target was
+not collected. An `external-endpoint` preserves a concrete address without a
+Kubernetes/AWS object identity. An `internet` node is emitted only for an
+explicitly public boundary, currently an EKS API endpoint with
+`endpointPublicAccess`; the corresponding edge retains `publicAccessCidrs` and
+does not imply unrestricted reachability or observed traffic.
 
 ## Evidence And Relationship Tiers
 
@@ -92,6 +106,9 @@ reason and observation time/window when known.
 The graph always contains a `runtime-connections` coverage record. When no
 external connection provider contributed evidence, its status is
 `unavailable`; declared, resolved, ownership, and inferred edges remain valid.
+Duplicate provider/capability/namespace coverage records are conservatively
+merged before publication: the weakest status, oldest observation timestamp,
+and stable union of reasons are retained.
 
 ## Transport Compatibility
 
@@ -100,7 +117,9 @@ external connection provider contributed evidence, its status is
 - Live responses include the graph produced from the exact snapshot revision
   being published.
 - Hub envelopes carry that same graph; the hub does not recollect or silently
-  reinterpret provider evidence.
+  reinterpret provider evidence. When a remote writer configures an explicit
+  hub cluster ID, it projects the graph with that same ID before publication;
+  the hub rejects envelope/graph identity mismatches.
 - Consumers must ignore unknown fields and reject unsupported major schema
   versions.
 
