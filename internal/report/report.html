@@ -43,14 +43,14 @@
     .export-button:hover,
     .theme-toggle:hover { background:var(--nav-hover); }
     .export-button:disabled,
-    .theme-toggle:disabled { opacity:.48; cursor:not-allowed; }
+    .theme-toggle:disabled { opacity:1; color:var(--disabled-text); cursor:not-allowed; }
     .export-button:disabled:hover,
     .theme-toggle:disabled:hover { background:var(--control-bg); }
     .ai-button { position:relative; overflow:hidden; border-color:rgba(34,211,238,.45); background:linear-gradient(135deg,rgba(37,99,235,.96),rgba(124,58,237,.92) 55%,rgba(8,145,178,.94)); color:white; box-shadow:0 10px 30px rgba(37,99,235,.22),0 0 22px rgba(34,211,238,.22); font-weight:700; }
     .ai-button::before { content:""; position:absolute; inset:-70% -35%; background:linear-gradient(115deg,transparent 34%,rgba(255,255,255,.58) 48%,transparent 62%); transform:translateX(-70%) rotate(8deg); animation:teleskope-bling 3.2s ease-in-out infinite; }
     .ai-button span { position:relative; z-index:1; }
     .ai-button:hover:not(:disabled) { background:linear-gradient(135deg,rgba(59,130,246,1),rgba(139,92,246,.98) 55%,rgba(6,182,212,.96)); box-shadow:0 12px 34px rgba(37,99,235,.30),0 0 30px rgba(34,211,238,.30); }
-    .ai-button:disabled { color:var(--muted); background:var(--control-bg); box-shadow:none; border-color:var(--line); font-weight:500; }
+    .ai-button:disabled { color:var(--disabled-text); background:var(--control-bg); box-shadow:none; border-color:var(--line); font-weight:500; }
     .ai-button:disabled::before { display:none; }
     @keyframes teleskope-bling { 0%, 62% { transform:translateX(-75%) rotate(8deg); } 82%, 100% { transform:translateX(75%) rotate(8deg); } }
     .export-button:focus-visible,
@@ -165,6 +165,8 @@
       --cyan:#0891b2;
       --green:#10b981;
       --amber:#d97706;
+      --warning-text:#92400e;
+      --disabled-text:#475569;
       --red:#e11d48;
       --purple:#7c3aed;
       --chip:rgba(37,99,235,.1);
@@ -197,6 +199,8 @@
         --cyan:#22d3ee;
         --green:#34d399;
         --amber:#f59e0b;
+        --warning-text:#fbbf24;
+        --disabled-text:#cbd5e1;
         --red:#fb7185;
         --purple:#a78bfa;
         --chip:rgba(96,165,250,.13);
@@ -228,6 +232,8 @@
       --cyan:#22d3ee;
       --green:#34d399;
       --amber:#f59e0b;
+      --warning-text:#fbbf24;
+      --disabled-text:#cbd5e1;
       --red:#fb7185;
       --purple:#a78bfa;
       --chip:rgba(96,165,250,.13);
@@ -587,6 +593,8 @@
       --cyan:#22d3ee;
       --green:#34d399;
       --amber:#f59e0b;
+      --warning-text:#fbbf24;
+      --disabled-text:#cbd5e1;
       --red:#fb7185;
       --purple:#a78bfa;
       --pink:#f472b6;
@@ -616,6 +624,8 @@
       --cyan:#0891b2;
       --green:#059669;
       --amber:#d97706;
+      --warning-text:#92400e;
+      --disabled-text:#475569;
       --red:#e11d48;
       --purple:#7c3aed;
       --pink:#db2777;
@@ -1075,6 +1085,8 @@
     .topology-segmented.views { grid-template-columns:1fr; }
     .topology-segmented button { min-width:0; padding:7px 8px; border:1px solid var(--line); border-radius:7px; color:var(--muted); background:var(--control-bg); cursor:pointer; }
     .topology-segmented button[aria-pressed="true"] { color:var(--text); border-color:var(--blue); background:var(--chip); }
+    .topology-segmented button:focus-visible, .topology-relative-select:focus-visible, .topology-context th button:focus-visible, .icon-button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+    .topology-complexity-notice { flex:1 0 100%; margin:0; color:var(--warning-text); font-size:12px; }
     .topology-control-row { display:grid; gap:5px; }
     .topology-control-row select { width:100%; }
     .topology-evidence-legend { display:grid; gap:6px; }
@@ -1974,6 +1986,9 @@
       .map { width:100%; min-width:0; }
       .topology-context table { display:block; max-width:100%; overflow-x:auto; }
     }
+    @media (prefers-reduced-motion:reduce) {
+      *, *::before, *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+    }
   summary:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
 </style>
 </head>
@@ -2180,7 +2195,7 @@ function applyMockShell() {
   byId('topologyGroup').addEventListener('change', event => { topologyGroupReplicas = event.target.checked; syncTopologyURL(); renderTopology(); });
 
   overview.className = 'section active panel topology-workspace';
-  overview.innerHTML = `<div class="toolbar"><div class="toolbar-title"><p class="eyebrow" id="topologyScope">Namespace: all</p><h1 id="topologyTitle">Topology relation explorer</h1></div><div class="stat"><strong id="topologyObjectStat">0</strong><span>objects</span></div><div class="stat"><strong id="topologyEdgeStat">0</strong><span>edges</span></div><div class="stat"><strong id="topologyWarningStat">0</strong><span>warnings</span></div><button type="button" class="icon-button" id="topologyFit" aria-label="Fit topology to screen">${iconUse('icon-fit')}</button></div><div class="map"></div>`;
+  overview.innerHTML = `<div class="toolbar"><div class="toolbar-title"><p class="eyebrow" id="topologyScope">Namespace: all</p><h1 id="topologyTitle">Topology relation explorer</h1></div><div class="stat"><strong id="topologyObjectStat">0</strong><span>objects</span></div><div class="stat"><strong id="topologyEdgeStat">0</strong><span>edges</span></div><div class="stat"><strong id="topologyWarningStat">0</strong><span>warnings</span></div><button type="button" class="icon-button" id="topologyZoomOut" aria-label="Zoom topology out">−</button><button type="button" class="icon-button" id="topologyZoomIn" aria-label="Zoom topology in">+</button><button type="button" class="icon-button" id="topologyFit" aria-label="Reset topology zoom and position">${iconUse('icon-fit')}</button><p class="topology-complexity-notice" id="topologyComplexityNotice" role="status" aria-live="polite" hidden></p></div><div class="map"></div>`;
   overview.querySelector('.map').appendChild(topology);
   topology.className = 'map-inner';
   [...legacyMain.querySelectorAll(':scope > .section')].filter(s => s !== overview).forEach(section => {
@@ -2205,6 +2220,9 @@ function applyMockShell() {
   inspectorBody.append(inventory, freshnessCard, selected);
   workspace.appendChild(inspector);
   byId('topologyFit').addEventListener('click', () => { topologyView = {scale:1,x:0,y:0}; syncTopologyURL(); applyTopologyTransform(); });
+  const zoomTopology = factor => { topologyView.scale=Math.max(.35,Math.min(4,topologyView.scale*factor));syncTopologyURL();applyTopologyTransform(); };
+  byId('topologyZoomOut').addEventListener('click', () => zoomTopology(.8));
+  byId('topologyZoomIn').addEventListener('click', () => zoomTopology(1.25));
 }
 
 const join = v => Array.isArray(v) && v.length ? v.join(', ') : '-';
@@ -2263,6 +2281,7 @@ let topologySort = topologyURL.get('topologySort') || 'kind', topologySortDirect
 let topologyMetricKey = topologyURL.get('topologyMetric') || '', topologyRelativeSort = 'relation', topologyRelativeDirection = 'asc', topologyRawExpanded = false;
 let topologyView = {scale:Math.max(.35, Math.min(4, topologyNumberParam('topologyScale', 1))), x:topologyNumberParam('topologyX', 0), y:topologyNumberParam('topologyY', 0)};
 let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0, nodeId:'', edgeId:''};
+let topologyRenderSample = 0;
 const topologyLayoutRanks = new Map();
 function syncTopologyURL() {
   const url = new URL(location.href);
@@ -2686,6 +2705,7 @@ const topologyViewKinds = {
   runtime:new Set(['workload','pod','node','nodegroup','ec2-instance']),
   infrastructure:new Set(['cluster','namespace','nodegroup','node','ec2-instance','addon','eksinsight'])
 };
+const topologyGraphLimits = Object.freeze({nodes:400,edges:800});
 function topologyKind(node) { return String(node?.kind || '').toLowerCase(); }
 function topologyNodeHealth(node) {
   const metadata = node?.metadata || {}, state = String(metadata.state || metadata.status || metadata.phase || '').toLowerCase();
@@ -2812,17 +2832,22 @@ function renderTopologyTable(nodes, edges, nodeById) {
   byId('topology').innerHTML = `<div class="topology-table-wrap"><table class="topology-table"><thead><tr>${headers.map(([key,label]) => `<th scope="col"><button type="button" data-topology-sort="${key}" aria-label="Sort by ${label}">${label}${topologySort === key ? (topologySortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
   byId('topology').querySelectorAll('[data-topology-sort]').forEach(button => button.addEventListener('click', () => { const key = button.dataset.topologySort; topologySortDirection = topologySort === key && topologySortDirection === 'asc' ? 'desc' : 'asc'; topologySort = key; syncTopologyURL(); renderTopology(); }));
 }
+function recordTopologyRender(start,nodes,edges,mode) { const sample=++topologyRenderSample;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(sample!==topologyRenderSample)return;const surface=byId('topology');if(!surface)return;surface.dataset.renderMs=(performance.now()-start).toFixed(2);surface.dataset.renderNodes=String(nodes);surface.dataset.renderEdges=String(edges);surface.dataset.renderMode=mode;})); }
 function renderTopology() {
+  const renderStarted=performance.now();
   syncTopologyLayoutRanks();
   const graph = topologyFilteredGraph(), {nodes,edges,nodeById} = graph, selected = nodeById.get(topologySelectedNodeId), selectedEdge=edges.find(edge=>edge.id===topologySelectedEdgeId), incident = selected ? arr(topologyGraph?.edges).filter(edge => edge.source === selected.id || edge.target === selected.id) : [];
+  const exceedsGraphLimit=nodes.length>topologyGraphLimits.nodes||edges.length>topologyGraphLimits.edges;
+  if(exceedsGraphLimit&&topologyMode==='graph'){topologyMode='table';syncTopologyURL();}
   document.querySelectorAll('[data-topology-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyView === topologySemanticView)));
   document.querySelectorAll('[data-topology-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyMode === topologyMode)));
   const warningCount = nodes.filter(node => topologyNodeHealth(node) === 'warning').length, setText = (id,value) => { const element=byId(id); if (element) element.textContent=value; };
   setText('topologyObjectStat',nodes.length); setText('topologyEdgeStat',edges.length); setText('topologyWarningStat',warningCount); setText('topologyScope',`${nsFilter === 'all' ? 'All namespaces' : nsFilter} · ${topologySemanticView}`); setText('topologyTitle',topologyMode === 'graph' ? 'Semantic swimlanes' : 'Relation explorer table');
   setText('topologyGatewayCount',nodes.filter(node => ['ingress','gateway','gatewayroute'].includes(topologyKind(node))).length); setText('topologyServiceCount',nodes.filter(node => topologyKind(node)==='service').length); setText('topologyWorkloadCount',nodes.filter(node => topologyKind(node)==='workload').length); setText('topologyPodCount',nodes.filter(node => topologyKind(node)==='pod').length); setText('topologyStorageCount',nodes.filter(node => ['persistentvolume','persistentvolumeclaim','storageclass'].includes(topologyKind(node))).length); setText('topologyImageCount',nodes.filter(node => topologyKind(node)==='image').length);
+  const complexityNotice=byId('topologyComplexityNotice');if(complexityNotice){complexityNotice.hidden=!exceedsGraphLimit;complexityNotice.textContent=exceedsGraphLimit?`Relation table selected because this view has ${nodes.length} objects and ${edges.length} relationships; graph limit is ${topologyGraphLimits.nodes} objects or ${topologyGraphLimits.edges} relationships. Narrow filters to restore the graph.`:'';}
   updateTopologySelectionSummary(selected,incident,selectedEdge);
-  if (!nodes.length) { byId('topology').innerHTML='<div class="empty">No topology objects match the current view and filters.</div>'; return; }
-  if (topologyMode === 'table') { renderTopologyTable(nodes,edges,nodeById); return; }
+  if (!nodes.length) { byId('topology').innerHTML='<div class="empty">No topology objects match the current view and filters.</div>'; recordTopologyRender(renderStarted,0,0,'empty'); return; }
+  if (topologyMode === 'table') { renderTopologyTable(nodes,edges,nodeById); recordTopologyRender(renderStarted,nodes.length,edges.length,'table'); return; }
   const layers=['application','workload','runtime','infrastructure'], laneNodes=new Map(layers.map(layer=>[layer,[]])); nodes.forEach(node=>laneNodes.get(topologyLayer(node)).push(node));
   const groupOrder = node => topologyGroupReplicas ? topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById) : '';
   laneNodes.forEach(items => items.sort((a,b)=>topologyLayoutRank(a)-topologyLayoutRank(b) || groupOrder(a).localeCompare(groupOrder(b)) || a.name.localeCompare(b.name)));
@@ -2833,6 +2858,7 @@ function renderTopology() {
   const edgeSVG=edges.map(edge=>{const A=drawn.get(edge.source),B=drawn.get(edge.target);if(!A||!B)return'';const hot=topologySelectedNodeId&&(edge.source===topologySelectedNodeId||edge.target===topologySelectedNodeId),selectedRelationship=edge.id===topologySelectedEdgeId;return `<path class="link selectable ${esc(edge.kind)}${hot?' hot':''}${selectedRelationship?' selected':''}" data-edge-id="${esc(edge.id)}" role="button" tabindex="0" aria-pressed="${selectedRelationship}" aria-label="Select ${esc(edge.relation||edge.kind)} relationship" d="${topologyOrthogonalPath(A,B)}"><title>${esc(`${edge.kind} · ${edge.provider} · ${edge.relation || ''}`)}</title></path>`}).join('');
   const nodeSVG=[...drawn.values()].map(node=>{const selectedNode=node.id===topologySelectedNodeId,related=incident.some(edge=>edge.source===node.id||edge.target===node.id)||(selectedEdge&&(selectedEdge.source===node.id||selectedEdge.target===node.id)),nodeIncident=arr(topologyGraph?.edges).filter(edge=>edge.source===node.id||edge.target===node.id),health=topologyNodeHealth(node),statusColor=health==='warning'?'var(--amber)':health==='unknown'?'var(--muted)':health==='stopped'?'var(--red)':'var(--green)',group=topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById),metric=arr(node.metrics).find(item=>item.key===topologyMetricKey),metricText=topologyMetricKey?(metric?`${metric.label}: ${formatTopologyMetric(metric)}`:'metric unavailable'):'';return `<g class="node${selectedNode?' selected':related?' related':''}" data-node-id="${esc(node.id)}" data-detail="${esc(topologyNodeDetail(node,nodeIncident))}" role="button" tabindex="0" aria-pressed="${selectedNode}" aria-label="Select ${esc(node.kind)} ${esc(node.name)}"><rect class="node-card" x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}"/><rect class="node-icon-box" x="${node.x+8}" y="${node.y+12}" width="32" height="32"/><svg x="${node.x+14}" y="${node.y+18}" width="20" height="20" style="color:var(--blue)"><use href="#${topologyIconID(topologyKind(node))}"/></svg><text class="node-label" x="${node.x+48}" y="${node.y+24}">${esc(node.name)}</text><text class="node-meta" x="${node.x+48}" y="${node.y+42}">${esc(group || `${node.scope?.namespace || 'cluster'} · ${node.scope?.provider || '-'}`)}</text>${metricText?`<text class="node-metric" x="${node.x+48}" y="${node.y+59}">${esc(metricText)}</text>`:''}<circle cx="${node.x+node.w-14}" cy="${node.y+16}" r="5" fill="${statusColor}"/></g>`}).join('');
   byId('topology').innerHTML=`<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSVG}${edgeSVG}${nodeSVG}</g></svg><div class="legend"><span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${edges.length} evidence-backed relationships</span></div>`;
+  recordTopologyRender(renderStarted,nodes.length,edges.length,'graph');
 }
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
 let selectedDetail = null;

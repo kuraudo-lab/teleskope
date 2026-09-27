@@ -250,6 +250,15 @@ out-of-order revisions, duplicate apply, explicit deletion, invalid query
 input, and burst retention beyond the 16-revision window. Browser acceptance
 checks refresh stability and full-reset fallback against the Recorded server.
 
+## Scale And Accessibility Gates
+
+The normative scale profiles, render and interaction budgets, resource
+budgets, deterministic table fallback, and accessibility acceptance are in
+`docs/topology-scale-performance-accessibility.md`. The embedded graph limit is
+400 visible nodes or 800 visible edges per semantic view. Above either limit,
+the relation table preserves the complete filtered evidence and announces how
+to narrow the view. No node probe or DaemonSet is included in these budgets.
+
 ## Security Boundary
 
 Teleskope does not implement or ship a privileged node probe. It does not

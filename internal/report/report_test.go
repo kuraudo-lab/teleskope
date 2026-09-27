@@ -443,6 +443,15 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function topologyFindingRef",
 		"function topologyViewForNode",
 		"topologyRestoreSelectionView",
+		"topologyGraphLimits",
+		"if(exceedsGraphLimit&&topologyMode==='graph')",
+		"Relation table selected because this view has",
+		`id="topologyComplexityNotice" role="status" aria-live="polite"`,
+		`id="topologyZoomOut" aria-label="Zoom topology out"`,
+		`id="topologyZoomIn" aria-label="Zoom topology in"`,
+		`aria-label="Reset topology zoom and position"`,
+		"function recordTopologyRender",
+		"prefers-reduced-motion:reduce",
 		"function selectTopologyEdge",
 		"data-edge-id",
 		"Select an object or relationship",
@@ -715,6 +724,25 @@ func TestRenderUILiveBodyMarkerComesFromMode(t *testing.T) {
 	}
 	if strings.Contains(offlinePage, `data-live="true"`) || !strings.Contains(offlinePage, "<body>") {
 		t.Fatalf("offline page should not include live body marker")
+	}
+}
+
+func TestRenderUIAcceptsValidatedTopologyFixture(t *testing.T) {
+	profile, ok := topology.LookupScaleProfile("small")
+	if !ok {
+		t.Fatal("small scale profile missing")
+	}
+	graph := topology.BuildScaleFixture(profile, 1)
+	html, err := RenderUI(UIRenderOptions{Mode: UIModeOffline, Snapshot: &inventory.Snapshot{}, Topology: &graph})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, `"clusterId":"scale-small"`) || !strings.Contains(html, `"name":"pod-0099"`) {
+		t.Fatal("topology override was not embedded in the shared UI")
+	}
+	graph.Nodes[0].ID = ""
+	if _, err := RenderUI(UIRenderOptions{Mode: UIModeOffline, Snapshot: &inventory.Snapshot{}, Topology: &graph}); err == nil || !strings.Contains(err.Error(), "validate topology override") {
+		t.Fatalf("invalid topology override error = %v", err)
 	}
 }
 

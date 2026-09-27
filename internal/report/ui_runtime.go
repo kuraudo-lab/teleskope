@@ -28,6 +28,7 @@ type UIEndpoints struct {
 type UIRenderOptions struct {
 	Mode      UIMode
 	Snapshot  *inventory.Snapshot
+	Topology  *topology.Graph
 	Target    string
 	Endpoints UIEndpoints
 	Styles    []string
@@ -91,6 +92,12 @@ func renderPayload(opts UIRenderOptions) (uiPayload, error) {
 		return uiPayload{}, fmt.Errorf("encode snapshot for html: %w", err)
 	}
 	graph := topology.Project(opts.Snapshot, 1)
+	if opts.Topology != nil {
+		graph = *opts.Topology
+		if err := graph.Validate(); err != nil {
+			return uiPayload{}, fmt.Errorf("validate topology override: %w", err)
+		}
+	}
 	graphJSON, err := json.Marshal(graph)
 	if err != nil {
 		return uiPayload{}, fmt.Errorf("encode topology for html: %w", err)
