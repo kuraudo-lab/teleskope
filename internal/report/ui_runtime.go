@@ -7,6 +7,7 @@ import (
 
 	"github.com/kuraudo-lab/teleskope/internal/advisor"
 	"github.com/kuraudo-lab/teleskope/internal/inventory"
+	"github.com/kuraudo-lab/teleskope/internal/topology"
 )
 
 type UIMode string
@@ -56,6 +57,7 @@ func RenderUI(opts UIRenderOptions) (string, error) {
 	page = strings.Replace(page, "__TELESKOPE_BOOT_CONFIG__", escapeScriptText(string(boot)), 1)
 	page = strings.Replace(page, "__TELESKOPE_ADVISOR_JSON__", escapeScriptText(payload.advisor), 1)
 	page = strings.Replace(page, "__TELESKOPE_SNAPSHOT_JSON__", escapeScriptText(payload.snapshot), 1)
+	page = strings.Replace(page, "__TELESKOPE_TOPOLOGY_JSON__", escapeScriptText(payload.topology), 1)
 	page = strings.Replace(page, "__TELESKOPE_EKS_PROJECTION_JSON__", escapeScriptText(payload.eksProjection), 1)
 	page = strings.Replace(page, "__TELESKOPE_MARKDOWN__", escapeScriptText(payload.markdown), 1)
 	page = strings.Replace(page, "<body>", bodyOpen(mode), 1)
@@ -71,13 +73,14 @@ func RenderUI(opts UIRenderOptions) (string, error) {
 type uiPayload struct {
 	advisor       string
 	snapshot      string
+	topology      string
 	eksProjection string
 	markdown      string
 }
 
 func renderPayload(opts UIRenderOptions) (uiPayload, error) {
 	if opts.Mode == UIModeLive {
-		return uiPayload{advisor: "{}", snapshot: "{}", eksProjection: "{}", markdown: ""}, nil
+		return uiPayload{advisor: "{}", snapshot: "{}", topology: "{}", eksProjection: "{}", markdown: ""}, nil
 	}
 	if opts.Snapshot == nil {
 		return uiPayload{}, fmt.Errorf("snapshot is nil")
@@ -85,6 +88,11 @@ func renderPayload(opts UIRenderOptions) (uiPayload, error) {
 	snapshot, err := SnapshotJSON(opts.Snapshot)
 	if err != nil {
 		return uiPayload{}, fmt.Errorf("encode snapshot for html: %w", err)
+	}
+	graph := topology.Project(opts.Snapshot, 1)
+	graphJSON, err := json.Marshal(graph)
+	if err != nil {
+		return uiPayload{}, fmt.Errorf("encode topology for html: %w", err)
 	}
 	analysis, err := json.Marshal(advisor.Analyze(opts.Snapshot))
 	if err != nil {
@@ -98,7 +106,7 @@ func renderPayload(opts UIRenderOptions) (uiPayload, error) {
 	if target == "" {
 		target = targetName(opts.Snapshot)
 	}
-	return uiPayload{advisor: string(analysis), snapshot: snapshot, eksProjection: string(eksProjection), markdown: markdown(opts.Snapshot, target)}, nil
+	return uiPayload{advisor: string(analysis), snapshot: snapshot, topology: string(graphJSON), eksProjection: string(eksProjection), markdown: markdown(opts.Snapshot, target)}, nil
 }
 
 func bodyOpen(mode UIMode) string {

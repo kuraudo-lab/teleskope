@@ -103,6 +103,7 @@ function detailKey(obj) {
 function applyLiveSnapshot(next) {
   const scrolls = [...document.querySelectorAll('.scroll')].map(el => [el, el.scrollTop, el.scrollLeft]);
   snapshot = next.snapshot || next;
+  topologyGraph = next.graph || topologyGraph;
   eksProjection = next.eksProjection || {};
   k = snapshot.kubernetes || {};
   eks = snapshot.eks || {};

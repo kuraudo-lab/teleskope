@@ -1071,6 +1071,30 @@
       overflow:hidden;
       height:100%;
     }
+    .topology-segmented { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+    .topology-segmented.views { grid-template-columns:1fr; }
+    .topology-segmented button { min-width:0; padding:7px 8px; border:1px solid var(--line); border-radius:7px; color:var(--muted); background:var(--control-bg); cursor:pointer; }
+    .topology-segmented button[aria-pressed="true"] { color:var(--text); border-color:var(--blue); background:var(--chip); }
+    .topology-control-row { display:grid; gap:5px; }
+    .topology-control-row select { width:100%; }
+    .topology-evidence-legend { display:grid; gap:6px; }
+    .topology-evidence-legend span { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:12px; }
+    .topology-evidence-legend i { width:10px; height:3px; background:var(--blue); }
+    .topology-evidence-legend .ownership i { background:var(--purple); }
+    .topology-evidence-legend .resolved i { background:var(--green); }
+    .topology-evidence-legend .inferred i { background:var(--amber); }
+    .topology-evidence-legend .observed i { background:var(--red); }
+    .topology-table-wrap { min-width:760px; padding:14px; }
+    .topology-table { width:100%; border-collapse:collapse; }
+    .topology-table th { padding:0; }
+    .topology-table th button { width:100%; padding:9px 10px; border:0; border-bottom:1px solid var(--line); border-radius:0; color:var(--muted); background:var(--table-head-bg); text-align:left; cursor:pointer; }
+    .topology-table th button:focus-visible, .topology-table-select:focus-visible { outline:2px solid var(--cyan); outline-offset:-2px; }
+    .topology-table td { border-bottom:1px solid var(--table-line); }
+    .topology-table tr[aria-selected="true"] { background:var(--chip); }
+    .topology-table-select { width:100%; border:0; padding:0; color:inherit; background:transparent; text-align:left; cursor:pointer; }
+    .topology-coverage { display:grid; gap:6px; margin-top:10px; }
+    .topology-coverage-item { padding:7px 8px; border:1px solid var(--line); border-radius:6px; color:var(--muted); font-size:11px; }
+    .topology-selection-note { color:var(--amber); }
     .toolbar {
       display:flex;
       align-items:center;
@@ -1224,6 +1248,11 @@
       stroke-linecap:square;
       stroke-linejoin:miter;
     }
+    .link.declared { stroke:var(--blue); }
+    .link.resolved { stroke:var(--green); }
+    .link.ownership { stroke:var(--purple); }
+    .link.inferred { stroke:var(--amber); stroke-dasharray:6 4; }
+    .link.observed { stroke:var(--red); stroke-width:2.4; }
     .map-inner > .legend {
       position:absolute;
       left:16px;
@@ -2462,6 +2491,7 @@
   ]
 }
 </script>
+<script id="topology-data" type="application/json">{"schemaVersion":"teleskope.io/topology/v1alpha1","clusterId":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","revision":1,"generatedAt":"2026-09-25T00:00:00Z","nodes":[{"id":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/addon/_/aws-ebs-csi-driver","kind":"addon","name":"aws-ebs-csi-driver","identity":"aws-ebs-csi-driver","scope":{"provider":"eks","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","metadata":{"status":"ACTIVE","version":"demo"},"findingRefs":["eks.addon/v1"]},{"id":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","kind":"cluster","name":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","identity":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","scope":{"provider":"eks","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"}},{"id":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/nodegroup/_/demo-workers","kind":"nodegroup","name":"demo-workers","identity":"demo-workers","scope":{"provider":"eks","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","metadata":{"status":"ACTIVE"},"findingRefs":["eks.nodegroup/v1"]},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/gatewayclass/_/demo-gateway","kind":"gatewayclass","name":"demo-gateway","identity":"demo-gateway","apiVersion":"gateway.networking.k8s.io/v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","findingRefs":["networking.gateway/v1"]},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/checkout","kind":"namespace","name":"checkout","identity":"checkout","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo"},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/observability","kind":"namespace","name":"observability","identity":"observability","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo"},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/platform","kind":"namespace","name":"platform","identity":"platform","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo"},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/node/_/demo-node","kind":"node","name":"demo-node","identity":"demo-node","apiVersion":"v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","metadata":{"nodegroup":"demo-workers","ready":"True"},"findingRefs":["eks.nodegroup/v1"]},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/pod/checkout/checkout-api-demo","kind":"pod","name":"checkout-api-demo","identity":"checkout-api-demo","apiVersion":"v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","namespace":"checkout","account":"000000000000","region":"eu-west-1"},"parentId":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/checkout","metadata":{"phase":"Running"}},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/pod/checkout/orders-demo","kind":"pod","name":"orders-demo","identity":"orders-demo","apiVersion":"v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","namespace":"checkout","account":"000000000000","region":"eu-west-1"},"parentId":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/checkout","metadata":{"phase":"Running"}},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/service/checkout/checkout-api","kind":"service","name":"checkout-api","identity":"checkout-api","apiVersion":"v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","namespace":"checkout","account":"000000000000","region":"eu-west-1"},"parentId":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/checkout","metadata":{"type":"ClusterIP"}},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/storageclass/_/demo-block","kind":"storageclass","name":"demo-block","identity":"demo-block","apiVersion":"storage.k8s.io/v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","account":"000000000000","region":"eu-west-1"},"parentId":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","findingRefs":["storage.expansion/v1","storage.rwx/v1"]},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/workload/checkout/deployment:checkout-api","kind":"workload","name":"checkout-api","identity":"deployment:checkout-api","apiVersion":"apps/v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","namespace":"checkout","account":"000000000000","region":"eu-west-1"},"parentId":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/checkout","metadata":{"resourceKind":"Deployment"}},{"id":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/workload/checkout/statefulset:orders","kind":"workload","name":"orders","identity":"statefulset:orders","apiVersion":"apps/v1","scope":{"provider":"kubernetes","cluster":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo","namespace":"checkout","account":"000000000000","region":"eu-west-1"},"parentId":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/checkout","metadata":{"resourceKind":"StatefulSet"}}],"edges":[{"id":"declared/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fservice%2Fcheckout%2Fcheckout-api/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fworkload%2Fcheckout%2Fdeployment:checkout-api/kubernetes","source":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/service/checkout/checkout-api","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/workload/checkout/deployment:checkout-api","kind":"declared","provider":"kubernetes","relation":"selects","directed":true,"evidence":[{"provider":"kubernetes","basis":"declared","freshness":"current","confidence":"high","summary":"service selector and workload selector are equal"}]},{"id":"ownership/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fcluster%2F_%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Faddon%2F_%2Faws-ebs-csi-driver/eks","source":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","target":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/addon/_/aws-ebs-csi-driver","kind":"ownership","provider":"eks","relation":"contains","directed":true,"evidence":[{"provider":"eks","basis":"declared","freshness":"current","confidence":"high","summary":"EKS managed add-on belongs to cluster"}]},{"id":"ownership/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fcluster%2F_%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnodegroup%2F_%2Fdemo-workers/eks","source":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","target":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/nodegroup/_/demo-workers","kind":"ownership","provider":"eks","relation":"contains","directed":true,"evidence":[{"provider":"eks","basis":"declared","freshness":"current","confidence":"high","summary":"EKS managed node group belongs to cluster"}]},{"id":"ownership/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fcluster%2F_%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnamespace%2F_%2Fcheckout/kubernetes","source":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/checkout","kind":"ownership","provider":"kubernetes","relation":"contains","directed":true,"evidence":[{"provider":"kubernetes","basis":"declared","freshness":"current","confidence":"high","summary":"namespace belongs to cluster"}]},{"id":"ownership/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fcluster%2F_%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnamespace%2F_%2Fobservability/kubernetes","source":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/observability","kind":"ownership","provider":"kubernetes","relation":"contains","directed":true,"evidence":[{"provider":"kubernetes","basis":"declared","freshness":"current","confidence":"high","summary":"namespace belongs to cluster"}]},{"id":"ownership/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fcluster%2F_%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnamespace%2F_%2Fplatform/kubernetes","source":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/cluster/_/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/namespace/_/platform","kind":"ownership","provider":"kubernetes","relation":"contains","directed":true,"evidence":[{"provider":"kubernetes","basis":"declared","freshness":"current","confidence":"high","summary":"namespace belongs to cluster"}]},{"id":"ownership/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fworkload%2Fcheckout%2Fdeployment:checkout-api/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fpod%2Fcheckout%2Fcheckout-api-demo/kubernetes","source":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/workload/checkout/deployment:checkout-api","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/pod/checkout/checkout-api-demo","kind":"ownership","provider":"kubernetes","relation":"owns","directed":true,"evidence":[{"provider":"kubernetes","basis":"declared","freshness":"current","confidence":"high","summary":"metadata.ownerReferences"}]},{"id":"ownership/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fworkload%2Fcheckout%2Fstatefulset:orders/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fpod%2Fcheckout%2Forders-demo/kubernetes","source":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/workload/checkout/statefulset:orders","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/pod/checkout/orders-demo","kind":"ownership","provider":"kubernetes","relation":"owns","directed":true,"evidence":[{"provider":"kubernetes","basis":"declared","freshness":"current","confidence":"high","summary":"metadata.ownerReferences"}]},{"id":"resolved/eks%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnodegroup%2F_%2Fdemo-workers/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnode%2F_%2Fdemo-node/kubernetes","source":"eks/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/nodegroup/_/demo-workers","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/node/_/demo-node","kind":"resolved","provider":"kubernetes","relation":"manages","directed":true,"evidence":[{"provider":"kubernetes","basis":"resolved","freshness":"current","confidence":"high","summary":"node label resolved to collected EKS node group"}],"findingRefs":["eks.nodegroup/v1"]},{"id":"resolved/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fpod%2Fcheckout%2Fcheckout-api-demo/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnode%2F_%2Fdemo-node/kubernetes","source":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/pod/checkout/checkout-api-demo","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/node/_/demo-node","kind":"resolved","provider":"kubernetes","relation":"scheduled-to","directed":true,"evidence":[{"provider":"kubernetes","basis":"resolved","freshness":"current","confidence":"high","summary":"pod.spec.nodeName resolved to collected Node"}]},{"id":"resolved/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fpod%2Fcheckout%2Forders-demo/kubernetes%2Farn:aws:eks:eu-west-1:000000000000:cluster%252Fsource-demo%2Fnode%2F_%2Fdemo-node/kubernetes","source":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/pod/checkout/orders-demo","target":"kubernetes/arn:aws:eks:eu-west-1:000000000000:cluster%2Fsource-demo/node/_/demo-node","kind":"resolved","provider":"kubernetes","relation":"scheduled-to","directed":true,"evidence":[{"provider":"kubernetes","basis":"resolved","freshness":"current","confidence":"high","summary":"pod.spec.nodeName resolved to collected Node"}]}],"coverage":[{"provider":"eks","capability":"eks.insight","status":"unknown","reason":"Synthetic fixture intentionally omits upgrade insights; readiness is unknown.","observedAt":"2026-09-25T00:00:00Z"},{"provider":"external","capability":"runtime-connections","status":"unavailable","reason":"no external connection evidence provider configured"},{"provider":"kubernetes","capability":"csidrivers","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"deployments","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"gatewayclasses","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"gateways","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"httproutes","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"namespaces","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"nodes","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"persistentvolumeclaims","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"persistentvolumes","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"pods","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"services","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"statefulsets","status":"complete","observedAt":"2026-09-25T00:00:00Z"},{"provider":"kubernetes","capability":"storageclasses","status":"complete","observedAt":"2026-09-25T00:00:00Z"}]}</script>
 <script id="eks-projection-data" type="application/json">{"visible":true,"overview":[{"field":"Cluster","value":"source-demo"},{"field":"Region","value":"eu-west-1"},{"field":"Version","value":"1.34"},{"field":"Platform","value":"-"},{"field":"Status","value":"ACTIVE"},{"field":"ARN","value":"arn:aws:eks:eu-west-1:000000000000:cluster/source-demo"},{"field":"Endpoint","value":"public=false private=false"},{"field":"Auth","value":"- bootstrapCreatorAdmin=-"},{"field":"Control plane logs","value":"enabled= disabled="},{"field":"Auto mode","value":"compute=- nodePools= blockStorage=-"}],"capacity":[{"resource":"CPU","capacity":"2 cores","allocatable":"1900m","requestedBySpecs":"-","limitsBySpecs":"-"},{"resource":"Memory","capacity":"8.0 GiB","allocatable":"7.0 GiB","requestedBySpecs":"-","limitsBySpecs":"-"},{"resource":"Pods","capacity":"29","allocatable":"29","requestedBySpecs":"-","limitsBySpecs":"-"}],"network":[{"field":"VPC","value":"-"},{"field":"Cluster subnets","value":"-"},{"field":"Cluster security groups","value":"-"},{"field":"Cluster security group","value":"-"},{"field":"Public access CIDRs","value":"-"},{"field":"IP family","value":"-"},{"field":"Service CIDR","value":"-"},{"field":"Auto Mode load balancing","value":"-"},{"field":"Nodegroup subnets","value":"demo-workers:"}],"addons":[{"name":"aws-ebs-csi-driver","version":"demo","status":"ACTIVE","namespace":"-","targetKubernetes":"-","compatibleVersions":"-","upgrade":"-","iam":"-","issues":"-"}],"nodegroups":[{"name":"demo-workers","version":"1.34","release":"-","status":"ACTIVE","ami":"-","capacity":"m7i.large","capacityType":"-","size":"desired=1 min=1 max=3","subnets":"-","asgs":"-","instances":"-","iam":"-","issues":"-"}],"nodegroupReadiness":[{"group":"demo-workers","evidence":"managed-nodegroup","zone":"-","expectedVersion":"1.34","expectedRelease":"-","expectedAmi":"-","launchTemplate":"-","nodes":"demo-node","observedKubelet":"v1.34.0","observedOs":"-","observedRuntime":"containerd://2.0.0","observedInstances":"-","readiness":"observed: runtime evidence linked to managed nodegroup"}]}</script>
 <script id="markdown-data" type="text/plain"># Teleskope scan summary
 
@@ -2642,6 +2672,7 @@
 let bootConfig = JSON.parse(document.getElementById('boot-config').textContent);
 let advisorReport = JSON.parse(document.getElementById("advisor-data").textContent);
 let snapshot = JSON.parse(document.getElementById('snapshot-data').textContent);
+let topologyGraph = JSON.parse(document.getElementById('topology-data').textContent);
 let eksProjection = JSON.parse(document.getElementById('eks-projection-data').textContent);
 let reportMarkdown = document.getElementById('markdown-data').textContent;
 let k = snapshot.kubernetes || {};
@@ -2729,9 +2760,16 @@ function applyMockShell() {
   legacyMain.className = 'workspace-main';
 
   legacyAside.className = 'panel sidebar';
-  legacyAside.innerHTML = `<div class="pane-head"><p class="eyebrow">Topology controls</p><h1>Map by relationship, not by color</h1></div>
+  legacyAside.innerHTML = `<div class="pane-head"><p class="eyebrow">Topology controls</p><h1>Investigate by relationship and evidence</h1></div>
     <div class="controls">
-      <div class="control-group"><label class="control-title" for="topology-search">Search</label><input id="topology-search" class="search" type="search" placeholder="Search topology objects" aria-label="Search topology objects"></div>
+      <div class="control-group"><label class="control-title" for="topology-search">Search</label><input id="topology-search" class="search" type="search" placeholder="kind:service health:warning" aria-label="Search topology objects"></div>
+      <div class="control-group"><div class="control-title">Semantic view</div><div class="topology-segmented views" id="topologyViewOptions">${topologyViewNames.map(view => `<button type="button" data-topology-view="${view}" aria-pressed="${view === topologySemanticView}">${view[0].toUpperCase() + view.slice(1)}</button>`).join('')}</div></div>
+      <div class="control-group"><div class="control-title">Presentation</div><div class="topology-segmented" id="topologyModeOptions"><button type="button" data-topology-mode="graph" aria-pressed="${topologyMode === 'graph'}">Swimlanes</button><button type="button" data-topology-mode="table" aria-pressed="${topologyMode === 'table'}">Relations table</button></div></div>
+      <div class="control-group topology-control-row"><label class="control-title" for="topologyHealth">Health</label><select id="topologyHealth"><option value="all">All health</option><option value="healthy">Healthy</option><option value="warning">Warning</option><option value="unknown">Unknown</option><option value="stopped">Stopped</option></select></div>
+      <div class="control-group topology-control-row"><label class="control-title" for="topologySystem">System objects</label><select id="topologySystem"><option value="include">Include system</option><option value="exclude">Hide system</option><option value="only">Only system</option></select></div>
+      <div class="control-group topology-control-row"><label class="control-title" for="topologyState">Relationship state</label><select id="topologyState"><option value="all">All objects</option><option value="connected">Connected</option><option value="disconnected">Disconnected</option><option value="stopped">Stopped</option></select></div>
+      <label class="check"><span>Focus selected neighborhood</span><input id="topologyFocus" type="checkbox" ${topologyFocusSelection ? 'checked' : ''}></label>
+      <label class="check"><span>Group replicas by owner</span><input id="topologyGroup" type="checkbox" ${topologyGroupReplicas ? 'checked' : ''}></label>
       <div class="control-group"><div class="control-title">Object types</div>
         <label class="check"><span>${iconUse('icon-gateway')}Ingress / Gateway</span><span class="count" id="topologyGatewayCount">0</span></label>
         <label class="check"><span>${iconUse('icon-service')}Services</span><span class="count" id="topologyServiceCount">0</span></label>
@@ -2740,6 +2778,7 @@ function applyMockShell() {
         <label class="check"><span>${iconUse('icon-storage')}Storage</span><span class="count" id="topologyStorageCount">0</span></label>
         <label class="check"><span>${iconUse('icon-image')}Images</span><span class="count" id="topologyImageCount">0</span></label>
       </div>
+      <div class="control-group"><div class="control-title">Relationship evidence</div><div class="topology-evidence-legend"><span><i></i>Declared</span><span class="resolved"><i></i>Resolved</span><span class="ownership"><i></i>Ownership</span><span class="inferred"><i></i>Inferred</span><span class="observed"><i></i>Observed</span></div></div>
       <div class="control-group"><div class="control-title">Legend</div><div class="legend" aria-label="Topology icon legend">
         <div class="legend-item gateway">${iconUse('icon-gateway')}Gateway</div><div class="legend-item service">${iconUse('icon-service')}Service</div>
         <div class="legend-item workload">${iconUse('icon-workload')}Workload</div><div class="legend-item pod">${iconUse('icon-pod')}Pod</div>
@@ -2747,12 +2786,24 @@ function applyMockShell() {
       </div></div>
     </div>`;
   byId('topology-search')?.addEventListener('input', event => {
-    topologySearch = event.target.value.trim().toLowerCase();
+    topologySearch = event.target.value.trim();
+    syncTopologyURL();
     renderTopology();
   });
+  byId('topology-search').value = topologySearch;
+  byId('topologyHealth').value = topologyHealthFilter;
+  byId('topologySystem').value = topologySystemFilter;
+  byId('topologyState').value = topologyStateFilter;
+  byId('topologyViewOptions').addEventListener('click', event => { const button = event.target.closest('[data-topology-view]'); if (!button) return; topologySemanticView = button.dataset.topologyView; syncTopologyURL(); renderTopology(); });
+  byId('topologyModeOptions').addEventListener('click', event => { const button = event.target.closest('[data-topology-mode]'); if (!button) return; topologyMode = button.dataset.topologyMode; syncTopologyURL(); renderTopology(); });
+  byId('topologyHealth').addEventListener('change', event => { topologyHealthFilter = event.target.value; syncTopologyURL(); renderTopology(); });
+  byId('topologySystem').addEventListener('change', event => { topologySystemFilter = event.target.value; syncTopologyURL(); renderTopology(); });
+  byId('topologyState').addEventListener('change', event => { topologyStateFilter = event.target.value; syncTopologyURL(); renderTopology(); });
+  byId('topologyFocus').addEventListener('change', event => { topologyFocusSelection = event.target.checked; syncTopologyURL(); renderTopology(); });
+  byId('topologyGroup').addEventListener('change', event => { topologyGroupReplicas = event.target.checked; syncTopologyURL(); renderTopology(); });
 
   overview.className = 'section active panel topology-workspace';
-  overview.innerHTML = `<div class="toolbar"><div class="toolbar-title"><p class="eyebrow" id="topologyScope">Namespace: all</p><h1>Topology map, grouped into swimlanes</h1></div><div class="stat"><strong id="topologyObjectStat">0</strong><span>objects</span></div><div class="stat"><strong id="topologyEdgeStat">0</strong><span>edges</span></div><div class="stat"><strong id="topologyWarningStat">0</strong><span>warnings</span></div><button type="button" class="icon-button" aria-label="Filter topology">${iconUse('icon-filter')}</button><button type="button" class="icon-button" aria-label="Fit topology to screen">${iconUse('icon-fit')}</button></div><div class="map"></div>`;
+  overview.innerHTML = `<div class="toolbar"><div class="toolbar-title"><p class="eyebrow" id="topologyScope">Namespace: all</p><h1 id="topologyTitle">Topology relation explorer</h1></div><div class="stat"><strong id="topologyObjectStat">0</strong><span>objects</span></div><div class="stat"><strong id="topologyEdgeStat">0</strong><span>edges</span></div><div class="stat"><strong id="topologyWarningStat">0</strong><span>warnings</span></div><button type="button" class="icon-button" id="topologyFit" aria-label="Fit topology to screen">${iconUse('icon-fit')}</button></div><div class="map"></div>`;
   overview.querySelector('.map').appendChild(topology);
   topology.className = 'map-inner';
   [...legacyMain.querySelectorAll(':scope > .section')].filter(s => s !== overview).forEach(section => {
@@ -2773,9 +2824,10 @@ function applyMockShell() {
   freshnessCard.appendChild(freshness);
   const selected = document.createElement('div');
   selected.className = 'summary-card';
-  selected.innerHTML = `<div class="summary-title"><div class="glyph gateway">${iconUse('icon-gateway')}</div><strong>Selected object</strong></div><div class="kv" id="topologySelectedSummary"><span>State</span><strong>Click a topology card</strong><span>Layout</span><strong>Swimlanes</strong><span>Mode</span><strong>Relationship focus</strong></div>`;
+  selected.innerHTML = `<div class="summary-title"><div class="glyph gateway">${iconUse('icon-gateway')}</div><strong>Selected object</strong></div><div class="kv" id="topologySelectedSummary"><span>State</span><strong>Select an object</strong><span>Layout</span><strong>Semantic swimlanes</strong><span>Mode</span><strong>Relationship focus</strong></div><div id="topologyCoverage" class="topology-coverage"></div>`;
   inspectorBody.append(inventory, freshnessCard, selected);
   workspace.appendChild(inspector);
+  byId('topologyFit').addEventListener('click', () => { topologyView = {scale:1,x:0,y:0}; syncTopologyURL(); applyTopologyTransform(); });
 }
 
 const join = v => Array.isArray(v) && v.length ? v.join(', ') : '-';
@@ -2812,8 +2864,38 @@ function webhookClient(w) { return w.clientUrl || ref(w.clientService); }
 function limitItems(v) { return Array.isArray(v) && v.length ? v.map(i => `${i.type || '-'} default=${kv(i.default)} request=${kv(i.defaultRequest)} min=${kv(i.min)} max=${kv(i.max)}`).join(' | ') : '-'; }
 
 function namespacesOf(row) { const found = new Set(); const visit = value => { if (!value) return; if (Array.isArray(value)) { value.forEach(visit); return; } if (typeof value !== 'object') return; if (typeof value.namespace === 'string' && value.namespace) found.add(value.namespace); if (Array.isArray(value.namespaces)) value.namespaces.filter(Boolean).forEach(ns => found.add(ns)); for (const child of Object.values(value)) visit(child); }; visit(row); return [...found]; }
-let activeSection = 'overview', nsFilter = 'all', resourceFilter = 'all', topologySearch = '', topologySelectedNodeId = '', topologyView = {scale:1, x:0, y:0};
+const topologyURL = new URLSearchParams(location.search);
+const topologyViewNames = ['application','workload','runtime','infrastructure'];
+const topologyModeNames = ['graph','table'];
+const topologyHealthNames = ['all','healthy','warning','unknown','stopped'];
+const topologySystemNames = ['include','exclude','only'];
+const topologyStateNames = ['all','connected','disconnected','stopped'];
+const validTopologyParam = (value, allowed, fallback) => allowed.includes(value) ? value : fallback;
+const topologyNumberParam = (name, fallback) => { const raw = topologyURL.get(name); if (raw === null || raw === '') return fallback; const value = Number(raw); return Number.isFinite(value) ? value : fallback; };
+let activeSection = 'overview', nsFilter = topologyURL.get('namespace') || 'all', resourceFilter = topologyURL.get('resource') || 'all';
+let topologySearch = topologyURL.get('topologyQuery') || '', topologySelectedNodeId = topologyURL.get('topologySelected') || '';
+let topologySemanticView = validTopologyParam(topologyURL.get('topologyView'), topologyViewNames, 'application');
+let topologyMode = validTopologyParam(topologyURL.get('topologyMode'), topologyModeNames, 'graph');
+let topologyHealthFilter = validTopologyParam(topologyURL.get('topologyHealth'), topologyHealthNames, 'all');
+let topologySystemFilter = validTopologyParam(topologyURL.get('topologySystem'), topologySystemNames, 'include');
+let topologyStateFilter = validTopologyParam(topologyURL.get('topologyState'), topologyStateNames, 'all');
+let topologyFocusSelection = topologyURL.get('topologyFocus') === 'true';
+let topologyGroupReplicas = topologyURL.get('topologyGroup') !== 'false';
+let topologySort = topologyURL.get('topologySort') || 'kind', topologySortDirection = topologyURL.get('topologyDirection') === 'desc' ? 'desc' : 'asc';
+let topologyView = {scale:Math.max(.35, Math.min(4, topologyNumberParam('topologyScale', 1))), x:topologyNumberParam('topologyX', 0), y:topologyNumberParam('topologyY', 0)};
 let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, startY:0, viewX:0, viewY:0, nodeId:'', detail:''};
+function syncTopologyURL() {
+  const url = new URL(location.href);
+  const set = (key, value, defaultValue='') => { if (value === defaultValue || value === '' || value === false) url.searchParams.delete(key); else url.searchParams.set(key, String(value)); };
+  set('namespace', nsFilter, 'all'); set('resource', resourceFilter, 'all'); set('topologyQuery', topologySearch);
+  set('topologyView', topologySemanticView, 'application'); set('topologyMode', topologyMode, 'graph');
+  set('topologyHealth', topologyHealthFilter, 'all'); set('topologySystem', topologySystemFilter, 'include'); set('topologyState', topologyStateFilter, 'all');
+  set('topologyFocus', topologyFocusSelection ? 'true' : ''); set('topologySelected', topologySelectedNodeId);
+  set('topologyGroup', topologyGroupReplicas ? '' : 'false');
+  set('topologySort', topologySort, 'kind'); set('topologyDirection', topologySortDirection, 'asc');
+  set('topologyScale', Math.round(topologyView.scale * 1000) / 1000, 1); set('topologyX', Math.round(topologyView.x), 0); set('topologyY', Math.round(topologyView.y), 0);
+  history.replaceState(null, '', url);
+}
 const resourceTypes = [
   ['all','All resource types'], ['workload','Workloads'], ['pod','Pods'], ['service','Services'], ['endpoint','EndpointSlices'],
   ['ingress','Ingresses'], ['gateway','Gateways'], ['gatewayRoute','Gateway routes'], ['image','Running images'], ['container','Running containers'], ['crd','Custom resources'],
@@ -2837,12 +2919,14 @@ function updateTopologySelectionSummary(node, relationshipCount) {
 }
 function selectTopologyNode(nodeId, detail) {
   topologySelectedNodeId = nodeId || '';
+  syncTopologyURL();
   renderTopology();
   if (detail) showText(detail);
 }
 function clearTopologySelection() {
   if (!topologySelectedNodeId) return;
   topologySelectedNodeId = '';
+  syncTopologyURL();
   renderTopology();
 }
 function syncResourceFilterState() { byId('focus').disabled = activeSection === 'advisor' || activeSection === 'events'; byId('resourceType').disabled = activeSection !== 'overview'; }
@@ -2915,7 +2999,7 @@ function renderNav() {
   };
   syncNavActive();
 }
-function renderHeader() { byId('title').textContent = cluster.name || k.context || 'Kubernetes cluster'; byId('subtitle').textContent = `${k.version?.gitVersion || cluster.version || 'unknown k8s'} · collected ${snapshot.collectedAt || '-'} · ${snapshot.source?.mode || '-'}`; const namespaces = [...new Set([...arr(k.namespaces).map(n => n.name), ...arr(k.runningContainers).map(c => c.namespace), ...arr(k.customResourceInstances).map(c => c.namespace), ...arr(k.workloads).map(w => w.namespace), ...arr(k.pods).map(p => p.namespace)].filter(Boolean))].sort(); byId('focus').innerHTML = '<option value="all">All namespaces</option>' + namespaces.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join(''); byId('resourceType').innerHTML = resourceTypes.map(([value,label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join(''); }
+function renderHeader() { byId('title').textContent = cluster.name || k.context || 'Kubernetes cluster'; byId('subtitle').textContent = `${k.version?.gitVersion || cluster.version || 'unknown k8s'} · collected ${snapshot.collectedAt || '-'} · ${snapshot.source?.mode || '-'}`; const namespaces = [...new Set([...arr(k.namespaces).map(n => n.name), ...arr(k.runningContainers).map(c => c.namespace), ...arr(k.customResourceInstances).map(c => c.namespace), ...arr(k.workloads).map(w => w.namespace), ...arr(k.pods).map(p => p.namespace)].filter(Boolean))].sort(); byId('focus').innerHTML = '<option value="all">All namespaces</option>' + namespaces.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join(''); byId('resourceType').innerHTML = resourceTypes.map(([value,label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join(''); if (![...byId('focus').options].some(option => option.value === nsFilter)) nsFilter = 'all'; if (!resourceTypes.some(([value]) => value === resourceFilter)) resourceFilter = 'all'; byId('focus').value = nsFilter; byId('resourceType').value = resourceFilter; syncTopologyURL(); }
 function renderCards() { const cards = [['Nodes', arr(k.nodes).length], ['Workloads', arr(k.workloads).length], ['Pods', arr(k.pods).length], ['Images', arr(k.runningImages).length], ['CRDs', arr(k.customResourceDefinitions).length], ['Routes', arr(k.ingresses).reduce((n,i) => n + arr(i.rules).length, 0) + arr(k.gatewayRoutes).length]]; byId('cards').innerHTML = cards.map(([l,v]) => `<div class="card"><div class="label">${l}</div><div class="value">${v || 0}</div></div>`).join(''); }
 function table(id, headers, rows, type, mapper) { const data = filtered(rows); const body = data.length ? data.map(r => `<tr data-detail="${esc(JSON.stringify(r))}">${mapper(r).map(c => `<td>${c}</td>`).join('')}</tr>`).join('') : `<tr><td class="empty" colspan="${headers.length}">No matching data</td></tr>`; byId(id).innerHTML = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody>`; }
 const workloadKinds = new Set(['deployment','daemonset','statefulset','replicaset','job','cronjob']);
@@ -3033,7 +3117,7 @@ function renderTables() {
   table('csiTable', ['CSI Driver','Attach required','Pod info','Lifecycle'], k.csiDrivers, 'csi', r => [esc(r.name), esc(r.attachRequired), esc(r.podInfoOnMount), chips(r.volumeLifecycleModes)]);
   table('runtimeTable', ['RuntimeClass','Handler'], k.runtimeClasses, 'runtime', r => [esc(ref(r)), esc(r.handler)]);
 }
-function renderTopology() {
+function renderLegacyTopology() {
   const nodes = [], links = [], nodeById = new Map(), linkKeys = new Set();
   const add = (id,label,type,data) => { if (!nodeById.has(id)) { const node = {id,label,type,data,index:nodes.length}; nodes.push(node); nodeById.set(id,node); } };
   const link = (a,b) => { if (nodeById.has(a) && nodeById.has(b)) { const key = a + '->' + b; if (!linkKeys.has(key)) { linkKeys.add(key); links.push([a,b]); } } };
@@ -3207,6 +3291,121 @@ function renderTopology() {
   const relationshipHint = topologySelectedNodeId ? `${visibleTopologyLinks.length} direct relationships` : 'Select an object to show relationships';
   topology.innerHTML = `<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSvg}${linkSvg}${nodeSvg}</g></svg><div class="legend">${legendIcon('gateway','Gateway / Ingress')}${legendIcon('service','Service')}${legendIcon('workload','Workload')}${legendIcon('pod','Pod / runtime')}${legendIcon('storage','Storage')}${legendIcon('image','Image')}<span>Wheel to zoom</span><span>Drag to pan</span><span>${topologyNodes.length} objects · ${relationshipHint}</span></div>`;
 }
+const topologyViewKinds = {
+  application:new Set(['pseudo-internet','pseudo-external-endpoint','ingress','gateway','gatewayroute','service','workload']),
+  workload:new Set(['namespace','service','endpoint-slice','workload','pod']),
+  runtime:new Set(['workload','pod','node','nodegroup','ec2-instance']),
+  infrastructure:new Set(['cluster','namespace','nodegroup','node','ec2-instance','addon','eksinsight'])
+};
+function topologyKind(node) { return String(node?.kind || '').toLowerCase(); }
+function topologyNodeHealth(node) {
+  const metadata = node?.metadata || {}, state = String(metadata.state || metadata.status || metadata.phase || '').toLowerCase();
+  if (['stopped','terminated','failed','succeeded','completed'].includes(state)) return 'stopped';
+  if (arr(node?.findingRefs).length || ['warning','degraded','error','failed','notready'].includes(state)) return 'warning';
+  if (topologyKind(node).startsWith('pseudo-') || state === 'unknown') return 'unknown';
+  return 'healthy';
+}
+function topologyIsSystem(node) { const namespace = String(node?.scope?.namespace || ''); return namespace === 'kube-system' || namespace.startsWith('kube-'); }
+function topologyResourceMatches(node) {
+  if (resourceFilter === 'all') return true;
+  const kind = topologyKind(node), aliases = {endpoint:['endpoint-slice'],gatewayRoute:['gatewayroute'],pvc:['persistentvolumeclaim','pvc'],storage:['storageclass','persistentvolume','persistentvolumeclaim'],crd:['customresourcedefinition','customresource'],runtime:['runtimeclass']};
+  return (aliases[resourceFilter] || [resourceFilter]).includes(kind);
+}
+function topologyCompare(actual, operator, expected) {
+  if (['>','>=','<','<='].includes(operator)) { const left = Number(actual), right = Number(expected); if (!Number.isFinite(left) || !Number.isFinite(right)) return false; return operator === '>' ? left > right : operator === '>=' ? left >= right : operator === '<' ? left < right : left <= right; }
+  const left = String(actual ?? '').toLowerCase(), right = String(expected ?? '').toLowerCase(); return operator === '=' ? left === right : left.includes(right);
+}
+function topologySearchMatchesGraph(node) {
+  const query = topologySearch.trim(); if (!query) return true;
+  const metadata = node.metadata || {}, health = topologyNodeHealth(node), finding = arr(node.findingRefs).join(' ');
+  const haystack = [node.id,node.identity,node.name,node.kind,node.apiVersion,node.scope?.provider,node.scope?.namespace,health,finding,...Object.entries(metadata).flatMap(([key,value]) => [key,value,`${key}=${value}`])].join(' ').toLowerCase();
+  const terms = query.match(/"[^"]*"|\S+/g) || [];
+  return terms.every(raw => {
+    const term = raw.replace(/^"|"$/g, ''), match = term.match(/^([^:<>!=]+)(:|>=|<=|>|<|=)(.+)$/);
+    if (!match) return haystack.includes(term.toLowerCase());
+    const [,field,operator,expected] = match, key = field.toLowerCase();
+    if (key === 'kind') return topologyCompare(node.kind, operator, expected);
+    if (key === 'name' || key === 'identity') return topologyCompare(node[key], operator, expected);
+    if (key === 'namespace' || key === 'ns') return topologyCompare(node.scope?.namespace || '', operator, expected);
+    if (key === 'provider') return topologyCompare(node.scope?.provider || '', operator, expected);
+    if (key === 'health') return topologyCompare(health, operator, expected);
+    if (key === 'finding') return topologyCompare(finding, operator, expected);
+    if (key === 'label' || key === 'metadata') { const [metadataKey,...valueParts] = expected.split('='); return topologyCompare(metadata[metadataKey], valueParts.length ? '=' : ':', valueParts.join('=')); }
+    return topologyCompare(metadata[field], operator, expected);
+  });
+}
+function topologyReplicaGroup(node, edges, nodeById) {
+  if (topologyKind(node) !== 'pod') return '';
+  const ownerEdge = edges.find(edge => edge.kind === 'ownership' && edge.target === node.id && topologyKind(nodeById.get(edge.source)) === 'workload');
+  if (!ownerEdge) return '';
+  const count = edges.filter(edge => edge.kind === 'ownership' && edge.source === ownerEdge.source && topologyKind(nodeById.get(edge.target)) === 'pod').length;
+  return `${nodeById.get(ownerEdge.source)?.name || ownerEdge.source} × ${count}`;
+}
+function topologyFilteredGraph() {
+  const allNodes = arr(topologyGraph?.nodes), allEdges = arr(topologyGraph?.edges), nodeById = new Map(allNodes.map(node => [node.id,node]));
+  const degree = new Map(allNodes.map(node => [node.id,0])); allEdges.forEach(edge => { degree.set(edge.source,(degree.get(edge.source)||0)+1); degree.set(edge.target,(degree.get(edge.target)||0)+1); });
+  let nodes = allNodes.filter(node => topologyViewKinds[topologySemanticView].has(topologyKind(node)))
+    .filter(node => nsFilter === 'all' || node.scope?.namespace === nsFilter)
+    .filter(topologyResourceMatches)
+    .filter(node => topologySystemFilter === 'include' || (topologySystemFilter === 'only' ? topologyIsSystem(node) : !topologyIsSystem(node)))
+    .filter(node => topologyHealthFilter === 'all' || topologyNodeHealth(node) === topologyHealthFilter)
+    .filter(node => topologyStateFilter === 'all' || (topologyStateFilter === 'connected' ? (degree.get(node.id)||0) > 0 : topologyStateFilter === 'disconnected' ? (degree.get(node.id)||0) === 0 : topologyNodeHealth(node) === 'stopped'))
+    .filter(topologySearchMatchesGraph);
+  const baseIDs = new Set(nodes.map(node => node.id));
+  const graphReady = Boolean(topologyGraph?.schemaVersion) && allNodes.length > 0;
+  if (topologySelectedNodeId && graphReady && !baseIDs.has(topologySelectedNodeId)) { topologySelectedNodeId = ''; if (byId('drawer')?.classList.contains('open')) closeDrawer(); syncTopologyURL(); }
+  if (topologyFocusSelection && topologySelectedNodeId) { const focused = new Set([topologySelectedNodeId]); allEdges.forEach(edge => { if (edge.source === topologySelectedNodeId) focused.add(edge.target); if (edge.target === topologySelectedNodeId) focused.add(edge.source); }); nodes = nodes.filter(node => focused.has(node.id)); }
+  const ids = new Set(nodes.map(node => node.id)), edges = allEdges.filter(edge => ids.has(edge.source) && ids.has(edge.target));
+  return {nodes,edges,nodeById};
+}
+function topologyNodeDetail(node, incident) { const {x,y,w,h,...resource} = node; return JSON.stringify({...resource,relationships:incident.map(edge => ({kind:edge.kind,relation:edge.relation,provider:edge.provider,source:edge.source,target:edge.target,evidence:edge.evidence}))}); }
+function updateTopologySelectionSummary(node, incident) {
+  const summary = byId('topologySelectedSummary'), coverage = byId('topologyCoverage'); if (!summary || !coverage) return;
+  summary.innerHTML = node ? `<span>Object</span><strong>${esc(node.name)}</strong><span>Identity</span><strong>${esc(node.id)}</strong><span>Health</span><strong>${esc(topologyNodeHealth(node))}</strong><span>Relationships</span><strong>${incident.length}</strong><span>Findings</span><strong>${esc(arr(node.findingRefs).join(', ') || 'none')}</strong>` : '<span>State</span><strong>Select an object</strong><span>Layout</span><strong>Semantic swimlanes</strong><span>Mode</span><strong>Relationship focus</strong>';
+  const evidence = node ? [...arr(node.evidence), ...incident.flatMap(edge => arr(edge.evidence))] : [];
+  const evidenceHTML = evidence.slice(0,6).map(item => `<div class="topology-coverage-item"><strong>${esc(item.basis || 'evidence')} · ${esc(item.provider || '-')}</strong><br>${esc(item.summary || item.freshness || '-')}</div>`).join('');
+  const coverageHTML = arr(topologyGraph?.coverage).slice(0,8).map(item => `<div class="topology-coverage-item"><strong>${esc(item.provider)} · ${esc(item.capability)}</strong><br>${esc(item.status)}${item.reason ? ` · ${esc(item.reason)}` : ''}</div>`).join('');
+  coverage.innerHTML = evidenceHTML + coverageHTML;
+}
+function topologyLayer(node) {
+  const kind = topologyKind(node);
+  if (['pseudo-internet','pseudo-external-endpoint','ingress','gateway','gatewayroute','service'].includes(kind)) return 'application';
+  if (['namespace','workload'].includes(kind)) return 'workload';
+  if (['endpoint-slice','pod','node'].includes(kind)) return 'runtime';
+  return 'infrastructure';
+}
+function topologyIconID(kind) { return ({service:'icon-service',workload:'icon-workload',pod:'icon-pod',node:'icon-node',ingress:'icon-gateway',gateway:'icon-gateway','endpoint-slice':'icon-service','ec2-instance':'icon-node',nodegroup:'icon-node'}[kind] || 'icon-workload'); }
+function topologyOrthogonalPath(A, B) { const x1=A.x+A.w,y1=A.y+A.h/2,x2=B.x,y2=B.y+B.h/2,mid=(x1+x2)/2; return `M${x1} ${y1} H${mid} V${y2} H${x2}`; }
+function renderTopologyTable(nodes, edges, nodeById) {
+  const allEdges = arr(topologyGraph?.edges), incidentCount = id => allEdges.filter(edge => edge.source === id || edge.target === id).length;
+  const value = (node,key) => key === 'health' ? topologyNodeHealth(node) : key === 'namespace' ? (node.scope?.namespace || 'cluster') : key === 'provider' ? node.scope?.provider : key === 'relationships' ? incidentCount(node.id) : node[key] || '';
+  const sorted = [...nodes].sort((a,b) => { if (topologyGroupReplicas) { const groupOrder = topologyReplicaGroup(a,allEdges,nodeById).localeCompare(topologyReplicaGroup(b,allEdges,nodeById)); if (groupOrder) return groupOrder; } const result = String(value(a,topologySort)).localeCompare(String(value(b,topologySort)),undefined,{numeric:true}); return topologySortDirection === 'desc' ? -result : result; });
+  const headers = [['kind','Kind'],['name','Name'],['namespace','Namespace'],['provider','Provider'],['health','Health'],['relationships','Relations']];
+  const rows = sorted.map(node => { const incident = allEdges.filter(edge => edge.source === node.id || edge.target === node.id), group = topologyReplicaGroup(node,allEdges,nodeById); return `<tr aria-selected="${node.id === topologySelectedNodeId}"><td>${esc(node.kind)}</td><td><button class="topology-table-select" type="button" data-topology-select="${esc(node.id)}" data-detail="${esc(topologyNodeDetail(node,incident))}">${esc(node.name)}</button>${group ? `<br><small class="muted">replica group ${esc(group)} · individual evidence retained</small>` : ''}</td><td>${esc(node.scope?.namespace || 'cluster')}</td><td>${esc(node.scope?.provider || '-')}</td><td>${esc(topologyNodeHealth(node))}</td><td>${incident.length}</td></tr>`; }).join('');
+  byId('topology').innerHTML = `<div class="topology-table-wrap"><table class="topology-table"><thead><tr>${headers.map(([key,label]) => `<th scope="col"><button type="button" data-topology-sort="${key}" aria-label="Sort by ${label}">${label}${topologySort === key ? (topologySortDirection === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  byId('topology').querySelectorAll('[data-topology-sort]').forEach(button => button.addEventListener('click', () => { const key = button.dataset.topologySort; topologySortDirection = topologySort === key && topologySortDirection === 'asc' ? 'desc' : 'asc'; topologySort = key; syncTopologyURL(); renderTopology(); }));
+}
+function renderTopology() {
+  const graph = topologyFilteredGraph(), {nodes,edges,nodeById} = graph, selected = nodeById.get(topologySelectedNodeId), incident = selected ? arr(topologyGraph?.edges).filter(edge => edge.source === selected.id || edge.target === selected.id) : [];
+  document.querySelectorAll('[data-topology-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyView === topologySemanticView)));
+  document.querySelectorAll('[data-topology-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.topologyMode === topologyMode)));
+  const warningCount = nodes.filter(node => topologyNodeHealth(node) === 'warning').length, setText = (id,value) => { const element=byId(id); if (element) element.textContent=value; };
+  setText('topologyObjectStat',nodes.length); setText('topologyEdgeStat',edges.length); setText('topologyWarningStat',warningCount); setText('topologyScope',`${nsFilter === 'all' ? 'All namespaces' : nsFilter} · ${topologySemanticView}`); setText('topologyTitle',topologyMode === 'graph' ? 'Semantic swimlanes' : 'Relation explorer table');
+  setText('topologyGatewayCount',nodes.filter(node => ['ingress','gateway','gatewayroute'].includes(topologyKind(node))).length); setText('topologyServiceCount',nodes.filter(node => topologyKind(node)==='service').length); setText('topologyWorkloadCount',nodes.filter(node => topologyKind(node)==='workload').length); setText('topologyPodCount',nodes.filter(node => topologyKind(node)==='pod').length); setText('topologyStorageCount',nodes.filter(node => ['persistentvolume','persistentvolumeclaim','storageclass'].includes(topologyKind(node))).length); setText('topologyImageCount',nodes.filter(node => topologyKind(node)==='image').length);
+  updateTopologySelectionSummary(selected,incident);
+  if (!nodes.length) { byId('topology').innerHTML='<div class="empty">No topology objects match the current view and filters.</div>'; return; }
+  if (topologyMode === 'table') { renderTopologyTable(nodes,edges,nodeById); return; }
+  const layers=['application','workload','runtime','infrastructure'], laneNodes=new Map(layers.map(layer=>[layer,[]])); nodes.forEach(node=>laneNodes.get(topologyLayer(node)).push(node));
+  const groupOrder = node => topologyGroupReplicas ? topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById) : '';
+  laneNodes.forEach(items => items.sort((a,b)=>groupOrder(a).localeCompare(groupOrder(b)) || a.name.localeCompare(b.name)));
+  const active=layers.filter(layer=>laneNodes.get(layer).length), W=byId('topology').clientWidth||900,H=byId('topology').clientHeight||560,gap=22,margin=22,nodeH=62,rowGap=10,top=54,laneW=260;
+  const drawn=new Map(); active.forEach((layer,index)=>laneNodes.get(layer).forEach((node,row)=>drawn.set(node.id,{...node,x:margin+index*(laneW+gap)+12,y:top+row*(nodeH+rowGap),w:laneW-24,h:nodeH}))); const contentW=Math.max(W,margin*2+active.length*laneW+Math.max(0,active.length-1)*gap),contentH=Math.max(H,top+Math.max(...active.map(layer=>laneNodes.get(layer).length))*(nodeH+rowGap)+56);
+  byId('topology').style.minWidth=(contentW+36)+'px'; byId('topology').style.minHeight=(contentH+36)+'px';
+  const laneSVG=active.map((layer,index)=>`<g class="topology-lane"><rect x="${margin+index*(laneW+gap)}" y="18" width="${laneW}" height="${contentH-42}"/><text x="${margin+index*(laneW+gap)+12}" y="40">${layer.toUpperCase()} (${laneNodes.get(layer).length})</text></g>`).join('');
+  const edgeSVG=edges.map(edge=>{const A=drawn.get(edge.source),B=drawn.get(edge.target);if(!A||!B)return'';const hot=topologySelectedNodeId&&(edge.source===topologySelectedNodeId||edge.target===topologySelectedNodeId);return `<path class="link ${esc(edge.kind)}${hot?' hot':''}" d="${topologyOrthogonalPath(A,B)}"><title>${esc(`${edge.kind} · ${edge.provider} · ${edge.relation || ''}`)}</title></path>`}).join('');
+  const nodeSVG=[...drawn.values()].map(node=>{const selectedNode=node.id===topologySelectedNodeId,related=incident.some(edge=>edge.source===node.id||edge.target===node.id),nodeIncident=arr(topologyGraph?.edges).filter(edge=>edge.source===node.id||edge.target===node.id),health=topologyNodeHealth(node),statusColor=health==='warning'?'var(--amber)':health==='unknown'?'var(--muted)':health==='stopped'?'var(--red)':'var(--green)',group=topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById);return `<g class="node${selectedNode?' selected':related?' related':''}" data-node-id="${esc(node.id)}" data-detail="${esc(topologyNodeDetail(node,nodeIncident))}" role="button" tabindex="0" aria-pressed="${selectedNode}" aria-label="Select ${esc(node.kind)} ${esc(node.name)}"><rect class="node-card" x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}"/><rect class="node-icon-box" x="${node.x+8}" y="${node.y+12}" width="32" height="32"/><svg x="${node.x+14}" y="${node.y+18}" width="20" height="20" style="color:var(--blue)"><use href="#${topologyIconID(topologyKind(node))}"/></svg><text class="node-label" x="${node.x+48}" y="${node.y+24}">${esc(node.name)}</text><text class="node-meta" x="${node.x+48}" y="${node.y+42}">${esc(group || `${node.scope?.namespace || 'cluster'} · ${node.scope?.provider || '-'}`)}</text><circle cx="${node.x+node.w-14}" cy="${node.y+16}" r="5" fill="${statusColor}"/></g>`}).join('');
+  byId('topology').innerHTML=`<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><g id="topologyViewport" transform="translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})">${laneSVG}${edgeSVG}${nodeSVG}</g></svg><div class="legend"><span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${edges.length} evidence-backed relationships</span></div>`;
+}
 function applyTopologyTransform() { const viewport = byId('topologyViewport'); if (viewport) viewport.setAttribute('transform', `translate(${topologyView.x} ${topologyView.y}) scale(${topologyView.scale})`); }
 let selectedDetail = null;
 function showText(json) { const obj = JSON.parse(json); if (isWorkload(obj)) { openWorkloadDetail(obj); return; } selectedDetail = obj; byId('drawerTitle').textContent = obj.name || obj.image || obj.kind || 'Details'; byId('drawerBody').innerHTML = `<pre>${esc(JSON.stringify(obj, null, 2))}</pre>`; byId('drawer').classList.add('open'); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); }
@@ -3345,15 +3544,15 @@ function renderAnalysis(page='advisor') {
   analysisBodyFor(page).innerHTML = `<p class="analysis-summary">${esc(analysis.summary || 'No summary returned.')}</p>${meta ? `<p class="analysis-meta">${esc(meta)}</p>` : ''}${analysisGroup('Observed facts', facts)}${analysisGroup('Inference', inference)}${limitations}`;
 }
 function renderAll() { renderAdvisor(); renderAnalysis(); Object.keys(llmAnalyses).forEach(renderAnalysis); renderCards(); renderTables(); renderTopology(); renderWorkloadSearch(); }
-document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (!e.target.closest('#nav .nav-menu')) closeNavMenus(); const workload = e.target.closest('[data-workload-key]'); if (workload) { openWorkloadByKey(workload.dataset.workloadKey); return; } if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
-byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); }, {passive:false});
+document.addEventListener('click', e => { if (!e.target.closest('#exportMenu')) closeExportMenu(); if (!e.target.closest('#nav .nav-menu')) closeNavMenus(); const workload = e.target.closest('[data-workload-key]'); if (workload) { openWorkloadByKey(workload.dataset.workloadKey); return; } const topologySelect = e.target.closest('[data-topology-select]'); if (topologySelect) { selectTopologyNode(topologySelect.dataset.topologySelect, topologySelect.dataset.detail); return; } if (topologyDrag.suppressClick && e.target.closest('#topology')) { topologyDrag.suppressClick = false; e.preventDefault(); return; } const el = e.target.closest('[data-detail]'); if (el) showText(el.dataset.detail); });
+byId('topology').addEventListener('wheel', e => { const svg = byId('topologySvg'); const viewport = byId('topologyViewport'); if (!svg || !viewport) return; e.preventDefault(); const rect = svg.getBoundingClientRect(); const px = e.clientX - rect.left, py = e.clientY - rect.top; const nextScale = Math.max(.35, Math.min(4, topologyView.scale * (e.deltaY < 0 ? 1.12 : .88))); topologyView.x = px - (px - topologyView.x) * (nextScale / topologyView.scale); topologyView.y = py - (py - topologyView.y) * (nextScale / topologyView.scale); topologyView.scale = nextScale; applyTopologyTransform(); syncTopologyURL(); }, {passive:false});
 byId('topology').addEventListener('pointerdown', e => { if (e.button !== 0 || !byId('topologyViewport')) return; const node = e.target.closest('.node[data-node-id]'); topologyDrag = {active:true, moved:false, suppressClick:false, startX:e.clientX, startY:e.clientY, viewX:topologyView.x, viewY:topologyView.y, nodeId:node?.dataset.nodeId || '', detail:node?.dataset.detail || ''}; byId('topology').classList.add('panning'); byId('topology').setPointerCapture(e.pointerId); });
 byId('topology').addEventListener('pointermove', e => { if (!topologyDrag.active) return; const dx = e.clientX - topologyDrag.startX, dy = e.clientY - topologyDrag.startY; topologyDrag.moved = topologyDrag.moved || Math.abs(dx) + Math.abs(dy) > 3; topologyView.x = topologyDrag.viewX + dx; topologyView.y = topologyDrag.viewY + dy; applyTopologyTransform(); });
-byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = true; if (!topologyDrag.moved) { if (topologyDrag.nodeId) selectTopologyNode(topologyDrag.nodeId, topologyDrag.detail); else clearTopologySelection(); } topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); });
+byId('topology').addEventListener('pointerup', e => { if (!topologyDrag.active) return; topologyDrag.suppressClick = true; if (!topologyDrag.moved) { if (topologyDrag.nodeId) selectTopologyNode(topologyDrag.nodeId, topologyDrag.detail); else clearTopologySelection(); } topologyDrag.active = false; byId('topology').classList.remove('panning'); byId('topology').releasePointerCapture(e.pointerId); syncTopologyURL(); });
 byId('topology').addEventListener('pointercancel', e => { topologyDrag.active = false; byId('topology').classList.remove('panning'); if (byId('topology').hasPointerCapture(e.pointerId)) byId('topology').releasePointerCapture(e.pointerId); });
 byId('topology').addEventListener('keydown', e => { const node = e.target.closest('.node[data-node-id]'); if (!node || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); selectTopologyNode(node.dataset.nodeId, node.dataset.detail); });
-byId('focus').addEventListener('change', e => { nsFilter = e.target.value; renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
-byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
+byId('focus').addEventListener('change', e => { nsFilter = e.target.value; syncTopologyURL(); renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
+byId('resourceType').addEventListener('change', e => { resourceFilter = e.target.value; syncTopologyURL(); renderAll(); if (typeof syncAnalyzeButtonState === 'function') syncAnalyzeButtonState(); });
 byId('workloadSearch').addEventListener('input', renderWorkloadSearch);
 byId('advisor-search').addEventListener('input', e => { advisorQuery = e.target.value; renderAdvisor(); });
 byId('advisor-status-filters').addEventListener('click', e => { const button = e.target.closest('[data-value]'); if (!button) return; advisorStatusFilter = button.dataset.value; renderAdvisor(); });

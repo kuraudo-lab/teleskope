@@ -313,6 +313,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		`aria-hidden="true"><img src="data:image/png;base64,`,
 		`<script id="boot-config" type="application/json">`,
 		`<script id="snapshot-data" type="application/json">`,
+		`<script id="topology-data" type="application/json">`,
 		`<script id="eks-projection-data" type="application/json">`,
 		`<script id="markdown-data" type="text/plain">`,
 		`"mode":"offline"`,
@@ -418,6 +419,22 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"showPods = topologyResourceFilter === 'pod'",
 		"topologyResourceFilter === 'crd'",
 		"function renderTopology",
+		"topologyGraph = JSON.parse",
+		`id="topologyViewOptions"`,
+		`id="topologyModeOptions"`,
+		`id="topologyHealth"`,
+		`id="topologySystem"`,
+		`id="topologyState"`,
+		`id="topologyFocus"`,
+		`id="topologyGroup"`,
+		"function syncTopologyURL",
+		"function topologyFilteredGraph",
+		"function renderTopologyTable",
+		"topologySelected",
+		"topologyScale",
+		"data-topology-select",
+		`aria-selected="${node.id === topologySelectedNodeId}"`,
+		"runtime-connections",
 		"topologySelectedNodeId",
 		"visibleTopologyLinks = topologySelectedNodeId ?",
 		"function selectTopologyNode",
@@ -494,6 +511,7 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 	for _, want := range []string{
 		`<body data-live="true" class="live-loading">`,
 		`<script id="boot-config" type="application/json">`,
+		`<script id="topology-data" type="application/json">{}</script>`,
 		"Recent events",
 		"live-event-list",
 		"eventsNavStatus",
@@ -536,6 +554,7 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		"lastAnalyzedRequestKey",
 		"function syncAnalyzeButtonState",
 		"selectSection('advisor')",
+		"topologyGraph = next.graph || topologyGraph",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("live HTML missing %q", want)
@@ -637,6 +656,9 @@ func TestAdvisorArtifactAndHTML(t *testing.T) {
 	}
 	if strings.Contains(LiveHTML(), "__TELESKOPE_EKS_PROJECTION_JSON__") {
 		t.Fatal("unresolved live EKS projection placeholder")
+	}
+	if strings.Contains(LiveHTML(), "__TELESKOPE_TOPOLOGY_JSON__") {
+		t.Fatal("unresolved live topology placeholder")
 	}
 	if strings.Contains(LiveHTML(), "__TELESKOPE_MARKDOWN__") {
 		t.Fatal("unresolved live markdown placeholder")
