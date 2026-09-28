@@ -2,7 +2,6 @@ package report
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -421,12 +420,12 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"topologyResourceFilter === 'crd'",
 		"function renderTopology",
 		"topologyGraph = JSON.parse",
-		`id="topologyViewOptions"`,
+		`aria-label="Topology projection"`,
+		`aria-selected="true" aria-disabled="false">Workloads`,
 		`id="topologyModeOptions"`,
 		`id="topologyHealth"`,
 		`id="topologySystem"`,
 		`id="topologyState"`,
-		`id="topologyFocus"`,
 		`id="topologyGroup"`,
 		"function syncTopologyURL",
 		"function topologyFilteredGraph",
@@ -441,8 +440,21 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function topologyMetadataHTML",
 		"function topologyFindingsHTML",
 		"function topologyFindingRef",
-		"function topologyViewForNode",
-		"topologyRestoreSelectionView",
+		"const topologyWorkloadKinds",
+		"function topologyProjectedEdges",
+		"evidence-backed workload projection",
+		"resolves external endpoint",
+		"backs workload",
+		"function topologyOverviewLayout",
+		"function topologyFocusLayout",
+		"byId('topology').style.minHeight=''",
+		"function installTopologyHoverInteractions",
+		"function fitTopologyToContent",
+		"topologyFitBounds",
+		"class=\"node-copy label\"",
+		"text-overflow:ellipsis",
+		"function topologyEdgeEvidenceHTML",
+		"Relationship evidence",
 		"topologyGraphLimits",
 		"if(exceedsGraphLimit&&topologyMode==='graph')",
 		"Relation table selected because this view has",
@@ -505,6 +517,11 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	}
 	if strings.Contains(string(html), "C${x1 + mid} ${y1} ${x2 - mid} ${y2}") {
 		t.Fatal("topology still contains the previous cubic relationship path")
+	}
+	for _, unwanted := range []string{`id="topologyFocus"`, `id="topologyViewOptions"`, `>Semantic view<`, `>Swimlanes<`, "focused neighborhood"} {
+		if strings.Contains(string(html), unwanted) {
+			t.Fatalf("topology contains removed control or label %q", unwanted)
+		}
 	}
 	if strings.Contains(string(html), "if (detail) showText(detail)") {
 		t.Fatal("topology selection should keep contextual inspection in the inspector")
@@ -573,10 +590,9 @@ func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
 		"function applyTopologyUpdate",
 		"function fetchTopologyUpdate",
 		"teleskope.io/topology-update/v1alpha1",
-		"const topologyLayoutRanks = new Map()",
-		"function syncTopologyLayoutRanks",
-		"function firstFreeTopologyRank(used)",
-		"const rank=firstFreeTopologyRank(used)",
+		"function topologyOverviewLayout",
+		"function topologyFocusLayout",
+		"function installTopologyHoverInteractions",
 		"bootConfig.endpoints?.exportSummary",
 		"bootConfig.endpoints?.exportSnapshot",
 		"function renderAnalysis",
@@ -643,48 +659,22 @@ func TestLiveHTMLWithOptionsRendersEndpointConfig(t *testing.T) {
 	}
 }
 
-func TestTopologyLayoutRankContractReusesFreedSlots(t *testing.T) {
-	if !strings.Contains(reportHTMLTemplate, "const rank=firstFreeTopologyRank(used)") || strings.Contains(reportHTMLTemplate, "Math.max(-1,...[...topologyLayoutRanks.values()]") {
-		t.Fatal("topology layout must allocate the first free rank instead of an ever-increasing maximum")
+func TestTopologyLayoutContractUsesDirectedRanksAndSelectionFocus(t *testing.T) {
+	const workloadProjection = "const topologyWorkloadKinds = new Set(['pseudo-internet','pseudo-external-endpoint','ingress','gateway','gatewayroute','service','workload'])"
+	if !strings.Contains(reportHTMLTemplate, workloadProjection) {
+		t.Fatal("workload overview must remain limited to external, entry, service, and workload objects")
 	}
-	ranks := map[string]int{}
-	syncRanks := func(ids []string) {
-		live := map[string]bool{}
-		for _, id := range ids {
-			live[id] = true
-		}
-		for id := range ranks {
-			if !live[id] {
-				delete(ranks, id)
-			}
-		}
-		used := map[int]bool{}
-		for _, rank := range ranks {
-			used[rank] = true
-		}
-		for _, id := range ids {
-			if _, ok := ranks[id]; ok {
-				continue
-			}
-			rank := 0
-			for used[rank] {
-				rank++
-			}
-			ranks[id], used[rank] = rank, true
-		}
-	}
-	syncRanks([]string{"n0", "n1"})
-	for i := 1; i < 1000; i++ {
-		survivor := fmt.Sprintf("n%d", i)
-		previousRank := ranks[survivor]
-		syncRanks([]string{survivor, fmt.Sprintf("n%d", i+1)})
-		if ranks[survivor] != previousRank {
-			t.Fatalf("surviving node %s moved from rank %d to %d", survivor, previousRank, ranks[survivor])
-		}
-		for _, rank := range ranks {
-			if rank > 1 {
-				t.Fatalf("two-node churn grew rank to %d at iteration %d", rank, i)
-			}
+	for _, want := range []string{
+		"function topologyOverviewLayout(nodes,edges,width,nodeW,nodeH)",
+		"if(targetNode&&!topologyKind(targetNode).startsWith('pseudo-'))rank.set(target",
+		"drawn.set(selectedId,{...drawn.get(selectedId),x:cx-nodeW/2,y:cy-nodeH/2})",
+		"neighborIDs.add(edge.target)",
+		"neighborIDs.add(edge.source)",
+		"x:width+80+(index%4)*(nodeW+24)",
+		"viewportWidth/width,viewportHeight/height",
+	} {
+		if !strings.Contains(reportHTMLTemplate, want) {
+			t.Fatalf("topology layout contract missing %q", want)
 		}
 	}
 }
