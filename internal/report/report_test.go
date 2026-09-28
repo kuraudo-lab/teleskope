@@ -433,6 +433,10 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function syncTopologyNamespaceOptions",
 		"activeSection==='overview'&&topologyGraph?.schemaVersion",
 		"function renderAll() { syncTopologyNamespaceOptions();",
+		"function topologyCondensedHierarchy",
+		"function topologyEdgeRoutes",
+		`data-topology-depth="${node.rank}"`,
+		"const overviewBounds=[...drawn.values()].map(topologyNodeVisualBounds)",
 		"function renderTopologyTable",
 		"topologySelected",
 		"topologyScale",
@@ -456,8 +460,11 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function topologyNodeVisualBounds",
 		"metricOverflow=topologyMetricKey?32:0",
 		"visualBounds=fitNodes.map(topologyNodeVisualBounds)",
-		"const side=bx>=ax?1:-1",
-		"x1===x2?x1+side*22",
+		"const port=(items,edge)=>",
+		"routeSamples=candidate=>",
+		"pathOf=candidate=>`M${candidate.sx} ${candidate.sy} L${candidate.ex}",
+		"if(routedEdges.unroutable)",
+		`viewBox="${viewBoxX} ${viewBoxY} ${viewBoxW} ${viewBoxH}"`,
 		`return` + "`" + `<circle class="node-shape"`,
 		`kind==='pod'`,
 		`kind==='infrastructure'`,
@@ -477,7 +484,9 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"function topologyEdgeEvidenceHTML",
 		"Relationship evidence",
 		"topologyGraphLimits",
+		"Object.freeze({nodes:100,edges:160})",
 		"if(exceedsGraphLimit&&topologyMode==='graph')",
+		"routeNodeHits",
 		"Relation table selected because this view has",
 		`id="topologyComplexityNotice" role="status" aria-live="polite"`,
 		`id="topologyZoomOut" aria-label="Zoom topology out"`,
@@ -680,14 +689,20 @@ func TestLiveHTMLWithOptionsRendersEndpointConfig(t *testing.T) {
 	}
 }
 
-func TestTopologyLayoutContractUsesDirectedRanksAndSelectionFocus(t *testing.T) {
+func TestTopologyLayoutContractUsesCondensedDepthAndSelectionFocus(t *testing.T) {
 	const workloadProjection = "const topologyWorkloadKinds = new Set(['pseudo-internet','pseudo-external-endpoint','ingress','gateway','gatewayroute','service','workload'])"
 	if !strings.Contains(reportHTMLTemplate, workloadProjection) {
 		t.Fatal("workload overview must remain limited to external, entry, service, and workload objects")
 	}
 	for _, want := range []string{
 		"function topologyOverviewLayout(nodes,edges,width,nodeW,nodeH)",
-		"if(targetNode&&!topologyKind(targetNode).startsWith('pseudo-'))rank.set(target",
+		"function topologyCondensedHierarchy(nodes,edges)",
+		"rawComponents.push(members.sort())",
+		"depth.set(target,Math.max(depth.get(target),depth.get(source)+1))",
+		"function topologyEdgeRoutes(edges,drawn)",
+		"sourceClearance=topologyMetricKey&&sourceSide>0?32:12",
+		"if(!endpoint){const boxes=[{id:node.id,x:node.x-8,y:node.y-8,w:node.w+16,h:node.h+16}]",
+		"while(used.has(path))",
 		"drawn.set(selectedId,{...drawn.get(selectedId),x:cx-nodeW/2,y:cy-nodeH/2})",
 		"neighborIDs.add(edge.target)",
 		"neighborIDs.add(edge.source)",
