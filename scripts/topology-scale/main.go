@@ -72,7 +72,6 @@ func scaleHarness(profile topology.ScaleProfile) string {
 	return fmt.Sprintf(`(() => {
   const profile = {name:%q,nodes:%d,edges:%d,samples:5};
   const samples = [];
-  topologySemanticView = 'runtime';
   topologyMode = 'graph';
   syncTopologyURL();
   const publish = () => {
@@ -82,7 +81,7 @@ func scaleHarness(profile topology.ScaleProfile) string {
       rendered: {nodes:Number(byId('topology').dataset.renderNodes),edges:Number(byId('topology').dataset.renderEdges),mode:byId('topology').dataset.renderMode},
       renderMs: {samples,median:ordered[Math.floor(ordered.length/2)],worst:ordered[ordered.length-1]},
       heapBytes: performance.memory?.usedJSHeapSize ?? null,
-      graphLimits: topologyGraphLimits,
+      graphPolicy: topologyGraphPolicy,
       complexityMessage: byId('topologyComplexityNotice')?.textContent || '',
       viewport: {width:innerWidth,height:innerHeight},
       userAgent: navigator.userAgent
@@ -93,7 +92,8 @@ func scaleHarness(profile topology.ScaleProfile) string {
       output = document.createElement('pre');
       output.id = 'topologyScaleEvidence';
       output.setAttribute('aria-label', 'Topology scale acceptance evidence');
-      document.querySelector('.topology-workspace .toolbar')?.appendChild(output);
+      output.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:20;width:min(340px,calc(100vw - 24px));max-height:180px;overflow:auto;margin:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--panel) 94%%,transparent);box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:10px;line-height:1.35;white-space:pre-wrap;pointer-events:none';
+      document.body.appendChild(output);
     }
     output.textContent = JSON.stringify(evidence, null, 2);
   };

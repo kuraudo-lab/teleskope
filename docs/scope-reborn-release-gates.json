@@ -14,7 +14,7 @@
       "search and filters",
       "stable selection and layout",
       "contextual details",
-      "accessible relation table fallback"
+      "accessible user-selected relation table"
     ],
     "adapted": [
       "Kubernetes ownership and declared relationships instead of host-probe discovery",
@@ -45,7 +45,7 @@
       "capabilities": [
         "provider-neutral graph contract and stable object identity",
         "semantic views, graph and table modes, search, filters, and drill-down",
-        "URL-restorable selection and a bounded high-complexity fallback"
+        "URL-restorable selection and an unbounded, pannable graph canvas"
       ],
       "modes": {
         "offline": "Embed the complete deterministic graph and contextual navigation in the self-contained report.",
@@ -137,7 +137,7 @@
     "browserScenarios": [
       "recorded finding and search to topology to contextual evidence",
       "local recorded-fixture delta acceptance, selection and layout continuity, and revision-gap full reset",
-      "large graph accessible table fallback and filtered return to graph",
+      "large graph remains pannable and selectable without automatic table fallback",
       "keyboard-only, reduced-motion, narrow viewport, light and dark theme, and screen-reader traversal"
     ],
     "security": [

@@ -22,8 +22,8 @@ complete graph evidence in Graph mode.
 
 Run `make topology-scale-demo SCALE_PROFILE=large`, then open
 `http://127.0.0.1:8092`. The command injects the exact canonical graph through
-the shared offline `RenderUI` path. The page selects the Runtime view and Graph
-presentation, performs five painted renders, and exposes the result visibly in
+the shared offline `RenderUI` path. The page selects the Workloads projection
+and Graph presentation, performs five painted renders, and exposes the result visibly in
 `#topologyScaleEvidence` and programmatically as
 `window.__teleskopeScaleEvidence`. Repeat with `small`, `medium`, and `large`;
 every profile must report `mode: graph`. Use

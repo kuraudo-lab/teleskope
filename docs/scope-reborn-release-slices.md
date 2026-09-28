@@ -73,7 +73,8 @@ and security review.
 ## What is inherited from Scope
 
 - **Core:** semantic views, relationship-first navigation, search/filter,
-  selection, contextual detail, stable layout and a dense table fallback.
+  selection, contextual detail, stable layout, and a user-selected relation
+  table. Graph scale or routing complexity never rewrites the chosen mode.
 - **Adapted:** Kubernetes ownership and declared relationships replace host
   probe discovery; watches and revisions replace probe streams; evidence tier,
   freshness, confidence and coverage become explicit product concepts.
@@ -90,8 +91,9 @@ A release can use the Scope reborn label only when all of these are evidenced:
 1. Issues #33–#40 are complete and the corpus-based gate in #40 passes.
 2. Required slices pass deterministic contract/unit tests and the recorded
    browser walkthrough in `docs/scope-reborn-walkthrough.md`.
-3. Small and medium graphs satisfy the SVG budgets; Large uses the accessible
-   relation table. The performance and accessibility evidence in
+3. Small, medium, and Large graphs satisfy the SVG budgets without automatic
+   presentation fallback; the relation table remains user-selected. The
+   performance and accessibility evidence in
    `docs/topology-scale-performance-accessibility.md` is current.
 4. Offline, live and hub preserve identity, evidence tier, freshness, coverage
    and finding references. Optional-provider failure is isolated and disclosed.

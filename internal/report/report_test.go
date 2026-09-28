@@ -463,7 +463,7 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"const port=(items,edge)=>",
 		"routeSamples=candidate=>",
 		"pathOf=candidate=>`M${candidate.sx} ${candidate.sy} L${candidate.ex}",
-		"if(routedEdges.unroutable)",
+		"if(routedEdges.unroutable&&complexityNotice)",
 		`viewBox="${viewBoxX} ${viewBoxY} ${viewBoxW} ${viewBoxH}"`,
 		`return` + "`" + `<circle class="node-shape"`,
 		`kind==='pod'`,
@@ -483,11 +483,10 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 		"text-overflow:ellipsis",
 		"function topologyEdgeEvidenceHTML",
 		"Relationship evidence",
-		"topologyGraphLimits",
-		"Object.freeze({nodes:100,edges:160})",
-		"if(exceedsGraphLimit&&topologyMode==='graph')",
+		"topologyGraphPolicy",
+		"Object.freeze({mode:'unbounded'",
 		"routeNodeHits",
-		"Relation table selected because this view has",
+		"Graph remains active",
 		`id="topologyComplexityNotice" role="status" aria-live="polite"`,
 		`id="topologyZoomOut" aria-label="Zoom topology out"`,
 		`id="topologyZoomIn" aria-label="Zoom topology in"`,
@@ -715,6 +714,33 @@ func TestTopologyLayoutContractUsesCondensedDepthAndSelectionFocus(t *testing.T)
 	}
 }
 
+func TestTopologyGraphPresentationNeverAutoFallsBack(t *testing.T) {
+	for _, forbidden := range []string{
+		"if(exceedsGraphLimit&&topologyMode==='graph'){topologyMode='table'",
+		"if(routedEdges.unroutable){topologyMode='table'",
+		"Relation table selected because this view has",
+		"Relation table selected because the visible relationships have",
+	} {
+		if strings.Contains(reportHTMLTemplate, forbidden) {
+			t.Fatalf("graph presentation must not be rewritten automatically; found %q", forbidden)
+		}
+	}
+	for _, want := range []string{
+		"function topologyWeakComponents(nodes,edges)",
+		"function topologyLayoutIsolates(nodes",
+		"const topologyGraphPolicy = Object.freeze({mode:'unbounded'",
+		"visibleEdges=topologySelectedNodeId?incident:edges",
+		"routeDrawn=topologySelectedNodeId?new Map([...drawn].filter(([id])=>selectedNeighbors.has(id))):drawn",
+		"topologyEdgeRoutes(visibleEdges,routeDrawn)",
+		`data-topology-isolate="${Boolean(node.isolate)}"`,
+		"dataset.routeCollisionChecked",
+	} {
+		if !strings.Contains(reportHTMLTemplate, want) {
+			t.Fatalf("unbounded Scope-style layout contract missing %q", want)
+		}
+	}
+}
+
 func TestRenderUIEscapesScriptsAndScriptData(t *testing.T) {
 	snapshot := &inventory.Snapshot{}
 	html, err := RenderUI(UIRenderOptions{
@@ -763,7 +789,7 @@ func TestRenderUIAcceptsValidatedTopologyFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html, `"clusterId":"scale-small"`) || !strings.Contains(html, `"name":"pod-0099"`) {
+	if !strings.Contains(html, `"clusterId":"scale-small"`) || !strings.Contains(html, `"name":"workload-0099"`) {
 		t.Fatal("topology override was not embedded in the shared UI")
 	}
 	graph.Nodes[0].ID = ""

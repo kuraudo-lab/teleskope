@@ -37,9 +37,9 @@ func BuildScaleFixture(profile ScaleProfile, revision uint64) Graph {
 		Coverage:      []Coverage{{Provider: "external", Capability: "runtime-connections", Status: "unavailable", Reason: "scale fixture has no runtime provider"}},
 	}
 	for i := 0; i < profile.Nodes; i++ {
-		name := fmt.Sprintf("pod-%04d", i)
+		name := fmt.Sprintf("workload-%04d", i)
 		graph.Nodes = append(graph.Nodes, Node{
-			ID: NodeID("kubernetes", graph.ClusterID, "pod", "scale", name), Kind: "pod", Name: name, Identity: name,
+			ID: NodeID("kubernetes", graph.ClusterID, "workload", "scale", name), Kind: "workload", Name: name, Identity: name,
 			Scope: Scope{Provider: "kubernetes", Cluster: graph.ClusterID, Namespace: "scale"},
 		})
 	}
