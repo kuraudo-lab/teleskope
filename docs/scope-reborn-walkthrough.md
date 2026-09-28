@@ -67,7 +67,9 @@ make topology-scale-demo SCALE_PROFILE=large
 Open `http://127.0.0.1:8092`. The visible evidence panel must report exactly
 1,500 nodes, 2,800 edges and `graph` mode after five painted renders. The
 canvas remains pannable and zoomable; selecting an object opens its focused
-neighborhood without changing presentation.
+neighborhood without changing presentation. Before selection the overview has
+no visible relationship lines. After selection, every visible one-hop
+relationship is one straight segment; no elbow or curved route is present.
 Repeat with `small` and `medium`; both use graph mode. Verify keyboard access,
 375-pixel layout, 200% zoom, reduced motion and a screen-reader traversal.
 

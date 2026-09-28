@@ -129,8 +129,10 @@ series.
 
 ## Contextual Inspector
 
-Selecting a node or edge keeps the topology visible and populates the
-persistent Inspector. Node context includes:
+Selecting a node or a currently revealed edge keeps the topology visible and
+populates the persistent Inspector. The overview has no visible edges. Node
+selection reveals only its one-hop incident relationships as straight segments
+between icon boundaries. Node context includes:
 
 - stable identity, health, relationship count, finding references, and
   collected display metadata;
@@ -147,8 +149,9 @@ persistent Inspector. Node context includes:
 
 Edge context includes its source and target as navigable objects, evidence
 tier, provider, relation metadata, deterministic finding evidence, and raw
-relationship evidence. Graph edges are pointer- and keyboard-selectable, and
-their selection is restorable through the `topologyEdge` URL state.
+relationship evidence. Revealed graph edges are pointer- and
+keyboard-selectable, and their selection is restorable together with the
+focused object through the `topologyEdge` URL state.
 
 A finding reference identifies one Advisor result as `ruleId::scope`, not only
 the rule. This keeps evidence distinct when one rule emits results for several

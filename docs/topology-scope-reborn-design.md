@@ -66,20 +66,20 @@ Edges retain the evidence distinctions already present in the topology contract.
 - Ownership or attachment.
 - Observed relationship only when supplied by an explicit external provider.
 
-Default edges are visually quiet. Hovering a node emphasizes its incident edges and direct neighbors. Selecting an edge or a relationship row exposes direction, basis, source/provider, freshness, and coverage. Declared evidence must never be described as observed traffic.
+The overview does not render relationship lines. Selecting an object reveals only its visible incoming and outgoing one-hop relationships. Each revealed relationship is a single straight segment between the selected object and one related object; the product does not mix orthogonal, elbow, or curved routing into this focus state. Selecting a revealed edge or a relationship row exposes direction, basis, source/provider, freshness, and coverage. Declared evidence must never be described as observed traffic.
 
-Edges must not reduce node-label legibility. Connection paths anchor to the icon shape and route around the label/secondary-text zone rather than passing vertically through it. Labels use only a compact canvas-colored backing where needed to mask a crossing line; this backing follows the text footprint and must not recreate the removed rectangular node card. Edge rendering remains behind node shapes and copy, and highlighted/selected edges must preserve the same text-clearance rule.
+Revealed edges must not reduce node-label legibility. Straight segments anchor to the circular icon boundary, render behind node shapes and copy, and stop before entering either icon. Labels keep their compact canvas-colored backing so a radial segment cannot compete with the label or secondary line. The backing follows the text footprint and must not recreate the removed rectangular node card.
 
 ### Selection and focus
 
-With no selection, the graph uses stable top-to-bottom relationship depth and keeps the inspector in an empty guidance state. Depth is derived from the visible graph's roots and directed relationships, not from a fixed list of resource-type rows.
+With no selection, the graph uses stable top-to-bottom relationship depth, renders no relationship lines, and keeps the inspector in an empty guidance state. Depth is derived from the visible graph's roots and directed relationships, not from a fixed list of resource-type rows.
 
 When an object is selected:
 
 1. The object moves to the graph center.
 2. Visible incoming and outgoing one-hop neighbors are placed around it.
-3. Unrelated nodes and edges remain in the graph but are dimmed.
-4. Incident edges receive the stronger selected treatment and direction marker.
+3. Unrelated nodes remain in the graph but are dimmed; unrelated edges are not rendered.
+4. Every visible incident relationship is rendered as one straight selected segment with a direction marker when the relationship is directed.
 5. The inspector updates from the same selected object state.
 6. Clearing selection restores the overview without losing filters, projection, pan/zoom intent, or live revision state.
 
@@ -139,13 +139,14 @@ The same embedded HTML must work for offline reports, `serve snapshot`, live ser
 - Default Workloads topology renders as a stable top-to-bottom relationship graph.
 - The number of visible depth levels follows the longest visible root-to-leaf relationship path instead of a fixed three-row or resource-type layout.
 - Siblings and root components form a readable, deterministic hierarchy without permanent lane backgrounds or rigid full-width rows.
-- Distinct visible relationships do not produce identical SVG paths or long coincident line segments; fan-out/fan-in separates at the node boundary, and routing minimizes crossings.
+- The overview renders no relationship lines; selecting an object reveals only its visible one-hop incident relationships.
+- Every revealed relationship is one straight icon-boundary-to-icon-boundary segment; no elbow, orthogonal, or curved path remains.
 - Selecting different nodes recenters each selected node and synchronizes title, graph emphasis, and inspector content.
 - Long names, ARNs, image digests, and metrics do not escape their node bounds or cover neighbors at supported zoom levels.
 - Default external, gateway, service, and workload objects use the accepted mock's 52px circular icon treatment rather than rectangular cards; selection, health, pod/runtime, and infrastructure silhouettes match the same visual grammar.
 - Full identity is keyboard- and pointer-accessible and visible in the inspector.
-- Node hover emphasizes only direct neighbors and incident edges.
-- Default, highlighted, and selected relationship lines do not visibly cross node labels or secondary text.
+- Node hover may emphasize direct-neighbor nodes but does not reveal relationship lines before selection.
+- Revealed relationship segments render behind compact label backings and do not reduce label or secondary-text legibility.
 - Relationship inspection exposes direction, basis, source, freshness, and coverage.
 - Search, filters, user-selected Table mode, pan/zoom, fit, selection, theme, Events, export, and live update behavior remain functional.
 - Graph mode remains Graph for the Small, Medium, and Large deterministic scale fixtures; complexity never silently rewrites the selected presentation.
