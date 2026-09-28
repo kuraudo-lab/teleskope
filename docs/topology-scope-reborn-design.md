@@ -66,6 +66,8 @@ Edges retain the evidence distinctions already present in the topology contract.
 
 Default edges are visually quiet. Hovering a node emphasizes its incident edges and direct neighbors. Selecting an edge or a relationship row exposes direction, basis, source/provider, freshness, and coverage. Declared evidence must never be described as observed traffic.
 
+Edges must not reduce node-label legibility. Connection paths anchor to the icon shape and route around the label/secondary-text zone rather than passing vertically through it. Labels use only a compact canvas-colored backing where needed to mask a crossing line; this backing follows the text footprint and must not recreate the removed rectangular node card. Edge rendering remains behind node shapes and copy, and highlighted/selected edges must preserve the same text-clearance rule.
+
 ### Selection and focus
 
 With no selection, the graph uses stable top-to-bottom ranks and keeps the inspector in an empty guidance state.
@@ -132,6 +134,7 @@ The same embedded HTML must work for offline reports, `serve snapshot`, live ser
 - Default external, gateway, service, and workload objects use the accepted mock's 52px circular icon treatment rather than rectangular cards; selection, health, pod/runtime, and infrastructure silhouettes match the same visual grammar.
 - Full identity is keyboard- and pointer-accessible and visible in the inspector.
 - Node hover emphasizes only direct neighbors and incident edges.
+- Default, highlighted, and selected relationship lines do not visibly cross node labels or secondary text.
 - Relationship inspection exposes direction, basis, source, freshness, and coverage.
 - Search, filters, Table fallback, pan/zoom, fit, selection, theme, Events, export, and live update behavior remain functional.
 - The recorded EKS fixture renders through the real embedded `/api/snapshot` path and passes browser interaction checks.
