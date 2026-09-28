@@ -2,5 +2,6 @@
 /dist/
 /coverage.out
 /coverage.html
+__pycache__/
 *.test
 .DS_Store
