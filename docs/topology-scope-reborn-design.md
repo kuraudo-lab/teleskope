@@ -51,7 +51,9 @@ A graph node contains only:
 - One short secondary line.
 - One pinned metric or finding marker.
 
-The node has a fixed visual footprint. Labels, secondary text, and metrics use bounded widths and ellipsis. The complete identity remains available through the accessible name, focus/hover tooltip, and inspector title. Unbroken names such as ARNs, image digests, node names, and generated workload names must not resize or overlap neighboring nodes.
+The accepted mock is the visual contract for graph nodes. A normal external, gateway, service, or workload node is not a rectangular card: it is a centered 52px circular icon container with its bounded label and secondary line stacked below. External nodes use a dashed blue circle, gateways use the accent outline, services use the blue outline, and workloads use the purple outline. A selected node gains the mock's accent outline and outer halo without changing its footprint. Health remains a small circular marker attached to the icon boundary. Pod/runtime and infrastructure nodes use the mock's distinct diamond and square silhouettes so type is not encoded by color alone.
+
+The node has a fixed 120px visual footprint. Labels and secondary text are centered below the icon and use the mock's bounded widths and ellipsis. A pinned metric is a bounded badge beside the icon, matching the mock rather than becoming another text row. The complete identity remains available through the accessible name, focus/hover tooltip, and inspector title. Unbroken names such as ARNs, image digests, node names, and generated workload names must not resize or overlap neighboring nodes.
 
 ### Relationships
 
@@ -127,6 +129,7 @@ The same embedded HTML must work for offline reports, `serve snapshot`, live ser
 - Default Workloads topology renders as a stable top-to-bottom relationship graph.
 - Selecting different nodes recenters each selected node and synchronizes title, graph emphasis, and inspector content.
 - Long names, ARNs, image digests, and metrics do not escape their node bounds or cover neighbors at supported zoom levels.
+- Default external, gateway, service, and workload objects use the accepted mock's 52px circular icon treatment rather than rectangular cards; selection, health, pod/runtime, and infrastructure silhouettes match the same visual grammar.
 - Full identity is keyboard- and pointer-accessible and visible in the inspector.
 - Node hover emphasizes only direct neighbors and incident edges.
 - Relationship inspection exposes direction, basis, source, freshness, and coverage.
@@ -134,4 +137,3 @@ The same embedded HTML must work for offline reports, `serve snapshot`, live ser
 - The recorded EKS fixture renders through the real embedded `/api/snapshot` path and passes browser interaction checks.
 - Automated report tests, `make check`, `make build`, and `git diff --check` pass.
 - No node probe or synthetic observed-traffic claim is added.
-
