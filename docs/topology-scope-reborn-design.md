@@ -41,6 +41,8 @@ The topology workspace retains:
 
 There is no `Semantic view`, swimlane selector, or focus checkbox. Focus is the direct result of selecting a node.
 
+The namespace selector must not offer a choice that is guaranteed to produce an empty Workloads projection. When topology graph evidence is available, its options are the namespaces represented by displayable external, entry, service, or workload objects. Cluster namespaces that contain only leases or other resources outside this projection remain available on their relevant Kubernetes inventory pages, but are not presented as valid topology scopes. A stale or deep-linked namespace outside the current projection falls back to `All namespaces`.
+
 ### Graph node
 
 A graph node contains only:
@@ -137,6 +139,7 @@ The same embedded HTML must work for offline reports, `serve snapshot`, live ser
 - Default, highlighted, and selected relationship lines do not visibly cross node labels or secondary text.
 - Relationship inspection exposes direction, basis, source, freshness, and coverage.
 - Search, filters, Table fallback, pan/zoom, fit, selection, theme, Events, export, and live update behavior remain functional.
+- Every namespace offered by the topology workspace produces at least one displayable Workloads-projection object for the current graph revision.
 - The recorded EKS fixture renders through the real embedded `/api/snapshot` path and passes browser interaction checks.
 - Automated report tests, `make check`, `make build`, and `git diff --check` pass.
 - No node probe or synthetic observed-traffic claim is added.
