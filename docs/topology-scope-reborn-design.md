@@ -72,7 +72,7 @@ Edges must not reduce node-label legibility. Connection paths anchor to the icon
 
 ### Selection and focus
 
-With no selection, the graph uses stable top-to-bottom ranks and keeps the inspector in an empty guidance state.
+With no selection, the graph uses stable top-to-bottom relationship depth and keeps the inspector in an empty guidance state. Depth is derived from the visible graph's roots and directed relationships, not from a fixed list of resource-type rows.
 
 When an object is selected:
 
@@ -106,8 +106,12 @@ The existing complexity gate remains authoritative. When the graph exceeds its s
 
 ## Layout rules
 
-- Overview layout is deterministic and top-to-bottom, following relationship direction.
-- Nodes with no connected rank use a stable overflow/grid placement.
+- Overview layout is a deterministic, top-to-bottom rooted hierarchy following relationship direction. The renderer first collapses each strongly connected component (SCC) into one layout component, producing an acyclic condensation graph. Zero-indegree SCCs are roots; multiple source SCCs attach to one layout-only virtual root that is never rendered and never added to evidence. A disconnected object is a single-node source SCC.
+- Component depth is the longest path from the virtual root through the condensation DAG. Nodes inside one SCC share that depth and receive deterministic local ordering and stagger. The renderer creates as many depth levels as the condensed visible relationship graph requires; it does not clamp the graph into fixed external/service/workload rows or a fixed maximum rank.
+- Resource semantics remain a secondary ordering constraint: external entry tends to precede service and workload, with runtime/infrastructure below when the collected relationships support that direction. Semantics must not invent an edge or force unrelated objects into the same row.
+- Within each depth level, nodes are ordered by the barycenter of their connected parents and children. Source branches receive horizontal space proportional to their reachable descendants; nodes reachable from multiple roots have one position based on all parent barycenters rather than being duplicated into multiple components. A small deterministic stagger is allowed inside a depth band so the graph reads as an organic hierarchy rather than three invisible swimlanes, while adjacent levels keep clear vertical separation.
+- Every visible relationship receives distinct source and target ports plus a deterministic route offset. Two relationships must not emit the same SVG path or share a long coincident trunk. Curves or rounded orthogonal segments may cross when the graph is non-planar, but ordering and routing must minimize crossings and must never cross a node's icon, label, or secondary-text footprint.
+- Nodes with no connected relationship remain stable root components rather than being pushed into an unrelated overflow row.
 - Focus layout is deterministic for the selected identity and its visible one-hop neighborhood.
 - Cross-layer focus paths place external entry above workload and runtime/infrastructure below when those relationships exist.
 - Live revisions reuse stable identities and existing layout state where possible to reduce visual jumps.
@@ -131,6 +135,9 @@ The same embedded HTML must work for offline reports, `serve snapshot`, live ser
 
 - The product contains no visible semantic-view or swimlane control/text.
 - Default Workloads topology renders as a stable top-to-bottom relationship graph.
+- The number of visible depth levels follows the longest visible root-to-leaf relationship path instead of a fixed three-row or resource-type layout.
+- Siblings and root components form a readable, deterministic hierarchy without permanent lane backgrounds or rigid full-width rows.
+- Distinct visible relationships do not produce identical SVG paths or long coincident line segments; fan-out/fan-in separates at the node boundary, and routing minimizes crossings.
 - Selecting different nodes recenters each selected node and synchronizes title, graph emphasis, and inspector content.
 - Long names, ARNs, image digests, and metrics do not escape their node bounds or cover neighbors at supported zoom levels.
 - Default external, gateway, service, and workload objects use the accepted mock's 52px circular icon treatment rather than rectangular cards; selection, health, pod/runtime, and infrastructure silhouettes match the same visual grammar.
