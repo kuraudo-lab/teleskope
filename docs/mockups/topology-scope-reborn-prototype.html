@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teleskope · Scope-style topology prototype</title>
+  <!--
+    THROWAWAY PROTOTYPE — not production UI.
+    Question: which Scope-inspired topology model should replace semantic swimlanes?
+    Run: python3 -m http.server 4173 --directory docs/mockups
+    Open: http://127.0.0.1:4173/topology-scope-reborn-prototype.html?variant=A
+  -->
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e12;
+      --surface: #12161c;
+      --surface-2: #171c23;
+      --surface-3: #1d232c;
+      --canvas: #0f1318;
+      --line: #29313b;
+      --line-strong: #3a4653;
+      --text: #f3f6f8;
+      --muted: #9aa5b1;
+      --subtle: #66717d;
+      --accent: #00c9a7;
+      --accent-soft: rgba(0, 201, 167, .14);
+      --warning: #f6ad55;
+      --danger: #f87171;
+      --blue: #60a5fa;
+      --purple: #a78bfa;
+      --shadow: 0 18px 55px rgba(0, 0, 0, .34);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #eef1f4;
+      --surface: #ffffff;
+      --surface-2: #f7f8fa;
+      --surface-3: #edf1f4;
+      --canvas: #f8fafb;
+      --line: #d8dee5;
+      --line-strong: #bac4ce;
+      --text: #17202a;
+      --muted: #52606d;
+      --subtle: #7c8793;
+      --accent: #008f78;
+      --accent-soft: rgba(0, 143, 120, .11);
+      --warning: #b96d13;
+      --danger: #d43d3d;
+      --blue: #2878c7;
+      --purple: #7557c9;
+      --shadow: 0 18px 55px rgba(29, 38, 48, .13);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-width: 760px; min-height: 700px; background: var(--bg); color: var(--text); }
+    body { min-height: 100vh; overflow: hidden; }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .app { height: 100vh; display: grid; grid-template-rows: 54px minmax(0, 1fr); }
+    .topbar {
+      display: flex; align-items: center; gap: 12px; padding: 0 14px;
+      background: var(--surface); border-bottom: 1px solid var(--line); z-index: 10;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 206px; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; border: 2px solid var(--accent); border-radius: 50%; }
+    .brand-mark svg { width: 17px; height: 17px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+    .brand-copy { line-height: 1.05; }
+    .brand-copy strong { display: block; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+    .brand-copy span { color: var(--muted); font-size: 10px; }
+    .topology-tabs { display: flex; align-self: stretch; }
+    .topology-tab {
+      position: relative; min-width: 92px; padding: 0 16px; border: 0; background: transparent;
+      color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 700;
+    }
+    .topology-tab[aria-selected="true"] { color: var(--text); }
+    .topology-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; background: var(--accent); }
+    .topology-tab:disabled { cursor: not-allowed; opacity: .38; }
+    .topbar-spacer { flex: 1; }
+    .status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+    .top-action { height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-2); cursor: pointer; font-size: 11px; font-weight: 700; }
+    .top-action:hover { border-color: var(--line-strong); background: var(--surface-3); }
+
+    .workspace { min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr) 330px; }
+    .rail, .inspector { min-height: 0; overflow: auto; background: var(--surface); }
+    .rail { border-right: 1px solid var(--line); padding: 14px 12px 88px; }
+    .inspector { border-left: 1px solid var(--line); padding: 0 0 88px; }
+    .rail-section { margin-bottom: 20px; }
+    .rail-title, .eyebrow { margin: 0 0 8px; color: var(--subtle); font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; left: 9px; top: 9px; width: 14px; height: 14px; fill: none; stroke: var(--muted); stroke-width: 2; pointer-events: none; }
+    .search { width: 100%; height: 34px; padding: 0 8px 0 30px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; font-size: 11px; }
+    .rail-option { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 31px; padding: 6px 8px; border: 0; border-radius: 3px; background: transparent; color: var(--muted); cursor: pointer; text-align: left; font-size: 11px; }
+    .rail-option:hover { background: var(--surface-2); color: var(--text); }
+    .rail-option.active { background: var(--accent-soft); color: var(--text); box-shadow: inset 2px 0 var(--accent); }
+    .rail-option span:last-child { color: var(--subtle); font-variant-numeric: tabular-nums; }
+    .check-row { display: flex; align-items: center; gap: 8px; min-height: 30px; color: var(--muted); font-size: 11px; }
+    .check-row input { accent-color: var(--accent); }
+    .legend-row { display: grid; grid-template-columns: 14px 1fr; gap: 7px; align-items: center; min-height: 27px; color: var(--muted); font-size: 10px; }
+    .legend-line { height: 0; border-top: 2px solid var(--line-strong); }
+    .legend-line.declared { border-top-style: dashed; border-color: var(--blue); }
+    .legend-line.ownership { border-color: var(--purple); }
+    .legend-line.resolved { border-color: var(--accent); }
+    .coverage { padding: 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-2); color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .coverage strong { display: block; margin-bottom: 3px; color: var(--warning); font-size: 10px; }
+
+    .main { min-width: 0; min-height: 0; display: grid; grid-template-rows: 46px minmax(0, 1fr) 34px; background: var(--canvas); }
+    .canvas-bar { display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 88%, transparent); }
+    .canvas-title { min-width: 0; }
+    .canvas-title strong { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .canvas-title span { display: block; color: var(--muted); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .canvas-bar-spacer { flex: 1; }
+    .icon-button { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-2); cursor: pointer; }
+    .icon-button svg { width: 15px; height: 15px; fill: none; stroke: var(--muted); stroke-width: 1.8; }
+    .icon-button:hover svg { stroke: var(--text); }
+
+    .canvas { position: relative; min-height: 0; overflow: auto; background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 0); background-size: 22px 22px; }
+    .graph-stage { position: relative; width: 100%; height: 640px; min-width: 100%; min-height: 100%; transform-origin: 0 0; }
+    .edges { position: absolute; inset: 0; width: 100%; height: 640px; overflow: visible; pointer-events: none; }
+    .edge { fill: none; stroke: var(--line-strong); stroke-width: 1.6; opacity: .7; marker-end: none; pointer-events: stroke; cursor: pointer; }
+    .edge.declared { stroke: var(--blue); stroke-dasharray: 5 5; }
+    .edge.ownership { stroke: var(--purple); }
+    .edge.resolved { stroke: var(--accent); }
+    .edge.dimmed { opacity: .08; }
+    .edge.highlighted { opacity: 1; stroke-width: 2.6; marker-end: url(#arrow); }
+    .edge.hover-dim { opacity: .08; }
+    .edge.hover-highlight { opacity: 1; stroke-width: 2.6; marker-end: url(#arrow); }
+    .tier { position: absolute; left: 24px; right: 24px; height: 1px; border-top: 1px dashed color-mix(in srgb, var(--line-strong) 60%, transparent); pointer-events: none; }
+    .tier span { position: absolute; left: 0; top: -17px; color: var(--subtle); font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+
+    .graph-node {
+      position: absolute; width: 120px; min-height: 90px; transform: translate(-50%, -50%);
+      display: grid; justify-items: center; align-content: start; gap: 6px; padding: 4px 5px;
+      border: 0; background: transparent; cursor: pointer; transition: opacity .16s ease, filter .16s ease;
+    }
+    .graph-node.dimmed { opacity: .15; filter: grayscale(.8); }
+    .graph-node.hover-dim { opacity: .15; filter: grayscale(.8); }
+    .node-shape {
+      position: relative; width: 52px; height: 52px; display: grid; place-items: center;
+      border: 2px solid var(--line-strong); border-radius: 50%; background: var(--surface-2); box-shadow: 0 5px 18px rgba(0, 0, 0, .24);
+    }
+    .graph-node[data-kind="external"] .node-shape { border-style: dashed; border-color: var(--blue); }
+    .graph-node[data-kind="gateway"] .node-shape { border-color: var(--accent); }
+    .graph-node[data-kind="service"] .node-shape { border-color: var(--blue); }
+    .graph-node[data-kind="workload"] .node-shape { border-color: var(--purple); }
+    .graph-node[data-kind="pod"] .node-shape { border-radius: 30% 30% 42% 42%; border-color: var(--warning); transform: rotate(45deg); }
+    .graph-node[data-kind="pod"] .node-shape svg { transform: rotate(-45deg); }
+    .graph-node[data-kind="infra"] .node-shape { border-radius: 5px; border-color: var(--accent); }
+    .graph-node[data-health="warning"] .node-shape::after { content: ""; position: absolute; right: -3px; top: -3px; width: 10px; height: 10px; border: 2px solid var(--canvas); border-radius: 50%; background: var(--warning); }
+    .graph-node.selected .node-shape { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), 0 8px 24px rgba(0,0,0,.34); }
+    .node-shape svg { width: 23px; height: 23px; fill: none; stroke: var(--text); stroke-width: 1.6; }
+    .node-count { position: absolute; right: -7px; bottom: -5px; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border: 2px solid var(--canvas); border-radius: 10px; background: var(--surface-3); color: var(--text); font-size: 9px; font-weight: 800; }
+    .node-label { display: block; width: 108px; color: var(--text); font-size: 11px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+    .node-meta { display: block; width: 108px; color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+    .node-metric { position: absolute; left: calc(50% + 24px); top: 7px; min-width: 38px; padding: 2px 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 8px; }
+    .node-metric { max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .graph-node::after { content: attr(data-full); position: absolute; left: 50%; top: calc(100% + 3px); z-index: 8; max-width: 260px; padding: 5px 7px; transform: translateX(-50%); border: 1px solid var(--line-strong); border-radius: 3px; background: var(--surface-3); color: var(--text); box-shadow: var(--shadow); font-size: 9px; line-height: 1.35; overflow-wrap: anywhere; opacity: 0; pointer-events: none; }
+    .graph-node:hover::after, .graph-node:focus-visible::after { opacity: 1; }
+    .empty-search { position: absolute; inset: 0; display: none; place-items: center; color: var(--muted); font-size: 12px; }
+    .table-mode { display: none; min-width: 720px; padding: 18px; }
+    .table-mode table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 10px; }
+    .table-mode th, .table-mode td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+    .table-mode th { color: var(--subtle); font-size: 9px; letter-spacing: .09em; text-transform: uppercase; }
+    .table-mode td { color: var(--muted); }
+    .table-mode button { border: 0; background: transparent; color: var(--text); cursor: pointer; font-weight: 700; text-align: left; }
+
+    .canvas-foot { display: flex; align-items: center; gap: 15px; padding: 0 12px; border-top: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 9px; }
+    .canvas-foot strong { color: var(--text); }
+    .canvas-foot .spacer { flex: 1; }
+
+    .inspector-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; min-height: 46px; padding: 0 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .inspector-head strong { font-size: 12px; }
+    .close { width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; }
+    .object-summary { padding: 16px 14px; border-bottom: 1px solid var(--line); }
+    .object-kind { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .object-name { margin: 6px 0 4px; color: var(--text); font-size: 16px; line-height: 1.28; overflow-wrap: anywhere; }
+    .object-id { color: var(--muted); font: 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .health-row { display: flex; gap: 7px; margin-top: 12px; }
+    .pill { padding: 4px 7px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); background: var(--surface-2); font-size: 9px; }
+    .pill.good { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+    .pill.warn { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, var(--line)); }
+    .inspector-section { padding: 14px; border-bottom: 1px solid var(--line); }
+    .inspector-section h3 { margin: 0 0 10px; color: var(--subtle); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+    .kv { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px 10px; font-size: 10px; }
+    .kv span { color: var(--muted); }
+    .kv strong { min-width: 0; color: var(--text); font-weight: 650; overflow-wrap: anywhere; }
+    .relation { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 5px 6px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; text-align: left; }
+    .relation:hover { background: var(--surface-2); }
+    .relation-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; border: 2px solid var(--blue); }
+    .relation-copy { min-width: 0; flex: 1; }
+    .relation-copy strong, .relation-copy span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .relation-copy strong { font-size: 10px; }
+    .relation-copy span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+    .finding { padding: 9px; border-left: 2px solid var(--warning); background: color-mix(in srgb, var(--warning) 8%, transparent); color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .finding strong { display: block; margin-bottom: 3px; color: var(--text); }
+
+    .prototype-switcher {
+      position: fixed; left: 50%; bottom: 16px; z-index: 50; transform: translateX(-50%);
+      display: grid; grid-template-columns: 38px minmax(230px, auto) 38px; align-items: center;
+      border: 1px solid #52606e; border-radius: 22px; background: #071019; color: #f5f8fa; box-shadow: 0 16px 45px rgba(0,0,0,.45); overflow: hidden;
+    }
+    .prototype-switcher button { height: 40px; border: 0; background: transparent; color: #dce6ed; cursor: pointer; font-size: 18px; }
+    .prototype-switcher button:hover { background: rgba(255,255,255,.09); }
+    .prototype-label { padding: 0 14px; text-align: center; }
+    .prototype-label strong { display: block; font-size: 11px; }
+    .prototype-label span { display: block; margin-top: 1px; color: #8da0ae; font-size: 9px; }
+
+    .toast { position: fixed; right: 344px; bottom: 18px; z-index: 40; max-width: 310px; padding: 9px 11px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-3); color: var(--text); box-shadow: var(--shadow); font-size: 10px; opacity: 0; transform: translateY(8px); pointer-events: none; transition: .16s ease; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1180px) {
+      .workspace { grid-template-columns: 178px minmax(0, 1fr) 292px; }
+      .topology-tab { min-width: 78px; padding: 0 10px; }
+      .toast { right: 305px; }
+    }
+
+    @media (max-width: 1000px) {
+      .workspace { grid-template-columns: minmax(0, 1fr) 280px; }
+      .rail { display: none; }
+      .brand { min-width: 180px; }
+      .topology-tab { min-width: 70px; padding: 0 7px; }
+      .toast { right: 294px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <defs>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+      <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.3A7 7 0 0 1 18.6 7M17.9 15.7A7 7 0 0 1 5.4 17"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4a13 13 0 0 1 0 16M12 4a13 13 0 0 0 0 16"/></symbol>
+      <symbol id="i-gateway" viewBox="0 0 24 24"><path d="M4 18V7l8-4 8 4v11M8 18v-7h8v7M3 21h18"/></symbol>
+      <symbol id="i-service" viewBox="0 0 24 24"><circle cx="7" cy="12" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><path d="m9.8 10.7 4.4-2.3M9.8 13.3l4.4 2.3"/></symbol>
+      <symbol id="i-workload" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></symbol>
+      <symbol id="i-pod" viewBox="0 0 24 24"><path d="m12 3 7 4v10l-7 4-7-4V7z"/><path d="m5 7 7 4 7-4M12 11v10"/></symbol>
+      <symbol id="i-infra" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1"/><rect x="4" y="14" width="16" height="6" rx="1"/><path d="M8 7h.01M8 17h.01M12 7h5M12 17h5"/></symbol>
+      <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker>
+    </defs>
+  </svg>
+
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/><path d="m4 8.5 8 4.5 8-4.5M12 13v7"/></svg></span>
+        <span class="brand-copy"><strong>Teleskope</strong><span>Scope-style topology prototype</span></span>
+      </div>
+      <nav class="topology-tabs" aria-label="Topology projection" role="tablist">
+        <button class="topology-tab" role="tab" data-view="Applications" aria-selected="false" disabled title="Not implemented in this prototype">Applications</button>
+        <button class="topology-tab" role="tab" data-view="Workloads" aria-selected="true">Workloads</button>
+        <button class="topology-tab" role="tab" data-view="Pods" aria-selected="false" disabled title="Not implemented in this prototype">Pods</button>
+        <button class="topology-tab" role="tab" data-view="Infrastructure" aria-selected="false" disabled title="Not implemented in this prototype">Infrastructure</button>
+      </nav>
+      <div class="topbar-spacer"></div>
+      <span class="status"><i class="status-dot"></i>Events ready · rev 128</span>
+      <button class="top-action" id="pauseButton">Pause</button>
+      <button class="top-action" id="exportButton">Export</button>
+      <button class="top-action" id="themeButton" aria-label="Toggle theme">Theme</button>
+    </header>
+
+    <div class="workspace">
+      <aside class="rail" aria-label="Topology controls">
+        <section class="rail-section">
+          <p class="rail-title">Find in current view</p>
+          <div class="search-wrap">
+            <svg><use href="#i-search"/></svg>
+            <input class="search" id="searchInput" type="search" value="" placeholder="name, kind, finding…" aria-label="Search topology">
+          </div>
+        </section>
+        <section class="rail-section">
+          <p class="rail-title">Namespace</p>
+          <button class="rail-option" data-namespace="all"><span>All</span><span>19</span></button>
+          <button class="rail-option active" data-namespace="commerce"><span>commerce</span><span>12</span></button>
+          <button class="rail-option" data-namespace="platform"><span>platform</span><span>7</span></button>
+        </section>
+        <section class="rail-section">
+          <p class="rail-title">Visibility</p>
+          <label class="check-row"><input type="checkbox" data-filter="application" checked> Application objects</label>
+          <label class="check-row"><input type="checkbox" data-filter="system"> Platform objects</label>
+          <label class="check-row"><input type="checkbox" data-filter="external" checked> External endpoints</label>
+          <label class="check-row"><input type="checkbox" data-filter="findings"> Findings only</label>
+        </section>
+        <section class="rail-section">
+          <p class="rail-title">Relationship evidence</p>
+          <div class="legend-row"><i class="legend-line resolved"></i><span>Resolved relationship</span></div>
+          <div class="legend-row"><i class="legend-line declared"></i><span>Declared configuration</span></div>
+          <div class="legend-row"><i class="legend-line ownership"></i><span>Ownership / attachment</span></div>
+        </section>
+        <section class="coverage">
+          <strong>Runtime traffic unavailable</strong>
+          No external connection provider is configured. Lines represent Kubernetes and AWS evidence, not observed traffic.
+        </section>
+      </aside>
+
+      <main class="main">
+        <div class="canvas-bar">
+          <div class="canvas-title"><strong id="canvasHeading">Workload relationship map</strong><span id="canvasDescription">One topology projection at a time; select a node to focus its direct neighborhood.</span></div>
+          <div class="canvas-bar-spacer"></div>
+          <button class="icon-button" id="relayoutButton" aria-label="Re-layout graph"><svg><use href="#i-refresh"/></svg></button>
+          <button class="icon-button" id="fitButton" aria-label="Fit graph to screen"><svg><use href="#i-fit"/></svg></button>
+          <button class="top-action" id="modeButton">Table</button>
+        </div>
+        <section class="canvas" id="canvas" aria-label="Topology graph">
+          <div class="graph-stage" id="graphStage">
+            <svg class="edges" id="edges" viewBox="0 0 1000 640" aria-hidden="true"></svg>
+            <div class="empty-search" id="emptySearch">No visible object matches this search.</div>
+          </div>
+          <div class="table-mode" id="tableMode"></div>
+        </section>
+        <footer class="canvas-foot">
+          <span><strong id="visibleCount">0</strong> visible objects</span>
+          <span><strong id="edgeCount">0</strong> evidence-backed relationships</span>
+          <span>Scroll canvas · click object to focus</span>
+          <span class="spacer"></span>
+          <span id="stateReadout">variant=A · view=Workloads · selected=checkout-api</span>
+        </footer>
+      </main>
+
+      <aside class="inspector" aria-label="Selected object details">
+        <div class="inspector-head"><strong>Object details</strong><button class="close" id="clearSelection" aria-label="Clear selection">×</button></div>
+        <div class="object-summary">
+          <div class="object-kind" id="detailKind">Workload · Kubernetes</div>
+          <h2 class="object-name" id="detailName">checkout-api-canary-production-eu-west-1</h2>
+          <div class="object-id" id="detailId">k8s/demo/workload/commerce/checkout-api-canary-production-eu-west-1</div>
+          <div class="health-row"><span class="pill good" id="detailHealth">Healthy</span><span class="pill" id="detailMetric">CPU request 240m</span></div>
+        </div>
+        <section class="inspector-section">
+          <h3>Context</h3>
+          <div class="kv">
+            <span>Namespace</span><strong id="detailNamespace">commerce</strong>
+            <span>Provider</span><strong>Kubernetes API</strong>
+            <span>Freshness</span><strong>current · 11:42:08</strong>
+            <span>Evidence</span><strong id="detailEvidence">resolved + ownership</strong>
+          </div>
+        </section>
+        <section class="inspector-section">
+          <h3>Direct relationships</h3>
+          <div id="relations"></div>
+        </section>
+        <section class="inspector-section" id="findingSection">
+          <h3>Advisor finding</h3>
+          <div class="finding" id="findingText"><strong>Replica availability is healthy</strong>3 desired / 3 available. One canary pod has restarted twice; inspect events before rollout.</div>
+        </section>
+        <section class="inspector-section" id="metricsSection">
+          <h3>Metrics</h3>
+          <div class="kv"><span>Pinned value</span><strong id="metricValue">240m CPU request</strong><span>Evidence type</span><strong>declared · point-in-time</strong><span>History</span><strong>unavailable</strong></div>
+        </section>
+        <section class="inspector-section" id="placementSection">
+          <h3>Children / placement</h3>
+          <div id="placementContent" class="kv"></div>
+        </section>
+        <section class="inspector-section" id="edgeEvidenceSection">
+          <h3>Selected relationship evidence</h3>
+          <div id="edgeEvidence" class="kv"><span>State</span><strong>Select a line or relationship row</strong></div>
+        </section>
+        <section class="inspector-section" id="evidenceSection">
+          <h3>Object evidence</h3>
+          <div class="kv"><span>Source</span><strong id="evidenceSource">Kubernetes API</strong><span>Observed at</span><strong>11:42:08 · current</strong><span>Coverage</span><strong>complete for object inventory</strong></div>
+        </section>
+        <section class="inspector-section">
+          <h3>Prototype state</h3>
+          <div class="kv"><span>Variant</span><strong id="detailVariant">A</strong><span>Projection</span><strong id="detailView">Workloads</strong><span>Search</span><strong id="detailSearch">none</strong><span>Selection</span><strong id="detailSelection">checkout-api</strong></div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div class="prototype-switcher" aria-label="Prototype variant switcher">
+    <button id="previousVariant" aria-label="Previous variant">‹</button>
+    <div class="prototype-label"><strong id="variantLabel">A — Scope graph</strong><span>Use ← and → · URL keeps the variant</span></div>
+    <button id="nextVariant" aria-label="Next variant">›</button>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const variants = {
+      A: {
+        name: 'Scope graph',
+        heading: 'Workload relationship map',
+        description: 'One projection at a time; Dagre-style ranks read client → server from top to bottom.',
+        note: 'Closest to Scope: directed graph first, projection selector, selection-driven focus.',
+        positions: {
+          internet:[500,55], publicAlb:[500,135], checkoutService:[500,220], checkoutApi:[500,315], payments:[210,430], orders:[405,445], inventory:[595,445], telemetry:[790,430], rds:[405,565]
+        }
+      },
+      B: {
+        name: 'Vertical trace',
+        heading: 'External → workload → infrastructure',
+        description: 'A top-to-bottom trace; subtle tiers guide reading while relationships remain primary.',
+        note: 'Your requested hierarchy: external network → workloads → runtime → infrastructure.',
+        positions: {
+          internet:[500,65], publicAlb:[500,145], checkoutService:[330,235], checkoutApi:[520,235], payments:[710,235], orders:[380,340], inventory:[590,340], rds:[760,340], telemetry:[205,340], podA:[370,445], podB:[530,445], nodeA:[370,555], nodeB:[530,555], nodegroup:[710,555]
+        },
+        tiers: [[82,'External network'],[250,'Services and workloads'],[460,'Runtime'],[570,'Infrastructure']]
+      },
+      C: {
+        name: 'Focused neighborhood',
+        heading: 'checkout-api · direct neighborhood',
+        description: 'Scope selection behavior: the chosen object is centered and its incoming/outgoing neighbors form a ring.',
+        note: 'Strongest troubleshooting mode: bounded one-hop context instead of the whole cluster at once.',
+        positions: {
+          checkoutApi:[500,300], checkoutService:[500,90], payments:[820,155], orders:[850,380], inventory:[650,550], telemetry:[350,550], publicAlb:[150,380], rds:[180,155]
+        },
+        forceFocus: true
+      }
+    };
+
+    const nodes = {
+      internet:{label:'Public internet',kind:'external',meta:'explicit public boundary',health:'healthy',metric:'CIDRs 2',namespace:'—',icon:'external'},
+      publicAlb:{label:'commerce-public-alb',kind:'gateway',meta:'AWS ALB · internet-facing',health:'healthy',metric:'2 listeners',namespace:'commerce',icon:'gateway'},
+      checkoutService:{label:'checkout-service',kind:'service',meta:'Service · ClusterIP',health:'healthy',metric:'3 endpoints',namespace:'commerce',icon:'service'},
+      checkoutApi:{label:'checkout-api-canary-production-eu-west-1',kind:'workload',meta:'Deployment · 3/3 available',health:'healthy',metric:'240m CPU',namespace:'commerce',icon:'workload',count:3},
+      payments:{label:'payments-api',kind:'workload',meta:'Deployment · 2/2 available',health:'warning',metric:'2 restarts',namespace:'commerce',icon:'workload',count:2},
+      orders:{label:'orders-worker-long-running-consumer',kind:'workload',meta:'StatefulSet · 2/2 ready',health:'healthy',metric:'512Mi',namespace:'commerce',icon:'workload',count:2},
+      inventory:{label:'inventory-api',kind:'workload',meta:'Deployment · 4/4 available',health:'healthy',metric:'320m CPU',namespace:'commerce',icon:'workload',count:4},
+      telemetry:{label:'otel-collector-commerce',kind:'workload',meta:'Deployment · metrics only',health:'healthy',metric:'OTel',namespace:'platform',icon:'workload'},
+      rds:{label:'orders-postgres.cluster-c7x9.eu-west-1.rds.amazonaws.com',kind:'external',meta:'resolved AWS endpoint',health:'healthy',metric:'private',namespace:'—',icon:'external'},
+      podA:{label:'checkout-api-7d9fc4b9c9-x2k8p',kind:'pod',meta:'Pod · ready',health:'healthy',metric:'120m',namespace:'commerce',icon:'pod'},
+      podB:{label:'checkout-api-7d9fc4b9c9-z9m4q',kind:'pod',meta:'Pod · ready · 2 restarts',health:'warning',metric:'118m',namespace:'commerce',icon:'pod'},
+      nodeA:{label:'ip-10-24-18-73.eu-west-1.compute.internal',kind:'infra',meta:'EC2 node · m7i.large',health:'healthy',metric:'62%',namespace:'—',icon:'infra'},
+      nodeB:{label:'ip-10-24-21-109.eu-west-1.compute.internal',kind:'infra',meta:'EC2 node · m7i.large',health:'healthy',metric:'48%',namespace:'—',icon:'infra'},
+      nodegroup:{label:'commerce-apps-20260922092844123400000001',kind:'infra',meta:'EKS managed node group',health:'healthy',metric:'3 nodes',namespace:'—',icon:'infra'}
+    };
+
+    const edges = [
+      ['internet','publicAlb','declared'],['publicAlb','checkoutService','resolved'],['checkoutService','checkoutApi','resolved'],
+      ['checkoutApi','payments','declared'],['checkoutApi','orders','declared'],['checkoutApi','inventory','declared'],
+      ['checkoutApi','telemetry','declared'],['orders','rds','resolved'],['checkoutApi','rds','declared'],
+      ['checkoutApi','podA','ownership'],['checkoutApi','podB','ownership'],['podA','nodeA','resolved'],['podB','nodeB','resolved'],
+      ['nodeA','nodegroup','ownership'],['nodeB','nodegroup','ownership']
+    ];
+
+    const projections = {
+      Applications: new Set(['internet','publicAlb','checkoutService','checkoutApi','payments','orders','inventory','rds']),
+      Workloads: new Set(['internet','publicAlb','checkoutService','checkoutApi','payments','orders','inventory','telemetry','rds']),
+      Pods: new Set(['checkoutService','checkoutApi','podA','podB','nodeA','nodeB']),
+      Infrastructure: new Set(['podA','podB','nodeA','nodeB','nodegroup'])
+    };
+
+    const requestedVariant = new URLSearchParams(location.search).get('variant')?.toUpperCase();
+    const initialVariant = requestedVariant in variants ? requestedVariant : 'A';
+    const state = {
+      variant: initialVariant, view: 'Workloads', selected: initialVariant === 'A' ? null : 'checkoutApi',
+      selectedEdge: null, search: '', namespace: 'commerce', paused: false, mode: 'graph', scale: 1,
+      showApplication: true, showSystem: false, showExternal: true, findingsOnly: false
+    };
+
+    const byId = id => document.getElementById(id);
+    const esc = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+    const incident = id => edges.filter(edge => edge[0] === id || edge[1] === id);
+    const edgeKey = edge => edge.join('|');
+    const edgeSource = kind => kind === 'ownership' ? 'Kubernetes ownerReferences / AWS attachment' : kind === 'resolved' ? 'Kubernetes API + resolved target inventory' : 'Kubernetes / AWS declared configuration';
+
+    function visibleIds() {
+      const positioned = new Set(Object.keys(variants[state.variant].positions));
+      const projection = state.variant === 'B' ? new Set(positioned) : projections[state.view];
+      return [...positioned].filter(id => {
+        if (!projection.has(id)) return false;
+        const node = nodes[id];
+        if (state.namespace !== 'all' && node.namespace !== state.namespace && node.namespace !== '—') return false;
+        if (!state.showApplication && ['gateway','service','workload'].includes(node.kind)) return false;
+        if (!state.showSystem && node.namespace === 'platform') return false;
+        if (!state.showExternal && node.kind === 'external') return false;
+        if (state.findingsOnly && node.health !== 'warning') return false;
+        return true;
+      });
+    }
+
+    function layoutPositions(visible) {
+      const positions = Object.fromEntries(Object.entries(variants[state.variant].positions).map(([id,point]) => [id,[...point]]));
+      if (!variants[state.variant].forceFocus || !state.selected || !positions[state.selected]) return positions;
+      positions[state.selected] = [500,300];
+      const neighbors = incident(state.selected).map(edge => edge[0] === state.selected ? edge[1] : edge[0]).filter(id => visible.includes(id) && positions[id]);
+      neighbors.forEach((id,index) => {
+        const angle = -Math.PI / 2 + index * ((Math.PI * 2) / Math.max(1,neighbors.length));
+        positions[id] = [500 + Math.cos(angle) * 340, 300 + Math.sin(angle) * 215];
+      });
+      return positions;
+    }
+
+    function pathFor(source, target, positions) {
+      const [x1,y1] = positions[source];
+      const [x2,y2] = positions[target];
+      if (state.variant === 'B') {
+        const midY = (y1 + y2) / 2;
+        return `M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`;
+      }
+      if (state.variant === 'A') {
+        const midX = (x1 + x2) / 2;
+        return `M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`;
+      }
+      return `M${x1},${y1} L${x2},${y2}`;
+    }
+
+    function applyHover(id) {
+      const relatives = new Set([id, ...incident(id).flatMap(edge => [edge[0],edge[1]])]);
+      document.querySelectorAll('.graph-node').forEach(element => element.classList.toggle('hover-dim', !relatives.has(element.dataset.id)));
+      document.querySelectorAll('.edge').forEach(element => {
+        const touches = element.dataset.source === id || element.dataset.target === id;
+        element.classList.toggle('hover-highlight', touches);
+        element.classList.toggle('hover-dim', !touches);
+      });
+    }
+
+    function renderTable(visible, matches) {
+      byId('graphStage').style.display = 'none';
+      byId('tableMode').style.display = 'block';
+      const rows = visible.filter(id => !state.search || matches.has(id)).map(id => `<tr><td><button data-table-node="${id}">${esc(nodes[id].label)}</button></td><td>${esc(nodes[id].kind)}</td><td>${esc(nodes[id].namespace)}</td><td>${esc(nodes[id].meta)}</td><td>${esc(nodes[id].metric)}</td><td>${esc(nodes[id].health)}</td></tr>`).join('');
+      byId('tableMode').innerHTML = `<table><thead><tr><th>Object</th><th>Kind</th><th>Namespace</th><th>Summary</th><th>Pinned value</th><th>Health</th></tr></thead><tbody>${rows || '<tr><td colspan="6">No objects match the current filters.</td></tr>'}</tbody></table>`;
+      document.querySelectorAll('[data-table-node]').forEach(button => button.addEventListener('click', () => { state.selected = button.dataset.tableNode; state.selectedEdge = null; renderInspector(); }));
+      byId('visibleCount').textContent = state.search ? matches.size : visible.length;
+      byId('edgeCount').textContent = edges.filter(edge => visible.includes(edge[0]) && visible.includes(edge[1])).length;
+    }
+
+    function renderGraph() {
+      const variant = variants[state.variant];
+      const visible = visibleIds();
+      const visibleSet = new Set(visible);
+      const positions = layoutPositions(visible);
+      const query = state.search.trim().toLowerCase();
+      const matches = new Set(visible.filter(id => `${nodes[id].label} ${nodes[id].kind} ${nodes[id].meta}`.toLowerCase().includes(query)));
+      const focused = state.selected ? new Set([state.selected, ...incident(state.selected).flatMap(edge => [edge[0],edge[1]])]) : null;
+
+      byId('modeButton').textContent = state.mode === 'graph' ? 'Table' : 'Graph';
+      if (state.mode === 'table') { renderTable(visible,matches); return; }
+      byId('graphStage').style.display = 'block';
+      byId('tableMode').style.display = 'none';
+      byId('graphStage').style.transform = `scale(${state.scale})`;
+
+      document.querySelectorAll('.graph-node,.tier').forEach(element => element.remove());
+      byId('edges').innerHTML = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker></defs>`;
+
+      (variant.tiers || []).forEach(([y,label]) => {
+        const tier = document.createElement('div');
+        tier.className = 'tier'; tier.style.top = `${y}px`; tier.innerHTML = `<span>${esc(label)}</span>`;
+        byId('graphStage').appendChild(tier);
+      });
+
+      let renderedEdges = 0;
+      edges.forEach(([source,target,kind]) => {
+        if (!visibleSet.has(source) || !visibleSet.has(target)) return;
+        const dimmedBySearch = query && (!matches.has(source) || !matches.has(target));
+        const dimmedByFocus = focused && state.variant !== 'B' && (!focused.has(source) || !focused.has(target));
+        const key = edgeKey([source,target,kind]);
+        const highlighted = (state.selected && (source === state.selected || target === state.selected)) || state.selectedEdge === key;
+        byId('edges').insertAdjacentHTML('beforeend', `<path class="edge ${kind} ${dimmedBySearch || dimmedByFocus ? 'dimmed' : ''} ${highlighted ? 'highlighted' : ''}" data-edge="${key}" data-source="${source}" data-target="${target}" d="${pathFor(source,target,positions)}"/>`);
+        renderedEdges++;
+      });
+
+      document.querySelectorAll('[data-edge]').forEach(path => path.addEventListener('click', event => { event.stopPropagation(); state.selectedEdge = path.dataset.edge; render(); }));
+
+      visible.forEach(id => {
+        const node = nodes[id]; const [x,y] = positions[id];
+        const dimmedBySearch = query && !matches.has(id);
+        const dimmedByFocus = focused && state.variant !== 'B' && !focused.has(id);
+        const button = document.createElement('button');
+        button.className = `graph-node ${state.selected === id ? 'selected' : ''} ${dimmedBySearch || dimmedByFocus ? 'dimmed' : ''}`;
+        button.dataset.id = id; button.dataset.kind = node.kind; button.dataset.health = node.health; button.dataset.full = node.label;
+        button.style.left = `${x / 10}%`; button.style.top = `${y}px`;
+        button.setAttribute('aria-label', `${node.kind}: ${node.label}. ${node.meta}`);
+        button.title = node.label;
+        button.innerHTML = `<span class="node-shape">${icon(node.icon)}${node.count ? `<i class="node-count">${node.count}</i>` : ''}</span><span class="node-label">${esc(node.label)}</span><span class="node-meta">${esc(node.meta)}</span><span class="node-metric">${esc(node.metric)}</span>`;
+        button.addEventListener('mouseenter', () => applyHover(id));
+        button.addEventListener('mouseleave', () => renderGraph());
+        button.addEventListener('click', () => { state.selected = id; state.selectedEdge = null; render(); });
+        byId('graphStage').appendChild(button);
+      });
+
+      byId('emptySearch').style.display = query && matches.size === 0 ? 'grid' : 'none';
+      byId('visibleCount').textContent = query ? matches.size : visible.length;
+      byId('edgeCount').textContent = renderedEdges;
+      byId('canvasHeading').textContent = state.variant === 'C' && state.selected
+        ? `${nodes[state.selected].label} · direct neighborhood`
+        : variant.heading;
+      byId('canvasDescription').textContent = variant.description;
+    }
+
+    function renderInspector() {
+      if (!state.selected || !nodes[state.selected]) {
+        byId('findingSection').style.display = 'none';
+        byId('metricsSection').style.display = 'none';
+        byId('placementSection').style.display = 'none';
+        byId('evidenceSection').style.display = 'none';
+        byId('detailKind').textContent = 'No object selected';
+        byId('detailName').textContent = 'Select a node to inspect';
+        byId('detailId').textContent = 'The graph keeps labels compact; full identity and evidence appear here.';
+        byId('detailNamespace').textContent = '—';
+        byId('detailHealth').textContent = 'Graph overview';
+        byId('detailHealth').className = 'pill';
+        byId('detailMetric').textContent = 'No pinned metric';
+        byId('detailEvidence').textContent = 'Select an object';
+        byId('relations').innerHTML = '<span style="color:var(--muted);font-size:10px">Select an object to reveal direct relationships without filling its graph node with metadata.</span>';
+        byId('detailVariant').textContent = `${state.variant} — ${variants[state.variant].name}`;
+        byId('detailView').textContent = state.view;
+        byId('detailSearch').textContent = state.search || 'none';
+        byId('detailSelection').textContent = 'none';
+        renderEdgeEvidence();
+        return;
+      }
+      const id = state.selected;
+      byId('findingSection').style.display = '';
+      byId('metricsSection').style.display = '';
+      byId('placementSection').style.display = '';
+      byId('evidenceSection').style.display = '';
+      const node = nodes[id];
+      byId('detailKind').textContent = `${node.kind} · ${node.kind === 'infra' || node.kind === 'external' ? 'AWS / provider evidence' : 'Kubernetes'}`;
+      byId('detailName').textContent = node.label;
+      byId('detailId').textContent = `${node.kind === 'external' || node.kind === 'infra' ? 'aws' : 'k8s'}/demo/${node.kind}/${node.namespace}/${node.label}`;
+      byId('detailNamespace').textContent = node.namespace;
+      byId('detailHealth').textContent = node.health === 'warning' ? 'Needs attention' : 'Healthy';
+      byId('detailHealth').className = `pill ${node.health === 'warning' ? 'warn' : 'good'}`;
+      byId('detailMetric').textContent = node.metric;
+      byId('detailEvidence').textContent = incident(id).map(edge => edge[2]).filter((value,index,array) => array.indexOf(value) === index).join(' + ') || 'object inventory';
+      const visibleSet = new Set(visibleIds());
+      byId('relations').innerHTML = incident(id).filter(([source,target]) => visibleSet.has(source === id ? target : source)).map(([source,target,kind]) => {
+        const relative = source === id ? target : source;
+        const direction = source === id ? 'outgoing' : 'incoming';
+        return `<button class="relation" data-relation-edge="${edgeKey([source,target,kind])}"><i class="relation-dot"></i><span class="relation-copy"><strong>${esc(nodes[relative].label)}</strong><span>${direction} · ${kind} · inspect evidence</span></span></button>`;
+      }).join('') || '<span style="color:var(--muted);font-size:10px">No direct relationships in this projection.</span>';
+      document.querySelectorAll('[data-relation-edge]').forEach(button => button.addEventListener('click', () => { state.selectedEdge = button.dataset.relationEdge; render(); }));
+      byId('metricValue').textContent = node.metric;
+      const placements = incident(id).filter(edge => ['ownership','resolved'].includes(edge[2])).map(edge => edge[0] === id ? edge[1] : edge[0]).filter(relative => nodes[relative]);
+      byId('placementContent').innerHTML = placements.length ? placements.map(relative => `<span>${esc(nodes[relative].kind)}</span><strong>${esc(nodes[relative].label)}</strong>`).join('') : '<span>State</span><strong>No child or placement evidence in this projection</strong>';
+      byId('evidenceSource').textContent = node.kind === 'infra' || node.kind === 'external' ? 'AWS inventory / explicit provider' : 'Kubernetes API';
+      byId('findingText').innerHTML = node.health === 'warning' ? '<strong>Needs attention</strong>This object carries a warning marker; inspect its evidence and events before changing it.' : '<strong>No blocking deterministic finding</strong>Collected availability evidence is healthy for this object.';
+      byId('detailVariant').textContent = `${state.variant} — ${variants[state.variant].name}`;
+      byId('detailView').textContent = state.view;
+      byId('detailSearch').textContent = state.search || 'none';
+      byId('detailSelection').textContent = id;
+      renderEdgeEvidence();
+    }
+
+    function renderEdgeEvidence() {
+      if (!state.selectedEdge) {
+        byId('edgeEvidence').innerHTML = '<span>State</span><strong>Select a line or relationship row</strong>';
+        return;
+      }
+      const edge = state.selectedEdge.split('|');
+      const [source,target,kind] = edge;
+      byId('edgeEvidence').innerHTML = `<span>Relationship</span><strong>${esc(nodes[source]?.label || source)} → ${esc(nodes[target]?.label || target)}</strong><span>Basis</span><strong>${esc(kind)}</strong><span>Source</span><strong>${esc(edgeSource(kind))}</strong><span>Freshness</span><strong>current · revision 128</strong><span>Coverage</span><strong>${kind === 'declared' ? 'complete for collected configuration; not observed traffic' : 'complete for both endpoint identities'}</strong>`;
+    }
+
+    function render() {
+      document.body.dataset.variant = state.variant;
+      document.querySelectorAll('.topology-tab').forEach(button => button.setAttribute('aria-selected', String(button.dataset.view === state.view)));
+      byId('variantLabel').textContent = `${state.variant} — ${variants[state.variant].name}`;
+      byId('stateReadout').textContent = `variant=${state.variant} · view=${state.view} · mode=${state.mode} · selected=${state.selected || 'none'}`;
+      renderGraph(); renderInspector();
+    }
+
+    function setVariant(next) {
+      state.variant = next;
+      state.selected = next === 'A' ? null : 'checkoutApi';
+      state.selectedEdge = null;
+      state.mode = 'graph';
+      state.scale = 1;
+      const url = new URL(location.href); url.searchParams.set('variant', next); history.replaceState({}, '', url);
+      render();
+      showToast(variants[next].note);
+    }
+
+    function cycleVariant(delta) {
+      const keys = Object.keys(variants); const index = keys.indexOf(state.variant);
+      setVariant(keys[(index + delta + keys.length) % keys.length]);
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      byId('toast').textContent = message; byId('toast').classList.add('show');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => byId('toast').classList.remove('show'), 2600);
+    }
+
+    document.querySelectorAll('.topology-tab').forEach(button => button.addEventListener('click', () => {
+      if (button.disabled) return;
+      state.view = button.dataset.view;
+      render();
+    }));
+    document.querySelectorAll('[data-namespace]').forEach(button => button.addEventListener('click', () => {
+      state.namespace = button.dataset.namespace;
+      document.querySelectorAll('[data-namespace]').forEach(item => item.classList.toggle('active', item === button));
+      render();
+    }));
+    document.querySelectorAll('[data-filter]').forEach(input => input.addEventListener('change', () => {
+      if (input.dataset.filter === 'application') state.showApplication = input.checked;
+      if (input.dataset.filter === 'system') state.showSystem = input.checked;
+      if (input.dataset.filter === 'external') state.showExternal = input.checked;
+      if (input.dataset.filter === 'findings') state.findingsOnly = input.checked;
+      render();
+    }));
+    byId('searchInput').addEventListener('input', event => { state.search = event.target.value; render(); });
+    byId('previousVariant').addEventListener('click', () => cycleVariant(-1));
+    byId('nextVariant').addEventListener('click', () => cycleVariant(1));
+    byId('themeButton').addEventListener('click', () => { document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; });
+    byId('pauseButton').addEventListener('click', () => { state.paused = !state.paused; byId('pauseButton').textContent = state.paused ? 'Resume' : 'Pause'; showToast(state.paused ? 'Live revisions paused; current layout and selection retained.' : 'Live revisions resumed.'); });
+    byId('exportButton').addEventListener('click', () => showToast('Mock: export visible SVG separately from the evidence JSON bundle.'));
+    byId('relayoutButton').addEventListener('click', () => showToast('Mock: deterministic re-layout requested; stable node identities are retained.'));
+    byId('fitButton').addEventListener('click', () => { state.scale = 1; byId('canvas').scrollTo({left:0,top:0,behavior:'smooth'}); renderGraph(); showToast('Graph fitted to the current viewport.'); });
+    byId('modeButton').addEventListener('click', () => { state.mode = state.mode === 'graph' ? 'table' : 'graph'; render(); });
+    byId('clearSelection').addEventListener('click', () => { state.selected = null; state.selectedEdge = null; render(); });
+    byId('canvas').addEventListener('wheel', event => {
+      if (state.mode !== 'graph') return;
+      event.preventDefault();
+      state.scale = Math.max(.7, Math.min(1.35, state.scale + (event.deltaY < 0 ? .08 : -.08)));
+      renderGraph();
+    }, {passive:false});
+    let panStart = null;
+    byId('canvas').addEventListener('pointerdown', event => {
+      if (state.mode !== 'graph' || event.target.closest('.graph-node')) return;
+      panStart = {x:event.clientX,y:event.clientY,left:byId('canvas').scrollLeft,top:byId('canvas').scrollTop};
+      byId('canvas').setPointerCapture(event.pointerId);
+    });
+    byId('canvas').addEventListener('pointermove', event => {
+      if (!panStart) return;
+      byId('canvas').scrollLeft = panStart.left - (event.clientX - panStart.x);
+      byId('canvas').scrollTop = panStart.top - (event.clientY - panStart.y);
+    });
+    byId('canvas').addEventListener('pointerup', () => { panStart = null; });
+    document.addEventListener('keydown', event => {
+      if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable) return;
+      if (event.key === 'ArrowLeft') cycleVariant(-1);
+      if (event.key === 'ArrowRight') cycleVariant(1);
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 
 ## 一句话结论
 
-Scope 真正值得 Teleskope “reborn”的不是一张力导向图，而是一套**实时、对象可下钻、以关系和上下文为中心的排障工作台**：从应用级聚合一路钻到 Pod、容器、进程和主机，同时把连接、指标、元数据和有限控制放在同一个上下文中。Teleskope 应继承这条交互主线，但把数据边界改成 Kubernetes/EKS 原生、只读证据优先。Teleskope 不实现特权主机 Probe；运行时连接只通过明确配置的外部 evidence provider 接入，也不复制 Scope 的容器生命周期控制和过时运行时假设。
+Scope 真正值得 Teleskope “reborn”的不是一张 topology 截图，而是一套**实时、对象可下钻、以关系和上下文为中心的排障工作台**：从应用级聚合一路钻到 Pod、容器、进程和主机，同时把连接、指标、元数据和有限控制放在同一个上下文中。Scope 主图实际使用 Dagre 有向分层布局，而不是 force-directed simulation；Teleskope 应继承这条交互主线，但把数据边界改成 Kubernetes/EKS 原生、只读证据优先。Teleskope 不实现特权主机 Probe；运行时连接只通过明确配置的外部 evidence provider 接入，也不复制 Scope 的容器生命周期控制和过时运行时假设。
 
 ## 产品意图与系统边界
 
@@ -68,7 +68,7 @@ Scope 把观察和操作放在同一上下文中：容器可 start/stop/restart/
 
 1. **特权主机 Probe**：`hostPID`/Docker socket/debugfs 带来巨大权限面，也绑定了 Docker 与旧内核采集方式。Teleskope 明确不实现或发布 node probe。核心使用 Kubernetes watch 与 Metrics API；运行时连接证据只能来自外部 CNI observability、OpenTelemetry 或 AWS network telemetry provider，并公开来源、窗口、采样和 coverage。
 2. **一图混合事实和推断**：Scope 的通信连接、Kubernetes ownership、分组聚合与伪节点视觉相近，密集时容易误读；Teleskope 应显式区分 edge kind、source、freshness 和 confidence。
-3. **力导向图作为默认大规模布局**：Scope 自己用 Table Mode、graph complexity check、force relayout、过滤和 node-limit 提示补救。Teleskope 应保留语义 swimlane/层级布局，并把力导向关系图作为可选探索模式。
+3. **让关系图承担所有规模**：Scope 自己用 Table Mode、graph complexity check、force relayout、过滤和 node-limit 提示补救。Teleskope 可继承其 projection selector、Dagre 有向分层图和 selection focus，但必须保留聚合、过滤与 Table Mode 的规模退化路径，不能靠无限缩小节点承载全量对象。
 4. **内建高风险控制**：terminal、删除 Pod、scale、容器 lifecycle 需要成熟认证/RBAC/审计；这不是 Popeye 替代路线的前置条件。
 5. **60 秒内存指标等同监控**：短 sparkline 适合排障上下文，不替代 Prometheus 的长期查询、告警和容量分析。
 6. **运行时/对象版本冻结**：最终版本面向旧 Kubernetes API 与 Docker-era 节点模型；应继承交互思想，不继承资源清单和采集实现。
