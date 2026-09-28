@@ -16,7 +16,7 @@ Teleskope replaces the current semantic-view and swimlane topology with a Scope-
 - Selecting an object is a focus transition: the selected object moves to the center, its visible one-hop neighbors form a ring, unrelated objects and edges are dimmed, and the inspector opens the complete context.
 - The vertical sequence `external network → workload → runtime / infrastructure` is a cross-layer ordering rule for focused paths. It is not a permanent set of lanes and is not exposed as another topology mode.
 - Graph nodes are compact glyphs. Rich metadata belongs in the inspector.
-- Large or filtered result sets can be inspected in Table mode without losing selection or evidence access.
+- Graph remains available for every result size. Table is an explicit alternative presentation, not an automatic replacement for the topology.
 
 The production UI implements the accepted prototype behavior, not the prototype's A/B/C chooser. Prototype A becomes the default graph; prototype C becomes the selected-object state. Prototype B contributes only its vertical cross-layer ordering rule.
 
@@ -100,18 +100,20 @@ The selected-object inspector is ordered as:
 
 The inspector is the canonical location for full labels and verbose metadata. The graph must not duplicate these sections inside nodes.
 
-### Scale fallback
+### Scale and presentation
 
-The existing complexity gate remains authoritative. When the graph exceeds its supported node/edge budget, Teleskope switches to or recommends Table mode instead of shrinking nodes indefinitely. Table rows remain selectable and open the same inspector.
+There is no node-count or edge-count gate that changes Graph into Table. A user who selected Graph always receives a graph, including the canonical Large fixture. Complexity may disable decorative animation, suppress nonessential edge decoration, or show a non-blocking performance notice, but it must not change presentation mode or remove graph interaction. Table remains a user-selected dense evidence view; its rows open the same inspector.
 
 ## Layout rules
 
 - Overview layout is a deterministic, top-to-bottom rooted hierarchy following relationship direction. The renderer first collapses each strongly connected component (SCC) into one layout component, producing an acyclic condensation graph. Zero-indegree SCCs are roots; multiple source SCCs attach to one layout-only virtual root that is never rendered and never added to evidence. A disconnected object is a single-node source SCC.
 - Component depth is the longest path from the virtual root through the condensation DAG. Nodes inside one SCC share that depth and receive deterministic local ordering and stagger. The renderer creates as many depth levels as the condensed visible relationship graph requires; it does not clamp the graph into fixed external/service/workload rows or a fixed maximum rank.
 - Resource semantics remain a secondary ordering constraint: external entry tends to precede service and workload, with runtime/infrastructure below when the collected relationships support that direction. Semantics must not invent an edge or force unrelated objects into the same row.
-- Within each depth level, nodes are ordered by the barycenter of their connected parents and children. Source branches receive horizontal space proportional to their reachable descendants; nodes reachable from multiple roots have one position based on all parent barycenters rather than being duplicated into multiple components. A small deterministic stagger is allowed inside a depth band so the graph reads as an organic hierarchy rather than three invisible swimlanes, while adjacent levels keep clear vertical separation.
+- Weakly connected components are laid out independently and then packed into an open canvas. Within a component, each depth level is ordered by the barycenter of connected parents and children. Source branches receive horizontal space proportional to their reachable descendants; nodes reachable from multiple roots have one position based on all parent barycenters rather than being duplicated. Components must not be flattened into one global source row.
+- Zero-degree objects do not participate in the directed ranks. Like Scope, they are arranged in a stable near-square grid beside or below the connected graph according to the resulting aspect ratio. This keeps inventory visible without turning every disconnected object into another root in an invisible full-width row.
+- Node separation and rank separation are minimums, not a viewport-fitting target. The canvas grows to the layout bounds; fit/zoom reveals the whole graph without shrinking the logical spacing between objects.
 - Every visible relationship receives distinct source and target ports plus a deterministic route offset. Two relationships must not emit the same SVG path or share a long coincident trunk. Curves or rounded orthogonal segments may cross when the graph is non-planar, but ordering and routing must minimize crossings and must never cross a node's icon, label, or secondary-text footprint.
-- Nodes with no connected relationship remain stable root components rather than being pushed into an unrelated overflow row.
+- Nodes with no connected relationship remain visible in the stable isolated-object grid.
 - Focus layout is deterministic for the selected identity and its visible one-hop neighborhood.
 - Cross-layer focus paths place external entry above workload and runtime/infrastructure below when those relationships exist.
 - Live revisions reuse stable identities and existing layout state where possible to reduce visual jumps.
@@ -145,7 +147,8 @@ The same embedded HTML must work for offline reports, `serve snapshot`, live ser
 - Node hover emphasizes only direct neighbors and incident edges.
 - Default, highlighted, and selected relationship lines do not visibly cross node labels or secondary text.
 - Relationship inspection exposes direction, basis, source, freshness, and coverage.
-- Search, filters, Table fallback, pan/zoom, fit, selection, theme, Events, export, and live update behavior remain functional.
+- Search, filters, user-selected Table mode, pan/zoom, fit, selection, theme, Events, export, and live update behavior remain functional.
+- Graph mode remains Graph for the Small, Medium, and Large deterministic scale fixtures; complexity never silently rewrites the selected presentation.
 - Every namespace offered by the topology workspace produces at least one displayable Workloads-projection object for the current graph revision.
 - The recorded EKS fixture renders through the real embedded `/api/snapshot` path and passes browser interaction checks.
 - Automated report tests, `make check`, `make build`, and `git diff --check` pass.

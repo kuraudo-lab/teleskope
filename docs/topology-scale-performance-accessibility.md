@@ -12,21 +12,21 @@ canonical shapes used by tests and benchmarks:
 | Profile | Nodes | Edges | Intended path |
 | --- | ---: | ---: | --- |
 | Small | 100 | 180 | Full SVG graph and Inspector |
-| Medium | 400 | 800 | Maximum full SVG graph budget |
-| Large | 1,500 | 2,800 | Relation table and filtered-neighborhood exploration |
+| Medium | 400 | 800 | Full graph and Inspector |
+| Large | 1,500 | 2,800 | Full graph, pan/zoom, and filtered-neighborhood exploration |
 
 Fixtures use stable IDs, typed edges, deterministic timestamps, and explicit
 unavailable runtime-connection coverage. A measured update changes ten
-existing nodes while retaining stable identities. A large fixture remains
-complete graph evidence even though its unfiltered UI defaults to the table.
+existing nodes while retaining stable identities. Every fixture remains
+complete graph evidence in Graph mode.
 
 Run `make topology-scale-demo SCALE_PROFILE=large`, then open
 `http://127.0.0.1:8092`. The command injects the exact canonical graph through
-the shared offline `RenderUI` path. The page selects the Runtime view, performs
-five painted renders, and exposes the result visibly in
+the shared offline `RenderUI` path. The page selects the Runtime view and Graph
+presentation, performs five painted renders, and exposes the result visibly in
 `#topologyScaleEvidence` and programmatically as
 `window.__teleskopeScaleEvidence`. Repeat with `small`, `medium`, and `large`;
-the Large page must report `mode: table` and the complexity remedy. Use
+every profile must report `mode: graph`. Use
 `go run ./scripts/topology-scale -profile medium -output /tmp/topology-medium.html`
 to retain a self-contained artifact instead of serving it.
 
@@ -38,22 +38,23 @@ and worst sample together with browser version, machine, commit, fixture, and
 viewport. The topology surface exposes its last sample as `data-render-ms`,
 `data-render-nodes`, `data-render-edges`, and `data-render-mode`.
 
-| Operation | Small | Medium | Large/degraded |
+| Operation | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| Initial usable render | median <= 500 ms, worst <= 1 s | median <= 1.5 s, worst <= 3 s | table median <= 2 s, worst <= 4 s |
-| Accepted incremental revision | median <= 250 ms | median <= 500 ms | table median <= 750 ms |
+| Initial usable render | median <= 500 ms, worst <= 1 s | median <= 1.5 s, worst <= 3 s | graph median <= 4 s, worst <= 8 s |
+| Accepted incremental revision | median <= 250 ms | median <= 500 ms | graph median <= 1.5 s |
 | Search/filter response | <= 100 ms | <= 200 ms | <= 300 ms |
 | Node/edge selection response | <= 100 ms | <= 150 ms | <= 200 ms |
 | Unchanged-node lane/rank movement | 0 positions | 0 positions | 0 positions |
 
-The SVG graph accepts at most 400 visible nodes and 800 visible edges per
-semantic view. Above either limit Teleskope selects the relation table, retains
-the complete evidence and URL/filter state, and announces the observed counts,
-limits, and narrowing remedy. Filtering below both limits makes graph mode
-available again. No data is removed from JSON or Markdown export.
+The graph has no fixed visible node or edge limit. The selected Graph mode is
+never rewritten to Table by a count threshold or a routing heuristic. The
+layout canvas grows to its content bounds, and complexity may disable animation
+or optional decoration while preserving nodes, relationships, selection,
+pan/zoom, filters, and URL state. No data is removed from JSON or Markdown
+export. Table remains available only through an explicit user action.
 
 Browser JavaScript heap should remain below 150 MiB for Small, 300 MiB for
-Medium, and 350 MiB for Large in table mode after five accepted revisions.
+Medium, and 500 MiB for Large in graph mode after five accepted revisions.
 Growth after the first accepted revision should remain below 10% when the same
 revision is repeatedly rendered. These memory figures require browser tooling;
 they are recorded evidence, not wall-clock unit-test assertions.
@@ -65,11 +66,11 @@ viewport, five painted renders from `scripts/topology-scale`:
 | --- | --- | ---: | ---: | ---: |
 | Small | graph | 22.0 ms | 34.2 ms | 23.4 MiB |
 | Medium | graph | 83.4 ms | 125.2 ms | 33.8 MiB |
-| Large | table fallback | 411.4 ms | 434.2 ms | 42.6 MiB |
+| Large | historical table fallback | 411.4 ms | 434.2 ms | 42.6 MiB |
 
-The Large evidence also recorded the exact 1,500-object/2,800-relationship
-fallback message. Values are a reproducible reference sample, not a
-cross-machine guarantee.
+The Large row is a historical pre-change baseline and must be replaced by a
+Graph-mode measurement before release. Values are not a cross-machine
+guarantee.
 
 ## Server and provider budgets
 
@@ -112,7 +113,8 @@ This is a reproducible baseline, not a cross-machine guarantee.
 - Selected and focused objects have non-color SVG treatment. Edge type is
   available in accessible names and Inspector text, not only stroke color.
 - Search, view, mode, health, system, and state controls have programmatic
-  labels. Complexity fallback is an `aria-live` status message.
+  labels. A non-blocking complexity notice, when present, is an `aria-live`
+  status message and does not change presentation.
 - `prefers-reduced-motion: reduce` suppresses decorative animation and reduces
   transitions without hiding state changes.
 - Dark and light themes target WCAG 2.2 AA contrast: 4.5:1 for ordinary text,
@@ -125,8 +127,8 @@ This is a reproducible baseline, not a cross-machine guarantee.
 Screen-reader acceptance traverses controls, graph nodes and edges,
 selected-object summary, relatives, findings, metrics, raw-evidence disclosure,
 and complexity status in that order. The graph is not the sole representation:
-table mode is always available and becomes the deterministic high-complexity
-fallback.
+Table mode is always available as an explicit user-selected alternative over
+the same evidence.
 
 ## Release evidence
 
@@ -138,10 +140,10 @@ A release candidate records:
    for all three profiles;
 4. keyboard-only, reduced-motion, 375-pixel, 200%-zoom, light/dark contrast,
    and one screen-reader walkthrough;
-5. a large-view screenshot showing the announced table fallback and a filtered
-   graph below the limit.
+5. a large Graph-mode screenshot plus a focused neighborhood showing readable
+   selection at scale.
 
-Failure of a budget blocks the Scope-reborn release slice or requires an
-explicitly documented smaller supported limit. It never silently weakens
+Failure of a budget blocks the Scope-reborn release slice or requires layout
+and rendering optimization. It never silently changes Graph to Table, weakens
 evidence, enables a node probe, or relabels declared data as observed runtime
 telemetry.

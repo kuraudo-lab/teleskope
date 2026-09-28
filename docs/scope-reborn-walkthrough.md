@@ -58,15 +58,16 @@ evidence. Production live and hub still use the existing Kubernetes watch/poll
 and remote-write boundaries; do not install a node probe or add topology-only
 API polling.
 
-## 4. Exercise scale degradation
+## 4. Exercise scale continuity
 
 ```sh
 make topology-scale-demo SCALE_PROFILE=large
 ```
 
 Open `http://127.0.0.1:8092`. The visible evidence panel must report exactly
-1,500 nodes, 2,800 edges and `table` mode after five painted renders. The live
-status explains the 400-node/800-edge SVG limits and how to narrow the view.
+1,500 nodes, 2,800 edges and `graph` mode after five painted renders. The
+canvas remains pannable and zoomable; selecting an object opens its focused
+neighborhood without changing presentation.
 Repeat with `small` and `medium`; both use graph mode. Verify keyboard access,
 375-pixel layout, 200% zoom, reduced motion and a screen-reader traversal.
 

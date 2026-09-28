@@ -10,7 +10,7 @@ Scope 的核心并不是“把所有资源放进多层卡片”，而是以下�
 2. **当前 projection 是一张有向关系图**：使用 Dagre 对连接关系做分层排布，客户端在上、服务端在下，不是 force-directed/free graph。
 3. **节点本身极度节制**：形状、颜色、短名称、可选的一个指标；完整 metadata、metrics、connections、children 都在选中后的详情面板。
 4. **选中是排障动作，不是普通高亮**：选中节点移到视口中心，一跳邻居围绕它，其他节点和边弱化，右侧同时打开 contextual details。
-5. **Graph 不承担大规模密度**：Scope 提供 Table Mode，并会在图复杂度过高时自动转到表格。
+5. **Graph 和 Table 是并列呈现**：Scope 提供 Table Mode，并用复杂度信号决定初始模式和动画；该信号不是布局引擎的硬节点上限。0.14.0 已明确移除早期 100-node rendering limit。
 
 因此，Teleskope 的下一个 mock 应删除 swimlane 和用户无法理解的 `Semantic view`，改成 **Scope-like projection selector + top-to-bottom relationship graph + focus/details**。“对外网络 → 工作负载 → 基础设施”可作为选中对象后的垂直排序约束，不应再画成三个永久横向框。
 
@@ -68,7 +68,8 @@ Scope 底部的 “Force re-layout” 是“强制重算布局”，不是“使
 - **Select/focus** 会将选中节点固定在视口中心，把直接邻居排成一圈，重画对应直线边，并弱化不相关节点/边。[官方 focus layout](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/selectors/graph-view/layout.js#L49-L170) · [focus/blur 装饰器](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/charts/nodes-chart-elements.js#L91-L149)
 - **Edge direction** 不对所有边常驻画箭头；只有 focused 或 highlighted 边显示终点箭头，降低默认画面噪声。[官方 Edge 组件](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/charts/edge.js#L35-L60)
 - **Pan/zoom** 由 SVG drag 和 wheel 控制，并将缩放状态按 topology/layout 缓存；布局切换或强制 relayout 时恢复对应 zoom state。[官方 ZoomableCanvas](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/components/zoomable-canvas.js#L35-L127) · [CHANGELOG 的 per-topology pan/zoom](https://github.com/weaveworks/scope/blob/v1.13.2/CHANGELOG.md#release-0130)
-- **大图退化**：当 `node_count + 2 * edge_count > 500` 时，代码将图判定为高复杂度，用于默认切到 Table Mode 并关闭动画。[官方 complexity selector](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/selectors/topology.js#L42-L50) · [Table Mode release note](https://github.com/weaveworks/scope/blob/v1.13.2/CHANGELOG.md#release-0170)
+- **大图复杂度**：当 `node_count + 2 * edge_count > 500` 时，代码将图判定为高复杂度，用于选择初始 Table Mode 并关闭动画；Dagre 布局函数本身没有这个硬停止条件。0.14.0 的 CHANGELOG 明确记录了早期 100-node rendering limit 已移除。[官方 complexity selector](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/selectors/topology.js#L42-L50) · [CHANGELOG 0.14.0](https://github.com/weaveworks/scope/blob/v1.13.2/CHANGELOG.md#release-0140) · [Table Mode release note](https://github.com/weaveworks/scope/blob/v1.13.2/CHANGELOG.md#release-0170)
+- **开阔度与孤立对象**：Scope 让 Dagre 使用放大的节点占位、明确的 `nodesep`/`ranksep` 计算完整画布包围盒；0-degree 节点不塞进 directed rank，而是在连通图右侧或下方排成近似方形网格。布局 cache 在无新节点时复用坐标，少量新节点按已有 rank 插入；发现节点距离过近时再全量重排。[官方布局源码](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/charts/nodes-layout.js#L72-L250) · [cache 与 overlap defense](https://github.com/weaveworks/scope/blob/v1.13.2/client/app/scripts/charts/nodes-layout.js#L422-L495)
 
 ### 5. Scope 没有做什么
 
@@ -114,11 +115,11 @@ Scope 底部的 “Force re-layout” 是“强制重算布局”，不是“使
 - focus 内如果要表达层次，才使用松散的垂直 rank：External/entry 在上，当前 workload 在中，Pods/Nodes/EKS attachments 在下。不画 lane 背景，不要求每层必须填满。
 - drawer 顺序建议为 `Summary`、`Findings`、`Metrics`、`Connections`、`Children / Placement`、`Evidence`，并支持从表格行继续切换 projection/聚焦目标。
 
-### Search、filter 和规模退化
+### Search、filter 和规模呈现
 
 - Search 保持图的心智地图：命中对象和一跳边高亮，未命中弱化；提供“仅显示匹配”的显式动作，不在输入时默默销毁图结构。
 - Filter 使用可见 chips：namespace、kind、health/finding severity、system/application、evidence availability。
-- 规模超过阈值时不继续缩小 glyph：优先聚合、提示收窄 filter，或切 Table Mode。
+- Graph 不设置会强制改写 presentation 的节点/边阈值；画布按布局包围盒扩张，复杂度只影响动画和非必要装饰。Table Mode 保留为用户主动选择的密集证据视图。
 
 ### 与 Scope 不同但必须保留的 Teleskope 边界
 
@@ -139,6 +140,6 @@ Scope 底部的 “Force re-layout” 是“强制重算布局”，不是“使
 - [ ] drawer 容纳完整 metadata、findings、metrics、connections、children/placement 和 evidence，图节点不重复这些内容。
 - [ ] 每种边都有可辨识的 kind；hover/select 能看到 direction、source 和 freshness/coverage。
 - [ ] Search 高亮/弱化图上结果，filter 以可见 chips 显示，两者不需要另一个 semantic mode。
-- [ ] 节点/边过多时有明确退化路径：聚合、收窄 filter 或 Table Mode，而不是无限缩小。
+- [ ] Small/Medium/Large fixture 在用户选择 Graph 时都保持 Graph；复杂度不得自动切 Table，可通过开阔画布、聚合、LOD 和用户主动过滤降低噪声。
 - [ ] pan/zoom 、selection 和当前 projection/filter 在打开/关闭 drawer 时保持稳定。
 - [ ] mock 不出现 node probe、terminal、容器 lifecycle 或任何写操作。

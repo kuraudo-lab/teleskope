@@ -253,11 +253,12 @@ checks refresh stability and full-reset fallback against the Recorded server.
 ## Scale And Accessibility Gates
 
 The normative scale profiles, render and interaction budgets, resource
-budgets, deterministic table fallback, and accessibility acceptance are in
-`docs/topology-scale-performance-accessibility.md`. The embedded graph limit is
-400 visible nodes or 800 visible edges per semantic view. Above either limit,
-the relation table preserves the complete filtered evidence and announces how
-to narrow the view. No node probe or DaemonSet is included in these budgets.
+budgets, graph continuity, and accessibility acceptance are in
+`docs/topology-scale-performance-accessibility.md`. Graph mode has no fixed
+visible node or edge limit and must not automatically change to Table. The
+canvas expands to the computed layout bounds; Table remains an explicit user
+choice over the same complete evidence. No node probe or DaemonSet is included
+in these budgets.
 
 ## Security Boundary
 
