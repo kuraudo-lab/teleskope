@@ -1197,53 +1197,50 @@
       width:calc(100% - 36px);
       height:calc(100% - 36px);
     }
-    .node rect.node-card {
-      fill:rgba(8,17,31,.75);
-      stroke:rgba(148,163,184,.19);
-      stroke-width:1;
-      rx:7;
-      filter:none;
-    }
-    .node.selected rect.node-card {
-      fill:var(--control-bg);
-      stroke:var(--blue);
-      stroke-width:2;
-    }
-    .node.related rect.node-card {
+    .node .node-shape {
+      fill:var(--panel-2);
       stroke:var(--line-strong);
-      stroke-width:1.5;
+      stroke-width:2;
+      filter:drop-shadow(0 5px 9px rgba(0,0,0,.24));
     }
+    .node.kind-external .node-shape { stroke:var(--blue); stroke-dasharray:5 3; }
+    .node.kind-gateway .node-shape { stroke:var(--cyan); }
+    .node.kind-service .node-shape { stroke:var(--blue); }
+    .node.kind-workload .node-shape { stroke:var(--purple); }
+    .node.kind-pod .node-shape { stroke:var(--amber); }
+    .node.kind-infrastructure .node-shape { stroke:var(--cyan); }
+    .node.selected .node-shape {
+      stroke:var(--cyan);
+      stroke-width:2;
+      filter:drop-shadow(0 0 5px rgba(34,211,238,.72)) drop-shadow(0 8px 12px rgba(0,0,0,.34));
+    }
+    .node.related .node-shape { stroke-width:2.5; }
     .node.dimmed, .link.dimmed, .node.hover-dimmed, .link.hover-dimmed { opacity:.14; }
-    .node.hover-neighbor rect.node-card { stroke:var(--cyan); stroke-width:1.7; }
+    .node.hover-neighbor .node-shape { stroke:var(--cyan); stroke-width:2.5; }
     .link.hover-incident { stroke:var(--cyan); stroke-width:2.6; opacity:1; }
     .node:focus-visible {
       outline:none;
     }
-    .node:focus-visible rect.node-card {
+    .node:focus-visible .node-shape {
       stroke:var(--cyan);
-      stroke-width:2.5;
+      stroke-width:3;
       stroke-dasharray:5 3;
     }
     :root[data-theme="light"] .check,
     :root[data-theme="light"] .stat {
       background:rgba(255,255,255,.76);
     }
-    .node-copy { width:100%; overflow:hidden; color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; white-space:nowrap; text-overflow:ellipsis; }
-    .node-copy.label { font-size:12px; font-weight:760; line-height:18px; }
-    .node-copy.meta, .node-copy.metric { color:var(--muted); font-size:10px; line-height:15px; }
-    .node .node-icon-box {
-      fill:var(--chip);
-      stroke:transparent;
-      rx:6;
-    }
+    .node-copy { display:block; width:fit-content; max-width:100%; margin:0 auto; padding:0 3px; overflow:hidden; border-radius:3px; background:var(--panel-2); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; white-space:nowrap; text-overflow:ellipsis; text-align:center; box-sizing:border-box; }
+    .node-copy.label { font-size:11px; font-weight:760; line-height:16px; }
+    .node-copy.meta { color:var(--muted); font-size:9px; line-height:14px; }
+    .node-metric-badge { overflow:hidden; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--muted); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:8px; line-height:16px; padding:0 5px; white-space:nowrap; text-overflow:ellipsis; box-sizing:border-box; }
+    .node .node-symbol { color:var(--text); pointer-events:none; }
+    .node .node-status { stroke:var(--panel-2); stroke-width:2; }
     :root[data-theme="light"] .map {
       background:linear-gradient(rgba(100,116,139,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(100,116,139,.1) 1px,transparent 1px),var(--panel-2);
       background-size:28px 28px;
     }
-    :root[data-theme="light"] .node rect.node-card {
-      fill:rgba(255,255,255,.94);
-      stroke:rgba(15,23,42,.16);
-    }
+    :root[data-theme="light"] .node .node-shape { fill:rgba(255,255,255,.96); }
     :root[data-theme="light"] .summary-card {
       background:rgba(255,255,255,.84);
     }
@@ -2745,6 +2742,12 @@ function installMockSymbols() {
     <symbol id="icon-node" viewBox="0 0 24 24"><path d="M6 5h12v14H6zM9 9h6M9 13h6M9 17h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="icon-storage" viewBox="0 0 24 24"><path d="M5 7c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="icon-image" viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5M8 17h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="topology-icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4a13 13 0 0 1 0 16M12 4a13 13 0 0 0 0 16"/></symbol>
+    <symbol id="topology-icon-gateway" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 18V7l8-4 8 4v11M8 18v-7h8v7M3 21h18"/></symbol>
+    <symbol id="topology-icon-service" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="12" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><path d="m9.8 10.7 4.4-2.3M9.8 13.3l4.4 2.3"/></symbol>
+    <symbol id="topology-icon-workload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></symbol>
+    <symbol id="topology-icon-pod" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m12 3 7 4v10l-7 4-7-4V7z"/><path d="m5 7 7 4 7-4M12 11v10"/></symbol>
+    <symbol id="topology-icon-infrastructure" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="6" rx="1"/><rect x="4" y="14" width="16" height="6" rx="1"/><path d="M8 7h.01M8 17h.01M12 7h5M12 17h5"/></symbol>
     <symbol id="icon-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="icon-fit" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M20 16v4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="icon-export" viewBox="0 0 24 24"><path d="M12 4v10M8 8l4-4 4 4M5 14v5h14v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
@@ -2926,7 +2929,7 @@ let topologyDrag = {active:false, moved:false, suppressClick:false, startX:0, st
 let topologyRenderSample = 0;
 let topologyFitBounds = null;
 function currentTopologyView() { return topologySelectedNodeId ? topologyFocusView : topologyView; }
-function fitTopologyToContent() { const surface=byId('topology'),host=surface?.parentElement,bounds=topologyFitBounds;if(!surface||!host||!bounds)return;const width=Math.max(1,bounds.maxX-bounds.minX),height=Math.max(1,bounds.maxY-bounds.minY),viewportWidth=Math.max(1,host.clientWidth-36),viewportHeight=Math.max(1,host.clientHeight-36),scale=Math.max(.12,Math.min(4,Math.min(viewportWidth/width,viewportHeight/height)*.72)),view=currentTopologyView();view.scale=scale;view.x=(viewportWidth-width*scale)/2-bounds.minX*scale+18;view.y=(viewportHeight-height*scale)/2-bounds.minY*scale+18;syncTopologyURL();applyTopologyTransform(); }
+function fitTopologyToContent() { const surface=byId('topology'),host=surface?.parentElement,bounds=topologyFitBounds;if(!surface||!host||!bounds)return;const width=Math.max(1,bounds.maxX-bounds.minX),height=Math.max(1,bounds.maxY-bounds.minY),viewportWidth=Math.max(1,host.clientWidth-36),viewportHeight=Math.max(1,host.clientHeight-36),scale=Math.max(.12,Math.min(4,Math.min(viewportWidth/width,viewportHeight/height)*.64)),view=currentTopologyView();view.scale=scale;view.x=(viewportWidth-width*scale)/2-bounds.minX*scale+18;view.y=(viewportHeight-height*scale)/2-bounds.minY*scale+18;syncTopologyURL();applyTopologyTransform(); }
 function syncTopologyURL() {
   const url = new URL(location.href);
   const set = (key, value, defaultValue='') => { if (value === defaultValue || value === '' || value === false) url.searchParams.delete(key); else url.searchParams.set(key, String(value)); };
@@ -3452,8 +3455,11 @@ function topologyLayer(node) {
   if (['endpoint-slice','pod','node'].includes(kind)) return 'runtime';
   return 'infrastructure';
 }
-function topologyIconID(kind) { return ({service:'icon-service',workload:'icon-workload',pod:'icon-pod',node:'icon-node',ingress:'icon-gateway',gateway:'icon-gateway','endpoint-slice':'icon-service','ec2-instance':'icon-node',nodegroup:'icon-node'}[kind] || 'icon-workload'); }
-function topologyOrthogonalPath(A, B) { const vertical=Math.abs((B.y+B.h/2)-(A.y+A.h/2))>=Math.abs((B.x+B.w/2)-(A.x+A.w/2));if(vertical){const down=B.y>=A.y,x1=A.x+A.w/2,y1=down?A.y+A.h:A.y,x2=B.x+B.w/2,y2=down?B.y:B.y+B.h,mid=(y1+y2)/2;return`M${x1} ${y1} V${mid} H${x2} V${y2}`;}const right=B.x>=A.x,x1=right?A.x+A.w:A.x,y1=A.y+A.h/2,x2=right?B.x:B.x+B.w,y2=B.y+B.h/2,mid=(x1+x2)/2;return`M${x1} ${y1} H${mid} V${y2} H${x2}`;}
+function topologyVisualKind(kind) { if(String(kind).startsWith('pseudo-'))return'external';if(['ingress','gateway','gatewayroute'].includes(kind))return'gateway';if(kind==='service'||kind==='endpoint-slice')return'service';if(kind==='workload')return'workload';if(kind==='pod')return'pod';return'infrastructure'; }
+function topologyIconID(kind) { return `topology-icon-${topologyVisualKind(kind)}`; }
+function topologyOrthogonalPath(A, B) { const ax=A.x+A.w/2,ay=A.y+30,bx=B.x+B.w/2,by=B.y+30,radius=26;if(Math.abs(by-ay)>1){const side=bx>=ax?1:-1,x1=ax+side*radius,x2=bx-side*radius,mid=x1===x2?x1+side*22:(x1+x2)/2;return`M${x1} ${ay} H${mid} V${by} H${x2}`;}const right=bx>=ax,x1=ax+(right?radius:-radius),x2=bx+(right?-radius:radius),mid=(x1+x2)/2;return`M${x1} ${ay} H${mid} V${by} H${x2}`;}
+function topologyNodeShape(node) { const kind=topologyVisualKind(topologyKind(node)),cx=node.x+node.w/2,cy=node.y+30;if(kind==='pod')return`<rect class="node-shape" x="${cx-20}" y="${cy-20}" width="40" height="40" rx="12" transform="rotate(45 ${cx} ${cy})"/>`;if(kind==='infrastructure')return`<rect class="node-shape" x="${cx-26}" y="${cy-26}" width="52" height="52" rx="5"/>`;return`<circle class="node-shape" cx="${cx}" cy="${cy}" r="26"/>`; }
+function topologyNodeVisualBounds(node) { const metricOverflow=topologyMetricKey?32:0,pad=12;return{minX:node.x-pad,minY:node.y-pad,maxX:node.x+node.w+metricOverflow+pad,maxY:node.y+node.h+pad}; }
 function topologyOverviewLayout(nodes,edges,width,nodeW,nodeH) {
   const semanticRank=node=>{const kind=topologyKind(node);if(kind.startsWith('pseudo-'))return 0;if(['ingress','gateway','gatewayroute','service'].includes(kind))return 1;if(kind==='workload')return 2;return topologyLayer(node)==='runtime'?3:4;},ids=new Set(nodes.map(node=>node.id)),indegree=new Map(nodes.map(node=>[node.id,0])),outgoing=new Map(nodes.map(node=>[node.id,[]])),rank=new Map(nodes.map(node=>[node.id,semanticRank(node)]));
   edges.forEach(edge=>{if(!ids.has(edge.source)||!ids.has(edge.target)||edge.source===edge.target)return;indegree.set(edge.target,(indegree.get(edge.target)||0)+1);outgoing.get(edge.source)?.push(edge.target);});
@@ -3506,15 +3512,15 @@ function renderTopology() {
   if (topologyMode === 'table') { renderTopologyTable(tableNodes,edges,nodeById); recordTopologyRender(renderStarted,tableNodes.length,edges.length,'table'); return; }
   byId('topology').classList.toggle('focused',Boolean(topologySelectedNodeId));
   if(topologySelectedNodeId){byId('topology').style.minWidth='';byId('topology').style.minHeight='';}
-  const W=topologySelectedNodeId?(byId('topology').clientWidth||600):Math.max(900,byId('topology').clientWidth||900),H=Math.max(560,byId('topology').clientHeight||560),nodeW=190,nodeH=topologyMetricKey?76:62;
+  const W=topologySelectedNodeId?(byId('topology').clientWidth||600):Math.max(900,byId('topology').clientWidth||900),H=Math.max(560,byId('topology').clientHeight||560),nodeW=120,nodeH=92;
   const drawn=topologyOverviewLayout(nodes,edges,W,nodeW,nodeH),maxRank=Math.max(0,...[...drawn.values()].map(node=>node.rank||0)),maxRowCount=Math.max(1,...[...new Set([...drawn.values()].map(node=>node.rank||0))].map(rank=>[...drawn.values()].filter(node=>(node.rank||0)===rank).length));
   const overviewW=Math.max(W,76+maxRowCount*(nodeW+34)),overviewH=Math.max(H,124+maxRank*132+nodeH),contentW=topologySelectedNodeId?W:overviewW,contentH=topologySelectedNodeId?H:overviewH;
   topologyFocusLayout(drawn,topologySelectedNodeId,edges,W,H,nodeW,nodeH);
   byId('topology').style.minWidth=(contentW+36)+'px'; byId('topology').style.minHeight=(contentH+36)+'px';
   const selectedNeighbors=new Set([topologySelectedNodeId]);incident.forEach(edge=>{selectedNeighbors.add(edge.source);selectedNeighbors.add(edge.target);});
-  const fitNodes=[...drawn.values()].filter(node=>!topologySelectedNodeId||selectedNeighbors.has(node.id));topologyFitBounds=fitNodes.length?{minX:Math.min(...fitNodes.map(node=>node.x)),minY:Math.min(...fitNodes.map(node=>node.y)),maxX:Math.max(...fitNodes.map(node=>node.x+node.w)),maxY:Math.max(...fitNodes.map(node=>node.y+node.h))}:null;
+  const fitNodes=[...drawn.values()].filter(node=>!topologySelectedNodeId||selectedNeighbors.has(node.id)),visualBounds=fitNodes.map(topologyNodeVisualBounds);topologyFitBounds=visualBounds.length?{minX:Math.min(...visualBounds.map(bounds=>bounds.minX)),minY:Math.min(...visualBounds.map(bounds=>bounds.minY)),maxX:Math.max(...visualBounds.map(bounds=>bounds.maxX)),maxY:Math.max(...visualBounds.map(bounds=>bounds.maxY))}:null;
   const edgeSVG=edges.map(edge=>{const A=drawn.get(edge.source),B=drawn.get(edge.target);if(!A||!B)return'';const hot=topologySelectedNodeId&&(edge.source===topologySelectedNodeId||edge.target===topologySelectedNodeId),selectedRelationship=edge.id===topologySelectedEdgeId,searchDim=topologySearch&&(!topologySearchMatchesGraph(A)||!topologySearchMatchesGraph(B)),focusDim=topologySelectedNodeId&&!hot;return `<path class="link selectable ${esc(edge.kind)}${hot?' hot':''}${selectedRelationship?' selected':''}${searchDim||focusDim?' dimmed':''}" data-edge-id="${esc(edge.id)}" role="button" tabindex="0" aria-pressed="${selectedRelationship}" aria-label="Select ${esc(edge.relation||edge.kind)} ${edge.directed===false?'undirected':'directed'} relationship" marker-end="${edge.directed===false?'':'url(#topology-arrow)'}" d="${topologyOrthogonalPath(A,B)}"><title>${esc(`${edge.kind} · ${edge.provider} · ${edge.relation || ''} · ${edge.source} → ${edge.target}`)}</title></path>`}).join('');
-  const nodeSVG=[...drawn.values()].map(node=>{const selectedNode=node.id===topologySelectedNodeId,related=selectedNeighbors.has(node.id)||(selectedEdge&&(selectedEdge.source===node.id||selectedEdge.target===node.id)),nodeIncident=edges.filter(edge=>edge.source===node.id||edge.target===node.id),health=topologyNodeHealth(node),statusColor=health==='warning'?'var(--amber)':health==='unknown'?'var(--muted)':health==='stopped'?'var(--red)':'var(--green)',group=topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById),metric=arr(node.metrics).find(item=>item.key===topologyMetricKey),metricText=topologyMetricKey?(metric?`${metric.label}: ${formatTopologyMetric(metric)}`:'metric unavailable'):'',metaText=group||`${node.scope?.namespace||'cluster'} · ${node.scope?.provider||'-'}`,dimmed=(topologySelectedNodeId&&!related)||(topologySearch&&!topologySearchMatchesGraph(node));return `<g class="node${selectedNode?' selected':related?' related':''}${dimmed?' dimmed':''}" data-node-id="${esc(node.id)}" data-detail="${esc(topologyNodeDetail(node,nodeIncident))}" role="button" tabindex="0" aria-pressed="${selectedNode}" aria-label="Select ${esc(node.kind)} ${esc(node.name)}; ${esc(metaText)}${metricText?`; ${esc(metricText)}`:''}"><title>${esc(`${node.kind} · ${node.identity||node.id} · ${metaText}${metricText?` · ${metricText}`:''}`)}</title><rect class="node-card" x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}"/><rect class="node-icon-box" x="${node.x+8}" y="${node.y+12}" width="32" height="32"/><svg x="${node.x+14}" y="${node.y+18}" width="20" height="20" style="color:var(--blue)"><use href="#${topologyIconID(topologyKind(node))}"/></svg><foreignObject x="${node.x+48}" y="${node.y+10}" width="${node.w-70}" height="${node.h-16}"><div xmlns="http://www.w3.org/1999/xhtml" class="node-copy label" title="${esc(node.name)}">${esc(node.name)}</div><div xmlns="http://www.w3.org/1999/xhtml" class="node-copy meta" title="${esc(metaText)}">${esc(metaText)}</div>${metricText?`<div xmlns="http://www.w3.org/1999/xhtml" class="node-copy metric" title="${esc(metricText)}">${esc(metricText)}</div>`:''}</foreignObject><circle cx="${node.x+node.w-14}" cy="${node.y+16}" r="5" fill="${statusColor}"/></g>`}).join('');
+  const nodeSVG=[...drawn.values()].map(node=>{const selectedNode=node.id===topologySelectedNodeId,related=selectedNeighbors.has(node.id)||(selectedEdge&&(selectedEdge.source===node.id||selectedEdge.target===node.id)),nodeIncident=edges.filter(edge=>edge.source===node.id||edge.target===node.id),health=topologyNodeHealth(node),statusColor=health==='warning'?'var(--amber)':health==='unknown'?'var(--muted)':health==='stopped'?'var(--red)':'var(--green)',group=topologyReplicaGroup(node,arr(topologyGraph?.edges),nodeById),metric=arr(node.metrics).find(item=>item.key===topologyMetricKey),metricText=topologyMetricKey?(metric?`${metric.label}: ${formatTopologyMetric(metric)}`:'metric unavailable'):'',metaText=group||`${node.scope?.namespace||'cluster'} · ${node.scope?.provider||'-'}`,dimmed=(topologySelectedNodeId&&!related)||(topologySearch&&!topologySearchMatchesGraph(node)),visualKind=topologyVisualKind(topologyKind(node)),cx=node.x+node.w/2,cy=node.y+30;return `<g class="node kind-${visualKind}${selectedNode?' selected':related?' related':''}${dimmed?' dimmed':''}" data-node-id="${esc(node.id)}" data-detail="${esc(topologyNodeDetail(node,nodeIncident))}" role="button" tabindex="0" aria-pressed="${selectedNode}" aria-label="Select ${esc(node.kind)} ${esc(node.name)}; ${esc(metaText)}${metricText?`; ${esc(metricText)}`:''}"><title>${esc(`${node.kind} · ${node.identity||node.id} · ${metaText}${metricText?` · ${metricText}`:''}`)}</title>${topologyNodeShape(node)}<svg class="node-symbol" x="${cx-11.5}" y="${cy-11.5}" width="23" height="23"><use href="#${topologyIconID(topologyKind(node))}"/></svg><foreignObject x="${node.x+6}" y="${node.y+61}" width="108" height="31"><div xmlns="http://www.w3.org/1999/xhtml" class="node-copy label" title="${esc(node.name)}">${esc(node.name)}</div><div xmlns="http://www.w3.org/1999/xhtml" class="node-copy meta" title="${esc(metaText)}">${esc(metaText)}</div></foreignObject>${metricText?`<foreignObject x="${cx+24}" y="${node.y+7}" width="64" height="18"><div xmlns="http://www.w3.org/1999/xhtml" class="node-metric-badge" title="${esc(metricText)}">${esc(metricText)}</div></foreignObject>`:''}<circle class="node-status" cx="${cx+23}" cy="${cy-21}" r="5" fill="${statusColor}"/></g>`}).join('');
   const activeView=currentTopologyView(),viewportTransform=`translate(${activeView.x} ${activeView.y}) scale(${activeView.scale})`;
   byId('topology').innerHTML=`<svg id="topologySvg" viewBox="0 0 ${contentW} ${contentH}"><defs><marker id="topology-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker></defs><g id="topologyViewport" transform="${viewportTransform}">${edgeSVG}${nodeSVG}</g></svg><div class="legend"><span>Wheel to zoom</span><span>Drag to pan</span><span>${nodes.length} objects · ${edges.length} evidence-backed relationships</span></div>`;
   installTopologyHoverInteractions(edges);
