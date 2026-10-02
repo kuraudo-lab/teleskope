@@ -14,9 +14,9 @@ func TestRenderScalePageUsesSharedUIAndHarness(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, want := range []string{
-			`id="topology"`,
+			`id="ui-root"`,
 			`window.__teleskopeScaleEvidence`,
-			`topologyMode = 'graph'`,
+			`teleskope:render-topology`,
 			`"clusterId":"scale-` + profile.Name + `"`,
 			`nodes:` + itoa(profile.Nodes),
 			`edges:` + itoa(profile.Edges),

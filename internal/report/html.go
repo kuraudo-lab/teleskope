@@ -14,8 +14,11 @@ import (
 //go:embed report.html
 var reportHTMLTemplate string
 
-//go:embed live.js
-var liveJS string
+//go:embed assets/ui.js
+var uiJS string
+
+//go:embed assets/ui.css
+var uiCSS string
 
 // HTML renders a self-contained interactive static cluster report.
 func HTML(snapshot *inventory.Snapshot) (string, error) {
@@ -36,6 +39,7 @@ func LiveHTML() string {
 
 // LiveHTMLOptions overrides API paths for live-style pages backed by another server.
 type LiveHTMLOptions struct {
+	DisableAnalysis    bool
 	SnapshotPath       string
 	TopologyPath       string
 	AnalyzePath        string
@@ -46,7 +50,8 @@ type LiveHTMLOptions struct {
 // LiveHTMLWithOptions renders the embedded UI with configurable same-origin APIs.
 func LiveHTMLWithOptions(opts LiveHTMLOptions) string {
 	page, err := RenderUI(UIRenderOptions{
-		Mode: UIModeLive,
+		Mode:            UIModeLive,
+		DisableAnalysis: opts.DisableAnalysis,
 		Endpoints: UIEndpoints{
 			Snapshot:       firstNonEmpty(opts.SnapshotPath, "/api/snapshot"),
 			Topology:       firstNonEmpty(opts.TopologyPath, "/api/topology"),
@@ -54,8 +59,6 @@ func LiveHTMLWithOptions(opts LiveHTMLOptions) string {
 			ExportSnapshot: firstNonEmpty(opts.ExportSnapshotPath, "/api/export/snapshot.json"),
 			ExportSummary:  firstNonEmpty(opts.ExportSummaryPath, "/api/export/summary.md"),
 		},
-		Styles:  []string{liveStyles},
-		Scripts: []string{liveJS},
 	})
 	if err != nil {
 		return ""
@@ -78,13 +81,11 @@ func escapeScriptText(value string) string {
 	return strings.ReplaceAll(value, "</", "<\\/")
 }
 
-const liveStyles = `.live-event-list { display:grid; gap:6px; max-height:calc(100vh - 190px); overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:11px; }
-.live-event { display:grid; grid-template-columns:78px 78px 86px 50px minmax(0,1fr); gap:8px; align-items:start; padding:7px 8px; border:1px solid var(--table-line); border-radius:7px; background:var(--live-event-bg); }
-.live-event-time, .live-event-kind, .live-event-source { color:var(--muted); }
-.live-event-kind { text-transform:uppercase; font-size:10px; font-weight:800; letter-spacing:.04em; }
-.live-event-level { text-transform:uppercase; font-weight:800; }
-.live-event-info .live-event-level, .live-event-debug .live-event-level { color:var(--cyan); }
-.live-event-warn .live-event-level { color:var(--amber); }
-.live-event-error .live-event-level { color:var(--red); }
-.live-event-message { min-width:0; overflow-wrap:anywhere; line-height:1.45; }
-@media (max-width:700px) { .live-event { grid-template-columns:74px 1fr 52px; } .live-event-source, .live-event-message { grid-column:1 / -1; } }`
+// HubHTML renders the fleet entry using the shared frontend bundle.
+func HubHTML() string {
+	page, err := RenderUI(UIRenderOptions{Mode: UIModeOffline, Snapshot: &inventory.Snapshot{}})
+	if err != nil {
+		return ""
+	}
+	return strings.Replace(page, `<div id="ui-root">`, `<div id="ui-root" data-view="hub">`, 1)
+}

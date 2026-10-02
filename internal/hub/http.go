@@ -199,6 +199,7 @@ func (s *Store) writeClusterHTML(w http.ResponseWriter, r *http.Request, id stri
 	}
 	query := "?id=" + urlQueryEscape(id)
 	html := report.LiveHTMLWithOptions(report.LiveHTMLOptions{
+		DisableAnalysis:    opts.Analyzer == nil,
 		SnapshotPath:       "/api/cluster/snapshot" + query,
 		TopologyPath:       "/api/cluster/topology" + query,
 		AnalyzePath:        "/api/cluster/analyze" + query,

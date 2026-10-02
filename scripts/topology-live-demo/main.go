@@ -164,31 +164,33 @@ func liveContinuityHarness() string {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
   };
+  const revision = () => Number(document.getElementById('ui-root')?.dataset.revision || -1);
+  const selectedID = () => document.querySelector('[data-node-id][aria-pressed="true"]')?.dataset.nodeId;
+  const refresh = () => document.dispatchEvent(new Event('teleskope:refresh'));
   const position = id => {
     const node = [...document.querySelectorAll('[data-node-id]')].find(item => item.dataset.nodeId === id);
-    const card = node?.querySelector('.node-card');
+    const card = node?.querySelector('foreignObject');
     return card ? {x:card.getAttribute('x'),y:card.getAttribute('y')} : null;
   };
   const status = () => fetch('/demo/status', {cache:'no-store'}).then(response => response.json());
   publish();
   (async () => {
-    await waitFor(() => liveRevision >= 1 && topologyGraph?.nodes?.length, 'initial graph');
-    const selected = topologyGraph.nodes.find(node => node.name === 'aws-node') || topologyGraph.nodes[0];
-    topologySemanticView = 'application';
-    topologySearch = selected.name;
-    byId('topology-search').value = topologySearch;
-    selectTopologyNode(selected.id);
-    const before = {revision:topologyGraph.revision,selected:topologySelectedNodeId,position:position(selected.id)};
+    await waitFor(() => revision() >= 1 && document.querySelector('[data-node-id]'), 'initial graph');
+    const nodes=[...document.querySelectorAll('[data-node-id]')];
+    const element=nodes.find(node => node.getAttribute('aria-label').includes('aws-node')) || nodes[0];
+    const selected={id:element.dataset.nodeId,name:element.getAttribute('aria-label')};
+    element.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    const before = {revision:revision(),selected:selectedID(),position:position(selected.id)};
 
     await fetch('/demo/advance', {method:'POST'});
-    await refreshLivePage();
-    await waitFor(() => topologyGraph?.revision >= 2, 'accepted delta');
+    refresh();
+    await waitFor(() => revision() >= 2, 'accepted delta');
     const deltaStatus = await status();
-    const afterDelta = {revision:topologyGraph.revision,selected:topologySelectedNodeId,position:position(selected.id)};
+    const afterDelta = {revision:revision(),selected:selectedID(),position:position(selected.id)};
 
     await fetch('/demo/gap', {method:'POST'});
-    await refreshLivePage();
-    await waitFor(() => topologyGraph?.revision > 2, 'full reset');
+    refresh();
+    await waitFor(() => revision() > 2, 'full reset');
     const resetStatus = await status();
 
     Object.assign(evidence, {
@@ -198,7 +200,7 @@ func liveContinuityHarness() string {
       delta:{responseKind:deltaStatus.lastTopologyKind,accepted:deltaStatus.lastTopologyKind==='delta',revision:afterDelta.revision},
       selectionStable:before.selected===afterDelta.selected,
       layoutStable:JSON.stringify(before.position)===JSON.stringify(afterDelta.position),
-      revisionGap:{requestedSince:resetStatus.lastSince,responseKind:resetStatus.lastTopologyKind,fullReset:resetStatus.lastTopologyKind==='full',revision:topologyGraph.revision},
+      revisionGap:{requestedSince:resetStatus.lastSince,responseKind:resetStatus.lastTopologyKind,fullReset:resetStatus.lastTopologyKind==='full',revision:revision()},
       nodeProbe:false
     });
     publish();

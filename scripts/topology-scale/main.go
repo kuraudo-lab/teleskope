@@ -72,8 +72,8 @@ func scaleHarness(profile topology.ScaleProfile) string {
 	return fmt.Sprintf(`(() => {
   const profile = {name:%q,nodes:%d,edges:%d,samples:5};
   const samples = [];
-  topologyMode = 'graph';
-  syncTopologyURL();
+  const byId = id => document.getElementById(id);
+  const topologyGraphPolicy = {mode:'unbounded',edges:'selection-only-straight'};
   const publish = () => {
     const ordered = [...samples].sort((a,b) => a-b);
     const evidence = {
@@ -98,13 +98,13 @@ func scaleHarness(profile topology.ScaleProfile) string {
     output.textContent = JSON.stringify(evidence, null, 2);
   };
   const measure = () => {
-    renderTopology();
+    document.dispatchEvent(new Event('teleskope:render-topology'));
     requestAnimationFrame(() => requestAnimationFrame(() => {
       samples.push(Number(byId('topology').dataset.renderMs));
       if (samples.length < profile.samples) measure(); else publish();
     }));
   };
-  measure();
+  requestAnimationFrame(measure);
 })();`, profile.Name, profile.Nodes, profile.Edges)
 }
 

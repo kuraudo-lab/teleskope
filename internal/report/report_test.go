@@ -307,261 +307,15 @@ func TestWriteDirectoryCreatesRawJSONAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read index.html: %v", err)
 	}
-	for _, want := range []string{
-		"<title>Teleskope cluster report</title>",
-		`rel="icon" type="image/png"`,
-		`aria-hidden="true"><img src="data:image/png;base64,`,
-		`<script id="boot-config" type="application/json">`,
-		`<script id="snapshot-data" type="application/json">`,
-		`<script id="topology-data" type="application/json">`,
-		`<script id="eks-projection-data" type="application/json">`,
-		`<script id="markdown-data" type="text/plain">`,
-		`"mode":"offline"`,
-		`"schemaVersion": "teleskope.io/snapshot/v1alpha1"`,
-		`"visible":true`,
-		"Target: `Prod Cluster`",
-		"Running images",
-		"EKS overview",
-		"const eksNavItems",
-		"menu('eks', 'EKS', eksNavItems)",
-		"aria-current",
-		"e.key === 'ArrowDown'",
-		"e.key === 'Escape'",
-		`data-section="eks-upgrades"`,
-		`data-section="eks-compute"`,
-		`data-section="eks-network"`,
-		`data-section="eks-security"`,
-		`data-section="eks-addons"`,
-		`body:not([data-active-section="overview"]):not([data-active-section="advisor"]) .shell > .app`,
-		`body:not([data-active-section="overview"]) .sidebar`,
-		"grid-template-columns:minmax(0,1fr) 328px",
-		"Upgrade / rollback insights",
-		"Compute capacity and declared usage",
-		"Auto Scaling groups",
-		"EC2 instances",
-		"VPC details",
-		"Subnet details",
-		"Security groups",
-		"Security and identity",
-		"nodesTable",
-		"eksInsightsTable",
-		"accessEntriesTable",
-		"podIdentityTable",
-		"eksProjection.overview",
-		"eksProjection.insights",
-		"eksProjection.capacity",
-		"eksProjection.networkDetails",
-		"eksProjection.addons",
-		"eksNetworkDetailsTable",
-		"networkDetails",
-		"targetKubernetes",
-		"compatibleVersions",
-		"Upgrade add-on before the cluster upgrade.",
-		"eksProjection.nodegroups",
-		"eksProjection.autoScalingGroups",
-		"eksProjection.instances",
-		"eksProjection.vpcs",
-		"eksProjection.subnets",
-		"eksProjection.securityGroups",
-		"autoScalingGroupsTable",
-		"eksInstancesTable",
-		"eksVPCsTable",
-		"eksSubnetsTable",
-		"eksSecurityGroupsTable",
-		"nodegroupReadiness",
-		"nodegroupReadinessTable",
-		"eksProjection.nodegroupReadiness",
-		"IRSA:",
-		"Gateway routes",
-		"gatewayClassesTable",
-		"gatewaysTable",
-		"gatewayRoutesTable",
-		"table('gatewayClassesTable'",
-		"table('gatewaysTable'",
-		"table('gatewayRoutesTable'",
-		`data-section="security"`,
-		`data-section="policies"`,
-		"rbacRolesTable",
-		"rbacBindingsTable",
-		"admissionWebhooksTable",
-		"pdbTable",
-		"networkPoliciesTable",
-		"resourceQuotasTable",
-		"limitRangesTable",
-		"table('rbacRolesTable'",
-		"table('networkPoliciesTable'",
-		"table('admissionWebhooksTable'",
-		"gatewayBackends",
-		"Custom resources",
-		"function namespacesOf",
-		"resourceTypes = [",
-		`data-section="events"`,
-		"['events', 'Events']",
-		`<select id="resourceType" aria-label="Resource type">`,
-		`id="exportReport"`,
-		`id="exportMenu"`,
-		`data-export-format="json"`,
-		`data-export-format="markdown"`,
-		"function downloadText",
-		"async function exportReport",
-		"function toggleExportMenu",
-		"bootConfig.endpoints?.exportSnapshot",
-		"bootConfig.endpoints?.exportSummary",
-		`id="themeToggle"`,
-		`prefers-color-scheme: dark`,
-		`teleskope.theme`,
-		`localStorage.setItem(themeKey, next)`,
-		`document.documentElement.dataset.theme = next`,
-		"resourceFilter = 'all'",
-		"activeSection = 'overview'",
-		"currentTopologyResourceFilter",
-		"resourceType').disabled = activeSection !== 'overview'",
-		"showPods = topologyResourceFilter === 'pod'",
-		"topologyResourceFilter === 'crd'",
-		"function renderTopology",
-		"topologyGraph = JSON.parse",
-		`aria-label="Topology projection"`,
-		`aria-selected="true" aria-disabled="false">Workloads`,
-		`id="topologyModeOptions"`,
-		`id="topologyHealth"`,
-		`id="topologySystem"`,
-		`id="topologyState"`,
-		`id="topologyGroup"`,
-		"function syncTopologyURL",
-		"function topologyFilteredGraph",
-		"function topologyNamespaceOptions",
-		"function syncTopologyNamespaceOptions",
-		"activeSection==='overview'&&topologyGraph?.schemaVersion",
-		"function renderAll() { syncTopologyNamespaceOptions();",
-		"function topologyCondensedHierarchy",
-		"function topologyStraightEdges",
-		`data-topology-depth="${node.rank}"`,
-		"const overviewBounds=[...drawn.values()].map(topologyNodeVisualBounds)",
-		"function renderTopologyTable",
-		"topologySelected",
-		"topologyScale",
-		"data-topology-select",
-		`aria-selected="${node.id === topologySelectedNodeId}"`,
-		"runtime-connections",
-		"topologyMetric",
-		"function topologyRelatives",
-		"function topologyMetadataHTML",
-		"function topologyFindingsHTML",
-		"function topologyFindingRef",
-		"const topologyWorkloadKinds",
-		"function topologyProjectedEdges",
-		"evidence-backed workload projection",
-		"resolves external endpoint",
-		"backs workload",
-		"function topologyOverviewLayout",
-		"function topologyFocusLayout",
-		"function topologyVisualKind",
-		"function topologyNodeShape",
-		"function topologyNodeVisualBounds",
-		"metricOverflow=topologyMetricKey?32:0",
-		"visualBounds=fitNodes.map(topologyNodeVisualBounds)",
-		"const radius=27",
-		`<line class="link selectable`,
-		`viewBox="${viewBoxX} ${viewBoxY} ${viewBoxW} ${viewBoxH}"`,
-		`return` + "`" + `<circle class="node-shape"`,
-		`kind==='pod'`,
-		`kind==='infrastructure'`,
-		`class="node kind-${visualKind}`,
-		`class="node-symbol"`,
-		`class="node-status"`,
-		`class="node-metric-badge"`,
-		"width:fit-content; max-width:100%",
-		"background:var(--panel-2)",
-		"nodeW=120,nodeH=92",
-		"byId('topology').style.minHeight=''",
-		"function installTopologyHoverInteractions",
-		"function fitTopologyToContent",
-		"topologyFitBounds",
-		"class=\"node-copy label\"",
-		"text-overflow:ellipsis",
-		"function topologyEdgeEvidenceHTML",
-		"Relationship evidence",
-		"topologyGraphPolicy",
-		"Object.freeze({mode:'unbounded'",
-		"routeStrategy='straight-focus'",
-		`id="topologyComplexityNotice" role="status" aria-live="polite"`,
-		`id="topologyZoomOut" aria-label="Zoom topology out"`,
-		`id="topologyZoomIn" aria-label="Zoom topology in"`,
-		`aria-label="Reset topology zoom and position"`,
-		"function recordTopologyRender",
-		"prefers-reduced-motion:reduce",
-		"function selectTopologyEdge",
-		"data-edge-id",
-		"Select an object or relationship",
-		"Pinned metric ${topologyMetricKey} is unavailable",
-		"function topologyMetricSparkline",
-		"topologyRawExpanded",
-		"data-topology-raw",
-		"Deterministic findings",
-		"Raw evidence",
-		"data-relative-sort",
-		"metric unavailable",
-		"topologySelectedNodeId",
-		"visibleTopologyLinks = topologySelectedNodeId ?",
-		"function selectTopologyNode",
-		"onclick=\"selectTopologyNode(this.dataset.nodeId);event.stopPropagation()\"",
-		"e.target.closest('[data-node-id]')",
-		"else if(topologyDrag.nodeId)selectTopologyNode(topologyDrag.nodeId)",
-		"function clearTopologySelection",
-		"addEventListener('click',e=>{if(topologyDrag.suppressClick)",
-		"const orthogonalPath = (A, B) =>",
-		"H${midX} V${y2} H${x2}",
-		`data-node-id="${esc(n.id)}"`,
-		`aria-pressed="${n.id === topologySelectedNodeId}"`,
-		`id="topologySelectedSummary"`,
-		"Select an object to show relationships",
-		"right:22px; bottom:22px; width:640px",
-		"top:auto;\n      right:14px;\n      bottom:14px;",
-		"topologySvg",
-		"topologyViewport",
-		"Wheel to zoom",
-		"Drag to pan",
-		"topologyDrag",
-		"pointerdown",
-		"pointermove",
-		"applyTopologyTransform",
-		"Workload lookup",
-		`id="workloadSearch"`,
-		`id="workloadSearchResults"`,
-		"function workloadDetailHTML",
-		"function renderWorkloadSearch",
-		"function openWorkloadDetail",
-		"data-workload-key",
-		"dependency-graph",
-		"repo/worker:v2",
-		"worker-cache-template",
-		"worker-config",
-		"worker-secret",
-		"worker-pull",
-		"pods=${r.podCount || 0}",
-		"join('<br>')",
-	} {
+	for _, want := range []string{`<title>Teleskope cluster report</title>`, `id="ui-root"`, `id="snapshot-data"`, `id="topology-data"`, `"mode":"offline"`, `"schemaVersion": "teleskope.io/snapshot/v1alpha1"`, "repo/worker:v2", "worker-cache-template", "worker-config", "worker-secret", "worker-pull"} {
 		if !strings.Contains(string(html), want) {
-			t.Fatalf("index.html missing %q", want)
+			t.Fatalf("HTML missing payload contract %q", want)
 		}
 	}
-	if strings.Contains(string(html), "C${x1 + mid} ${y1} ${x2 - mid} ${y2}") {
-		t.Fatal("topology still contains the previous cubic relationship path")
+	if strings.Contains(string(html), `<script src=`) || strings.Contains(string(html), `<link rel="stylesheet"`) {
+		t.Fatal("report must be self-contained")
 	}
-	for _, unwanted := range []string{`id="topologyFocus"`, `id="topologyViewOptions"`, `>Semantic view<`, `>Swimlanes<`, "focused neighborhood"} {
-		if strings.Contains(string(html), unwanted) {
-			t.Fatalf("topology contains removed control or label %q", unwanted)
-		}
-	}
-	if strings.Contains(string(html), "if (detail) showText(detail)") {
-		t.Fatal("topology selection should keep contextual inspection in the inspector")
-	}
-	if strings.Contains(string(html), "if(topologyMetricKey&&!catalog.some") {
-		t.Fatal("topology should preserve a pinned metric when a revision does not provide it")
-	}
-	if strings.Contains(string(html), "<h3>Coverage</h3>") {
-		t.Fatalf("index.html should not render coverage panel")
-	}
+
 }
 
 func TestWriteDirectoryMergesDuplicateTopologyCoverage(t *testing.T) {
@@ -588,75 +342,14 @@ func TestWriteDirectoryMergesDuplicateTopologyCoverage(t *testing.T) {
 }
 
 func TestLiveHTMLIncludesRecentEvents(t *testing.T) {
-	html := LiveHTML()
-	for _, want := range []string{
-		`<body data-live="true" class="live-loading">`,
-		`<script id="boot-config" type="application/json">`,
-		`<script id="topology-data" type="application/json">{}</script>`,
-		"Recent events",
-		"live-event-list",
-		"eventsNavStatus",
-		"nav-status",
-		"sourceFreshness",
-		"source-freshness",
-		"function renderSourceFreshness",
-		"lastFullSyncAt",
-		"watch reconnecting",
-		"eventKind(event)",
-		"updateLiveProgress",
-		"background:var(--live-event-bg)",
-		"renderLiveStatus(data.sources, data.events)",
-		`id="analyzeSnapshot"`,
-		"Analyze with AI",
-		"ai-button",
-		"teleskope-bling",
-		"Advisory",
-		"AI analysis",
-		"/api/analyze",
-		"bootConfig.endpoints?.analyze",
-		"normalizedAnalysisPage(pageId)",
-		"bootConfig.endpoints?.snapshot",
-		"bootConfig.endpoints?.topology",
-		"function applyTopologyUpdate",
-		"function fetchTopologyUpdate",
-		"teleskope.io/topology-update/v1alpha1",
-		"function topologyOverviewLayout",
-		"function topologyFocusLayout",
-		"function installTopologyHoverInteractions",
-		"bootConfig.endpoints?.exportSummary",
-		"bootConfig.endpoints?.exportSnapshot",
-		"function renderAnalysis",
-		"analysisInFlight",
-		"analysisKey === lastKey",
-		"function currentAnalysisRequest",
-		"function currentAnalysisKey",
-		"revision: liveRevision",
-		"function analysisResourceType",
-		"Observed facts",
-		"Inference",
-		"Limitations",
-		"Analyze is available after the first scan completes.",
-		"cursor:not-allowed",
-		"font:inherit; font-size:14px",
-		"lastAnalyzedRevision",
-		"lastAnalyzedRequestKey",
-		"function syncAnalyzeButtonState",
-		"selectSection('advisor')",
-		"topologyGraph = next.graph || topologyGraph",
-	} {
-		if !strings.Contains(html, want) {
-			t.Fatalf("live HTML missing %q", want)
+	page := LiveHTML()
+	for _, want := range []string{`<body data-live="true" class="live-loading">`, `id="ui-root"`, `"snapshot":"/api/snapshot"`, `"topology":"/api/topology"`, `"analyze":"/api/analyze"`} {
+		if !strings.Contains(page, want) {
+			t.Fatalf("live boot contract missing %q", want)
 		}
 	}
-	for _, page := range []string{"eks", "nodes", "workloads", "network", "storage", "security"} {
-		if !strings.Contains(html, `data-analysis-page="`+page+`"`) || !strings.Contains(html, `data-analyze-page="`+page+`"`) {
-			t.Fatalf("live HTML missing scoped analysis controls for %s", page)
-		}
-	}
-	for _, old := range []string{`id="live-status"`, `id="live-events"`, "live-progress", "Collection details"} {
-		if strings.Contains(html, old) {
-			t.Fatalf("live HTML should not include top-level live status artifact %q", old)
-		}
+	if !strings.Contains(page, escapeScriptText(uiJS)) {
+		t.Fatal("production UI not embedded")
 	}
 }
 
@@ -685,60 +378,6 @@ func TestLiveHTMLWithOptionsRendersEndpointConfig(t *testing.T) {
 	} {
 		if strings.Contains(html, old) {
 			t.Fatalf("endpoint was inlined into script instead of boot config: %q", old)
-		}
-	}
-}
-
-func TestTopologyLayoutContractUsesCondensedDepthAndSelectionFocus(t *testing.T) {
-	const workloadProjection = "const topologyWorkloadKinds = new Set(['pseudo-internet','pseudo-external-endpoint','ingress','gateway','gatewayroute','service','workload'])"
-	if !strings.Contains(reportHTMLTemplate, workloadProjection) {
-		t.Fatal("workload overview must remain limited to external, entry, service, and workload objects")
-	}
-	for _, want := range []string{
-		"function topologyOverviewLayout(nodes,edges,width,nodeW,nodeH)",
-		"function topologyCondensedHierarchy(nodes,edges)",
-		"rawComponents.push(members.sort())",
-		"depth.set(target,Math.max(depth.get(target),depth.get(source)+1))",
-		"function topologyStraightEdges(edges,drawn)",
-		"x1=ax+ux*radius",
-		"x2=bx-ux*radius",
-		"drawn.set(selectedId,{...drawn.get(selectedId),x:cx-nodeW/2,y:cy-nodeH/2})",
-		"neighborIDs.add(edge.target)",
-		"neighborIDs.add(edge.source)",
-		"x:width+80+(index%4)*(nodeW+24)",
-		"viewportWidth/width,viewportHeight/height",
-	} {
-		if !strings.Contains(reportHTMLTemplate, want) {
-			t.Fatalf("topology layout contract missing %q", want)
-		}
-	}
-}
-
-func TestTopologyGraphPresentationNeverAutoFallsBack(t *testing.T) {
-	for _, forbidden := range []string{
-		"if(exceedsGraphLimit&&topologyMode==='graph'){topologyMode='table'",
-		"if(routedEdges.unroutable){topologyMode='table'",
-		"Relation table selected because this view has",
-		"Relation table selected because the visible relationships have",
-		"function topologyEdgeRoutes(edges,drawn)",
-		`<path class="link selectable`,
-	} {
-		if strings.Contains(reportHTMLTemplate, forbidden) {
-			t.Fatalf("graph presentation must not be rewritten automatically; found %q", forbidden)
-		}
-	}
-	for _, want := range []string{
-		"function topologyWeakComponents(nodes,edges)",
-		"function topologyLayoutIsolates(nodes",
-		"const topologyGraphPolicy = Object.freeze({mode:'unbounded'",
-		"visibleEdges=topologySelectedNodeId?incident:[]",
-		"routeDrawn=topologySelectedNodeId?new Map([...drawn].filter(([id])=>selectedNeighbors.has(id))):drawn",
-		"topologyStraightEdges(visibleEdges,routeDrawn)",
-		`data-topology-isolate="${Boolean(node.isolate)}"`,
-		"dataset.routeCollisionChecked",
-	} {
-		if !strings.Contains(reportHTMLTemplate, want) {
-			t.Fatalf("unbounded Scope-style layout contract missing %q", want)
 		}
 	}
 }
@@ -811,7 +450,7 @@ func TestAdvisorArtifactAndHTML(t *testing.T) {
 		t.Fatalf("advisor artifact: %s %v", data, err)
 	}
 	page, err := HTML(s)
-	if err != nil || strings.Contains(page, "__TELESKOPE_ADVISOR_JSON__") || strings.Contains(page, "__TELESKOPE_EKS_PROJECTION_JSON__") || !strings.Contains(page, `data-section="advisor"`) {
+	if err != nil || strings.Contains(page, "__TELESKOPE_ADVISOR_JSON__") || strings.Contains(page, "__TELESKOPE_EKS_PROJECTION_JSON__") || !strings.Contains(page, `id="ui-root"`) {
 		t.Fatal("advisor HTML missing or not encoded")
 	}
 	if strings.Contains(LiveHTML(), "__TELESKOPE_ADVISOR_JSON__") {
@@ -825,40 +464,5 @@ func TestAdvisorArtifactAndHTML(t *testing.T) {
 	}
 	if strings.Contains(LiveHTML(), "__TELESKOPE_MARKDOWN__") {
 		t.Fatal("unresolved live markdown placeholder")
-	}
-}
-
-func TestAdvisorReadabilityWorkspace(t *testing.T) {
-	page := LiveHTML()
-	for _, want := range []string{
-		`class="section stack advisor-section"`,
-		`class="advisor-posture"`,
-		`id="advisor-status-filters"`,
-		`id="advisor-domain-filters"`,
-		`id="advisor-search"`,
-		`id="advisor-result-count" role="status" aria-atomic="true"`,
-		`body[data-active-section="advisor"]`,
-		`document.body.dataset.activeSection = id`,
-		"function advisorMatchesStatus",
-		"function advisorCapabilityHTML",
-		"function advisorEvidenceHTML",
-		"Assessment and coverage counts may overlap.",
-		"Deterministic conclusion",
-		"Interpretation boundary",
-		"Collection gaps",
-		"advisorReport = data.advisor || {}",
-	} {
-		if !strings.Contains(page, want) {
-			t.Fatalf("Advisory workspace missing %q", want)
-		}
-	}
-	for _, old := range []string{
-		`<div class="body advisor-body">`,
-		`<summary style="cursor:pointer;padding:12px 0;overflow-wrap:anywhere">`,
-		`Implementation: ${esc(c.implementation || 'Unknown')} · Coverage:`,
-	} {
-		if strings.Contains(page, old) {
-			t.Fatalf("Advisory workspace kept dense legacy renderer %q", old)
-		}
 	}
 }

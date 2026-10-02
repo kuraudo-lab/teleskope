@@ -544,7 +544,7 @@ func (s *Store) Handler() http.Handler {
 
 // HandlerWithOptions serves the live UI with injectable LLM analysis dependencies.
 func (s *Store) HandlerWithOptions(opts HandlerOptions) http.Handler {
-	page := report.LiveHTML()
+	page := report.LiveHTMLWithOptions(report.LiveHTMLOptions{DisableAnalysis: opts.Analyzer == nil})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")

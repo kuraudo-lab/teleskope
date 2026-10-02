@@ -26,18 +26,20 @@ type UIEndpoints struct {
 }
 
 type UIRenderOptions struct {
-	Mode      UIMode
-	Snapshot  *inventory.Snapshot
-	Topology  *topology.Graph
-	Target    string
-	Endpoints UIEndpoints
-	Styles    []string
-	Scripts   []string
+	DisableAnalysis bool
+	Mode            UIMode
+	Snapshot        *inventory.Snapshot
+	Topology        *topology.Graph
+	Target          string
+	Endpoints       UIEndpoints
+	Styles          []string
+	Scripts         []string
 }
 
 type uiBootConfig struct {
-	Mode      UIMode      `json:"mode"`
-	Endpoints UIEndpoints `json:"endpoints,omitempty"`
+	AnalysisEnabled bool        `json:"analysisEnabled"`
+	Mode            UIMode      `json:"mode"`
+	Endpoints       UIEndpoints `json:"endpoints,omitempty"`
 }
 
 // RenderUI renders the embedded report shell for offline, live, and hub drilldown pages.
@@ -50,7 +52,7 @@ func RenderUI(opts UIRenderOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	boot, err := json.Marshal(uiBootConfig{Mode: mode, Endpoints: opts.Endpoints})
+	boot, err := json.Marshal(uiBootConfig{Mode: mode, Endpoints: opts.Endpoints, AnalysisEnabled: mode == UIModeLive && !opts.DisableAnalysis})
 	if err != nil {
 		return "", fmt.Errorf("encode UI boot config: %w", err)
 	}
@@ -66,9 +68,11 @@ func RenderUI(opts UIRenderOptions) (string, error) {
 	if len(opts.Styles) > 0 {
 		page = strings.Replace(page, "</style>", strings.Join(opts.Styles, "\n")+"\n</style>", 1)
 	}
+	opts.Scripts = append([]string{uiJS}, opts.Scripts...)
 	if len(opts.Scripts) > 0 {
 		page = strings.Replace(page, "</body>", scriptTags(opts.Scripts)+"</body>", 1)
 	}
+	page = strings.Replace(page, "</style>", uiCSS+"\n</style>", 1)
 	return page, nil
 }
 

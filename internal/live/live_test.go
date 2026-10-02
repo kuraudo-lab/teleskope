@@ -388,7 +388,7 @@ func TestHTTPReadOnlyAndConditionalRequests(t *testing.T) {
 		if item.method == "HEAD" && w.Body.Len() != 0 {
 			t.Fatal("HEAD returned body")
 		}
-		if item.path == "/" && item.method == "GET" && (!strings.Contains(w.Body.String(), "refreshLivePage") || strings.Contains(w.Body.String(), "__TELESKOPE")) {
+		if item.path == "/" && item.method == "GET" && (!strings.Contains(w.Body.String(), `id="ui-root"`) || strings.Contains(w.Body.String(), "__TELESKOPE")) {
 			t.Fatal("live page is not embedded")
 		}
 	}
