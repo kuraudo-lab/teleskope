@@ -43,8 +43,8 @@ jobs:
       - name: Verify embedded browser behavior
         env:
           NO_PROXY: localhost,127.0.0.1
-          no_proxy: localhost,127.0.0.1
         run: |
+          export no_proxy="$NO_PROXY"
           make build
           cd web
           npx playwright install --with-deps chromium
