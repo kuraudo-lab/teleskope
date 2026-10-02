@@ -2216,35 +2216,36 @@ body {
   width: calc(100% - 36px);
   height: calc(100% - 36px);
 }
+/* Type owns hue; interaction states only change emphasis. */
+.node {
+  --node-type-color: var(--line-strong);
+}
+.node.kind-external,
+.node.kind-service {
+  --node-type-color: var(--blue);
+}
+.node.kind-gateway,
+.node.kind-infrastructure {
+  --node-type-color: var(--cyan);
+}
+.node.kind-workload {
+  --node-type-color: var(--purple);
+}
+.node.kind-pod {
+  --node-type-color: var(--amber);
+}
 .node .node-shape {
   fill: var(--panel-2);
-  stroke: var(--line-strong);
+  stroke: var(--node-type-color);
   stroke-width: 2;
   filter: drop-shadow(0 5px 9px rgba(0, 0, 0, 0.24));
 }
 .node.kind-external .node-shape {
-  stroke: var(--blue);
   stroke-dasharray: 5 3;
 }
-.node.kind-gateway .node-shape {
-  stroke: var(--cyan);
-}
-.node.kind-service .node-shape {
-  stroke: var(--blue);
-}
-.node.kind-workload .node-shape {
-  stroke: var(--purple);
-}
-.node.kind-pod .node-shape {
-  stroke: var(--amber);
-}
-.node.kind-infrastructure .node-shape {
-  stroke: var(--cyan);
-}
 .node.selected .node-shape {
-  stroke: var(--cyan);
-  stroke-width: 2;
-  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.72))
+  stroke-width: 3;
+  filter: drop-shadow(0 0 5px var(--node-type-color))
     drop-shadow(0 8px 12px rgba(0, 0, 0, 0.34));
 }
 .node.related .node-shape {
@@ -2257,7 +2258,6 @@ body {
   opacity: 0.14;
 }
 .node.hover-neighbor .node-shape {
-  stroke: var(--cyan);
   stroke-width: 2.5;
 }
 .link.hover-incident {
@@ -2269,7 +2269,6 @@ body {
   outline: none;
 }
 .node:focus-visible .node-shape {
-  stroke: var(--cyan);
   stroke-width: 3;
   stroke-dasharray: 5 3;
 }
