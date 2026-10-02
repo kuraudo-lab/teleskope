@@ -1,13 +1,13 @@
 # Frontend migration acceptance evidence
 
-Tracking: [#50](https://github.com/kuraudo-lab/teleskope/issues/50). Implementation is complete; user acceptance and merge remain pending.
+Tracking: [#50](https://github.com/kuraudo-lab/teleskope/issues/50). Implementation and acceptance fixes are complete. Current acceptance/merge status is tracked in [PR #62](https://github.com/kuraudo-lab/teleskope/pull/62).
 
 ## Verified locally on 2026-10-02
 
-- Clean locked dependency install, TypeScript check and production build passed. Vue and all assets are bundled: JS 209.74 kB (gzip 89.16 kB), CSS 50.59 kB (gzip 10.11 kB).
+- Clean locked dependency install, TypeScript check and production build passed. Vue and all assets are bundled: JS 209.74 kB (gzip 89.16 kB), CSS 50.65 kB (gzip 10.14 kB).
 - Eight frontend tests passed: publication cancellation/stale analysis, topology delta protocol, graph layout, workload template relationships/escaping, and analysis rendering.
 - `make check build` passed, including all Go tests, vet and fixture sanitization checks. Four release archive validation tests passed.
-- Eleven Chrome browser scenarios passed against the actual embedded binary, standalone HTML and synthetic production Hub/live endpoints. Coverage includes every resource page, namespace retention, search/details, theme, graph/table URL state, keyboard graph selection and zoom, delta/gap recovery, Hub filters/search/export/drilldown, and scoped AI result caching. Browser cases assert no uncaught page errors where applicable.
+- Sixteen Chrome browser scenarios passed against the actual embedded binary, standalone HTML and synthetic production Hub/live endpoints. Coverage includes every resource page, namespace retention, search/details, theme, graph/table URL state, keyboard graph selection and zoom, delta/gap recovery, Hub filters/search/export/drilldown, and scoped AI result caching. Acceptance regressions also cover stable topology type colors during drilldown/focus/hover in both themes, plus visible and clickable EKS/Kubernetes dropdowns at 1440, 1160 and 390 pixels. Browser cases assert no uncaught page errors where applicable.
 - Standalone HTML loaded with HTTP/HTTPS requests blocked and exported JSON successfully. It uses exactly the same bundle and components as served reports.
 - The built binary served an archived snapshot from an isolated directory with empty PATH and nonexistent AWS/Kubernetes configuration, without frontend files. Original collection time and inventory survived export.
 - Light topology and dark workload drawer screenshots were inspected. Acceptance server: `./bin/teleskope serve snapshot testdata/recorded/eks-demo-snapshot.json --listen 127.0.0.1:8093`.

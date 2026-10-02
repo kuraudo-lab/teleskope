@@ -10,7 +10,7 @@ Preserve current navigation, light/dark theme, exports, resource filters, worklo
 
 ## Baseline
 
-Current production UI is `internal/report/report.html` + `live.js`; `RenderUI` owns boot configuration and Go-derived payloads. Hub has a separate Go HTML string. Existing Go tests cover inventory/projections and many source-string contracts; browser behavior tests are the replacement for implementation-string assertions during migration.
+Before migration, the production UI was `internal/report/report.html` + `live.js`; `RenderUI` owns boot configuration and Go-derived payloads. Hub had a separate Go HTML string. Existing Go tests cover inventory/projections and many source-string contracts; browser behavior tests are the replacement for implementation-string assertions during migration.
 
 Browser baseline: `cd web && npm ci && npx playwright install chromium && npm run test:e2e` after `make build`. Fixture: `testdata/recorded/eks-demo-snapshot.json`. Topology profiles and budgets: `docs/topology-scale-performance-accessibility.md`.
 
