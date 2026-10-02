@@ -69,6 +69,8 @@ func RenderUI(opts UIRenderOptions) (string, error) {
 	if len(opts.Scripts) > 0 {
 		page = strings.Replace(page, "</body>", scriptTags(opts.Scripts)+"</body>", 1)
 	}
+	page = strings.Replace(page, "</style>", uiCSS+"\n</style>", 1)
+	page = strings.Replace(page, "</body>", scriptTags([]string{uiJS})+"</body>", 1)
 	return page, nil
 }
 

@@ -42,3 +42,14 @@ check: test vet fixture-test
 clean:
 	$(GO) clean
 	rm -f bin/teleskope
+
+.PHONY: ui-build ui-check ui-test
+ui-build:
+	cd web && npm ci && npm run build
+
+ui-check:
+	cd web && npm ci && npm run build
+	git diff --exit-code -- internal/report/assets
+
+ui-test:
+	cd web && npm test && npm run test:e2e

@@ -3,7 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run src",
+    "format": "prettier --write src"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
@@ -13,7 +17,7 @@
     "eslint-scope": "^9.1.2",
     "happy-dom": "^20.14.5",
     "prettier": "^3.9.9",
-    "typescript": "^7.0.2",
+    "typescript": "5.9.3",
     "vite": "^8.3.2",
     "vitest": "^5.0.3",
     "vue-tsc": "^3.3.11"

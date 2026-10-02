@@ -17,6 +17,12 @@ var reportHTMLTemplate string
 //go:embed live.js
 var liveJS string
 
+//go:embed assets/ui.js
+var uiJS string
+
+//go:embed assets/ui.css
+var uiCSS string
+
 // HTML renders a self-contained interactive static cluster report.
 func HTML(snapshot *inventory.Snapshot) (string, error) {
 	return html(snapshot, targetName(snapshot))

@@ -17,3 +17,7 @@ Browser baseline: `cd web && npm ci && npx playwright install chromium && npm ru
 ## Execution order
 
 F01 baseline → F02 build/embed → F03 data → F03a replay → F04 shell → F05 workloads → F06 resources → F07 EKS/analysis → F08 topology → F09 Hub → F10 cleanup/release. All tasks are implemented and verified before final user acceptance.
+
+## Packaging decision (F02)
+
+Vite library mode produces one IIFE and one CSS file with Vue included. Both are embedded by Go and inlined by the same RenderUI entry. This adds only packaging, so standalone HTML is retained provisionally; no second application, route or component set is introduced. Checked-in `internal/report/assets` allow ordinary Go-only builds. `make ui-check` rebuilds and checks for drift. TypeScript is pinned to 5.9.3 because the initially resolved newer major was incompatible with vue-tsc's compiler entry point.
