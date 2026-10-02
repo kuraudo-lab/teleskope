@@ -91,8 +91,13 @@ conservative policy preserves source-level derived relationships; resource-level
 merging can be introduced with explicit dependency rules later.
 
 `internal/report` shares its embedded page between offline and live rendering.
-The live entry adds a same-origin polling script and collection status panel.
-No frontend build or separate server is required.
+Vue components in `web/src` consume a typed publication adapter. Vite builds the
+shared self-contained bundle into `internal/report/assets`, embedded by Go. The
+checked-in assets permit Go-only builds; frontend edits require Node and `make ui-build`.
+CI verifies reproducibility and browser behavior. Runtime needs only the Go binary.
+`serve snapshot` is the standard interactive archive entry; standalone HTML uses
+the same bundle and components with an initial data payload. See
+[frontend migration and development](frontend-migration.md).
 
 Event-based Kubernetes updates should be added behind a separate watch runtime
 module and then routed through the live publication path; see

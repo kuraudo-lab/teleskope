@@ -24,7 +24,8 @@ async function run(input: AnalysisRequest = props.request, redirected = false) {
     }
     result.value = data;
     lastKey.value = original;
-    props.saved.result=data; props.saved.key=original;
+    props.saved.result = data;
+    props.saved.key = original;
   } catch (e) {
     error.value = String(e);
   }

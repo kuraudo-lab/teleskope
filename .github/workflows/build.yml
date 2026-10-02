@@ -26,8 +26,29 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Verify frontend source and embedded assets
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+          node scripts/check-assets.mjs
+          npm test
       - run: go test ./...
       - run: go vet ./...
+      - name: Verify embedded browser behavior
+        env:
+          NO_PROXY: localhost,127.0.0.1
+          no_proxy: localhost,127.0.0.1
+        run: |
+          make build
+          cd web
+          npx playwright install --with-deps chromium
+          npm run test:e2e
       - name: Test release archive validation
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p test_release.py
       - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6

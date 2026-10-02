@@ -49,7 +49,7 @@ ui-build:
 
 ui-check:
 	cd web && npm ci && npm run build
-	git diff --exit-code -- internal/report/assets
+	cd web && node scripts/check-assets.mjs
 
 ui-test:
 	cd web && npm test && npm run test:e2e

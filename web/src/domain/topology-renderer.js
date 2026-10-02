@@ -1,4 +1,4 @@
-import {sourceLabel,sourceDetail} from "../runtime/source-status";
+import { sourceLabel, sourceDetail } from "../runtime/source-status";
 import {
   topologyCondensedHierarchy,
   topologyWeakComponents,
@@ -24,9 +24,6 @@ export function createTopologyRenderer(root, input, onSelect) {
   let snapshot = input.snapshot || {},
     k = snapshot.kubernetes || {};
   let disposed = false;
-  function showText(text) {
-    onSelect(JSON.parse(text));
-  }
   const validTopologyParam = (value, allowed, fallback) =>
     allowed.includes(value) ? value : fallback;
   const topologyURL = new URLSearchParams(location.search);
@@ -103,27 +100,6 @@ export function createTopologyRenderer(root, input, onSelect) {
   };
   let topologyRenderSample = 0;
   let topologyFitBounds = null;
-  function topologySearchMatches(node) {
-    if (!topologySearch) return true;
-    const data = node.data || {};
-    const haystack = [
-      node.label,
-      node.type,
-      data.apiVersion,
-      data.kind,
-      data.namespace,
-      data.name,
-      data.image,
-      data.nodeName,
-      data.serviceAccountName,
-      data.runtimeClassName,
-      data.phase,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(topologySearch);
-  }
   const topologyWorkloadKinds = new Set([
     "pseudo-internet",
     "pseudo-external-endpoint",
@@ -783,9 +759,6 @@ export function createTopologyRenderer(root, input, onSelect) {
     set("topologySelectedX", Math.round(topologyFocusView.x), 0);
     set("topologySelectedY", Math.round(topologyFocusView.y), 0);
     history.replaceState(null, "", url);
-  }
-  function currentTopologyResourceFilter() {
-    return activeSection === "overview" ? resourceFilter : "all";
   }
   function selectTopologyNode(nodeId) {
     if (nodeId && nodeId !== topologySelectedNodeId)

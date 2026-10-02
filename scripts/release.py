@@ -8,6 +8,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+from report_smoke import verify_embedded_report
 
 
 def archive_name(version, os_name, arch):
@@ -95,6 +96,7 @@ def smoke(directory, version, os_name, arch):
             raise ValueError(f"Missing kubeconfig stderr did not include connection context: {missing_config.stderr}")
         if (root / "reports").exists():
             raise ValueError("Missing kubeconfig wrote a report directory")
+        verify_embedded_report(binary, root)
     print(f"Verified {os_name}/{arch} {version}")
 
 

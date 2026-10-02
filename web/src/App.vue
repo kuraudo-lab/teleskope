@@ -15,7 +15,7 @@ import DetailDrawer from "./components/DetailDrawer.vue";
 import AdvisorPage from "./components/AdvisorPage.vue";
 import AnalysisPanel from "./components/AnalysisPanel.vue";
 import TopologyView from "./components/TopologyView.vue";
-import {publicationStatus,eventKind} from "./runtime/source-status";
+import { publicationStatus, eventKind } from "./runtime/source-status";
 import { logo } from "./logo";
 import { symbols } from "./symbols";
 import { pages } from "./domain/pages";
@@ -31,7 +31,9 @@ const store = createReportStore(boot, {
   eksProjection: read("eks-projection-data"),
 });
 const s = store.state;
-const eventStatus=computed(()=>publicationStatus(s.sources,s.loading,s.paused,s.error));
+const eventStatus = computed(() =>
+  publicationStatus(s.sources, s.loading, s.paused, s.error),
+);
 const refreshEvent = () => void store.refresh();
 watch(
   () => s.revision,
@@ -62,7 +64,7 @@ watch(
   (value) => document.body.classList.toggle("live-loading", value),
   { immediate: true },
 );
-document.documentElement.dataset.theme=theme.value;
+document.documentElement.dataset.theme = theme.value;
 const k = computed(() => s.snapshot.kubernetes || {}),
   cluster = computed(() => s.snapshot.eks?.cluster || {});
 const namespaces = computed(() =>
@@ -140,8 +142,9 @@ const analysisCache = reactive<Record<string, { result: any; key: string }>>(
   {},
 );
 const savedAnalysis = computed(() => {
- if(!analysisCache[analysisPage.value]) analysisCache[analysisPage.value]={result:null,key:''};
- return analysisCache[analysisPage.value];
+  if (!analysisCache[analysisPage.value])
+    analysisCache[analysisPage.value] = { result: null, key: "" };
+  return analysisCache[analysisPage.value];
 });
 const analysisPanel = ref<InstanceType<typeof AnalysisPanel>>();
 async function toolbarAnalysis() {
@@ -365,40 +368,201 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-<button v-if="boot.mode==='live'" class="tab" data-target="events" @click="selectPage('events')">Events <span id="eventsNavStatus" class="nav-status" :class="eventStatus.tone">{{eventStatus.label}}</span></button>
-</nav>
-<div class="global-actions">
-<select id="focus" v-model="namespace" class="select" aria-label="Namespace" :disabled="['advisor','events'].includes(page)"><option value="all">All namespaces</option><option v-for="ns in namespaces" :key="ns" :value="ns">{{ns}}</option></select>
-<select id="resourceType" v-model="resource" class="select" aria-label="Resource type" :disabled="page!=='overview'"><option v-for="[id,label] in resourceTypes" :key="id" :value="id">{{label}}</option></select>
-<button v-if="canAnalyze" id="analyzeSnapshot" class="action-button ai-button" :disabled="s.loading||s.analyzing" @click="toolbarAnalysis">Analyze with AI</button>
-<div id="exportMenu" class="export" :class="{open:exportOpen}"><button id="exportReport" class="action-button" aria-haspopup="menu" :aria-expanded="exportOpen" @click="exportOpen=!exportOpen">Export</button><div class="export-menu" role="menu"><button role="menuitem" data-export-format="json" @click="exportReport('json')">JSON</button><button role="menuitem" data-export-format="markdown" @click="exportReport('markdown')">Markdown</button></div></div>
-<button id="themeToggle" class="action-button" :aria-label="`Switch to ${theme==='dark'?'light':'dark'} theme`" @click="toggleTheme">{{theme==='dark'?'Light':'Dark'}}</button>
-<button v-if="boot.mode==='live'&&!recorded" id="pause-updates" class="action-button" :aria-pressed="s.paused" @click="store.pause(!s.paused)">{{s.paused?'Resume page updates':'Pause updates'}}</button>
-</div></header>
-<p v-if="s.error||exportError" role="alert" class="error">{{s.error||exportError}}</p>
-<TopologyView v-if="page==='overview'" :graph="s.graph" :snapshot="s.snapshot" :advisor="s.advisor" :sources="s.sources" :namespace="namespace" :resource="resource" @select="selectResource" />
-<main v-else class="workspace-main report-page"><section class="section active stack" :data-section="page">
-<AnalysisPanel ref="analysisPanel" :key="analysisPage" :saved="savedAnalysis" :page="analysisPage" :request="analysisRequest" :available="canAnalyze && ['advisor','eks','nodes','workloads','network','storage','security'].includes(analysisPage)" :busy="s.analyzing" :analyze="store.analyze" />
-<AdvisorPage v-if="page==='advisor'" :report="s.advisor" />
-<div v-else-if="page==='events'" class="panel"><h3>Recent events</h3><div id="live-event-list" class="body live-event-list"><div v-for="(event,index) in [...s.events].reverse()" :key="index" class="live-event"><time>{{event.at}}</time><span>{{eventKind(event)}}</span><strong>{{event.level}}</strong><span>{{event.source}}</span><span>{{event.message}}</span></div><p v-if="!s.events.length">No events yet</p></div></div>
-<ResourcePage v-else :key="page" :page="page" :snapshot="s.snapshot" :projection="s.eksProjection" :namespace="namespace" @select="selectResource" />
-</section></main></div>
-<DetailDrawer v-if="selected" :selected="selected" :missing="selectionMissing" :snapshot="s.snapshot" @close="selected=null" />
+        <button
+          v-if="boot.mode === 'live'"
+          class="tab"
+          data-target="events"
+          @click="selectPage('events')"
+        >
+          Events
+          <span
+            id="eventsNavStatus"
+            class="nav-status"
+            :class="eventStatus.tone"
+            >{{ eventStatus.label }}</span
+          >
+        </button>
+      </nav>
+      <div class="global-actions">
+        <select
+          id="focus"
+          v-model="namespace"
+          class="select"
+          aria-label="Namespace"
+          :disabled="['advisor', 'events'].includes(page)"
+        >
+          <option value="all">All namespaces</option>
+          <option v-for="ns in namespaces" :key="ns" :value="ns">
+            {{ ns }}
+          </option>
+        </select>
+        <select
+          id="resourceType"
+          v-model="resource"
+          class="select"
+          aria-label="Resource type"
+          :disabled="page !== 'overview'"
+        >
+          <option v-for="[id, label] in resourceTypes" :key="id" :value="id">
+            {{ label }}
+          </option>
+        </select>
+        <button
+          v-if="canAnalyze"
+          id="analyzeSnapshot"
+          class="action-button ai-button"
+          :disabled="s.loading || s.analyzing"
+          @click="toolbarAnalysis"
+        >
+          Analyze with AI
+        </button>
+        <div id="exportMenu" class="export" :class="{ open: exportOpen }">
+          <button
+            id="exportReport"
+            class="action-button"
+            aria-haspopup="menu"
+            :aria-expanded="exportOpen"
+            @click="exportOpen = !exportOpen"
+          >
+            Export
+          </button>
+          <div class="export-menu" role="menu">
+            <button
+              role="menuitem"
+              data-export-format="json"
+              @click="exportReport('json')"
+            >
+              JSON</button
+            ><button
+              role="menuitem"
+              data-export-format="markdown"
+              @click="exportReport('markdown')"
+            >
+              Markdown
+            </button>
+          </div>
+        </div>
+        <button
+          id="themeToggle"
+          class="action-button"
+          :aria-label="`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`"
+          @click="toggleTheme"
+        >
+          {{ theme === "dark" ? "Light" : "Dark" }}
+        </button>
+        <button
+          v-if="boot.mode === 'live' && !recorded"
+          id="pause-updates"
+          class="action-button"
+          :aria-pressed="s.paused"
+          @click="store.pause(!s.paused)"
+        >
+          {{ s.paused ? "Resume page updates" : "Pause updates" }}
+        </button>
+      </div>
+    </header>
+    <p v-if="s.error || exportError" role="alert" class="error">
+      {{ s.error || exportError }}
+    </p>
+    <TopologyView
+      v-if="page === 'overview'"
+      :graph="s.graph"
+      :snapshot="s.snapshot"
+      :advisor="s.advisor"
+      :sources="s.sources"
+      :namespace="namespace"
+      :resource="resource"
+      @select="selectResource"
+    />
+    <main v-else class="workspace-main report-page">
+      <section class="section active stack" :data-section="page">
+        <AnalysisPanel
+          ref="analysisPanel"
+          :key="analysisPage"
+          :saved="savedAnalysis"
+          :page="analysisPage"
+          :request="analysisRequest"
+          :available="
+            canAnalyze &&
+            [
+              'advisor',
+              'eks',
+              'nodes',
+              'workloads',
+              'network',
+              'storage',
+              'security',
+            ].includes(analysisPage)
+          "
+          :busy="s.analyzing"
+          :analyze="store.analyze"
+        />
+        <AdvisorPage v-if="page === 'advisor'" :report="s.advisor" />
+        <div v-else-if="page === 'events'" class="panel">
+          <h3>Recent events</h3>
+          <div id="live-event-list" class="body live-event-list">
+            <div
+              v-for="(event, index) in [...s.events].reverse()"
+              :key="index"
+              class="live-event"
+            >
+              <time>{{ event.at }}</time
+              ><span>{{ eventKind(event) }}</span
+              ><strong>{{ event.level }}</strong
+              ><span>{{ event.source }}</span
+              ><span>{{ event.message }}</span>
+            </div>
+            <p v-if="!s.events.length">No events yet</p>
+          </div>
+        </div>
+        <ResourcePage
+          v-else
+          :key="page"
+          :page="page"
+          :snapshot="s.snapshot"
+          :projection="s.eksProjection"
+          :namespace="namespace"
+          @select="selectResource"
+        />
+      </section>
+    </main>
+  </div>
+  <DetailDrawer
+    v-if="selected"
+    :selected="selected"
+    :missing="selectionMissing"
+    :snapshot="s.snapshot"
+    @close="selected = null"
+  />
 </template>
 <style>
 #ui-root {
   min-height: 100vh;
 }
 .report-page {
-  display:block;
+  display: block;
   margin: 18px;
   overflow: auto;
 }
-.shell > .report-page {height:auto;margin:0;overflow:auto}
-.report-page > .section.active {display:block;height:auto}
-.report-page .stack {display:grid;align-content:start}
-.report-page .panel {overflow:visible}
-.report-page .page-analysis {margin-bottom:14px}
+.shell > .report-page {
+  height: auto;
+  margin: 0;
+  overflow: auto;
+}
+.report-page > .section.active {
+  display: block;
+  height: auto;
+}
+.report-page .stack {
+  display: grid;
+  align-content: start;
+}
+.report-page .panel {
+  overflow: visible;
+}
+.report-page .page-analysis {
+  margin-bottom: 14px;
+}
 .shell .app-topbar .nav-menu-items {
   position: absolute;
   top: 100%;
