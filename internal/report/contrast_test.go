@@ -35,7 +35,7 @@ func TestTopologyAccessibilityColorTokensMeetContrastGates(t *testing.T) {
 		})
 	}
 	for _, token := range []string{"--warning-text:#92400e", "--warning-text:#fbbf24", "--disabled-text:#475569", "--disabled-text:#cbd5e1", "color:var(--warning-text)", "color:var(--disabled-text)"} {
-		if !strings.Contains(reportHTMLTemplate, token) {
+		if !strings.Contains(uiCSS, token) {
 			t.Errorf("report template missing tested accessibility token %q", token)
 		}
 	}

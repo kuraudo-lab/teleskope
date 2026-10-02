@@ -1,6 +1,6 @@
-import { createApp } from 'vue'
-import ReportMode from './ReportMode.vue'
-const host = document.createElement('div')
-host.id = 'report-mode'
-document.body.append(host)
-createApp(ReportMode).mount(host)
+import "./styles.css";
+import { createApp } from "vue";
+import App from "./App.vue";
+import HubApp from "./components/HubApp.vue";
+const host = document.getElementById("ui-root");
+if (host) createApp(host.dataset.view === "hub" ? HubApp : App).mount(host);

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/prepare-e2e.mjs && playwright test",
     "build": "vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run src",

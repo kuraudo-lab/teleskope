@@ -282,7 +282,7 @@ func TestFleetCarriesWatchFreshness(t *testing.T) {
 
 func TestHubHTMLUsesEmbeddedTeleskopeIcon(t *testing.T) {
 	html := HubHTML()
-	for _, want := range []string{`<img class="logo"`, `src="data:image/png;base64,`, `multi-cluster hub`, "providerFilter", "regionFilter", "versionDist", "riskCounts", "sourceHealth", "searchInput", "runFleetSearch", "/api/search?q=", "addonRisks", "nodegroupRisks", "watch reconnecting", "full resync", "reconnects", "eventKind(event)"} {
+	for _, want := range []string{`id="ui-root" data-view="hub"`, `data:image/png;base64,`, `multi-cluster hub`, "/api/clusters", "/api/search?q="} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("hub html missing %q", want)
 		}
@@ -326,7 +326,7 @@ func TestHTTPPublishesFleetAndDrilldown(t *testing.T) {
 	drilldown := httptest.NewRecorder()
 	handler.ServeHTTP(drilldown, httptest.NewRequest(http.MethodGet, "/cluster?id=prod-a", nil))
 	if drilldown.Code != http.StatusOK ||
-		!strings.Contains(drilldown.Body.String(), "Analyze with AI") ||
+		!strings.Contains(drilldown.Body.String(), `id="ui-root"`) ||
 		!strings.Contains(drilldown.Body.String(), `<script id="boot-config" type="application/json">`) ||
 		!strings.Contains(drilldown.Body.String(), `"/api/cluster/snapshot?id=prod-a"`) ||
 		!strings.Contains(drilldown.Body.String(), `"/api/cluster/topology?id=prod-a"`) ||
