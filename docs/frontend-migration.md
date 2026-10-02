@@ -1,0 +1,19 @@
+# Embedded frontend migration
+
+Tracking: https://github.com/kuraudo-lab/teleskope/issues/50
+
+## Acceptance contract
+
+The standard interactive entry is `teleskope serve snapshot <snapshot.json-or-report-directory>`. Replay must require no AWS/Kubernetes credentials or background collectors. JSON and Markdown remain independently readable archives. A standalone interactive HTML may survive only as another package of the same UI, never as a second application.
+
+Preserve current navigation, light/dark theme, exports, resource filters, workload template relationships (including zero replicas), EKS evidence, Advisor findings, optional scoped AI, events, Hub drilldown and topology graph/table interactions. Preserve missing/unknown evidence and actual collection time. Namespace deletion must not silently widen selection. Topology deltas must be revision-consistent and replay-safe. Graph mode must never silently become table mode.
+
+## Baseline
+
+Current production UI is `internal/report/report.html` + `live.js`; `RenderUI` owns boot configuration and Go-derived payloads. Hub has a separate Go HTML string. Existing Go tests cover inventory/projections and many source-string contracts; browser behavior tests are the replacement for implementation-string assertions during migration.
+
+Browser baseline: `cd web && npm ci && npx playwright install chromium && npm run test:e2e` after `make build`. Fixture: `testdata/recorded/eks-demo-snapshot.json`. Topology profiles and budgets: `docs/topology-scale-performance-accessibility.md`.
+
+## Execution order
+
+F01 baseline → F02 build/embed → F03 data → F03a replay → F04 shell → F05 workloads → F06 resources → F07 EKS/analysis → F08 topology → F09 Hub → F10 cleanup/release. All tasks are implemented and verified before final user acceptance.
