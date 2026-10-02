@@ -202,6 +202,7 @@ func newScanEKSCommand(stdout, stderr io.Writer) *cobra.Command {
 				}
 				progress.Done("report ready: %s", artifact.Dir)
 				fmt.Fprintf(stdout, "report %s\n", artifact.Dir)
+				fmt.Fprintf(stdout, "View interactively: teleskope serve snapshot %q\n", artifact.Dir)
 				return nil
 			case "json":
 				progress.Step("rendering JSON")
@@ -280,6 +281,7 @@ func newScanK8sCommand(stdout, stderr io.Writer) *cobra.Command {
 				}
 				progress.Done("report ready: %s", artifact.Dir)
 				fmt.Fprintf(stdout, "report %s\n", artifact.Dir)
+				fmt.Fprintf(stdout, "View interactively: teleskope serve snapshot %q\n", artifact.Dir)
 				return nil
 			case "json":
 				progress.Step("rendering JSON")

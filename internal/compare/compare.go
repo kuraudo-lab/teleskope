@@ -164,6 +164,12 @@ func DecodeSnapshot(name string, r io.Reader) (*inventory.Snapshot, error) {
 	if err := decoder.Decode(&snapshot); err != nil {
 		return nil, fmt.Errorf("decode snapshot %s: %w", name, err)
 	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return nil, fmt.Errorf("decode snapshot %s: expected exactly one JSON document", name)
+	}
+	if snapshot.SchemaVersion != "" && snapshot.SchemaVersion != "teleskope.io/snapshot/v1alpha1" {
+		return nil, fmt.Errorf("decode snapshot %s: unsupported schemaVersion %q; use a compatible Teleskope version", name, snapshot.SchemaVersion)
+	}
 	return &snapshot, nil
 }
 
