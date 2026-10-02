@@ -568,6 +568,10 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
 }
+.shell .app-topbar .nav-menu:last-of-type .nav-menu-items {
+  left: auto;
+  right: 0;
+}
 .shell .app-topbar .nav-menu {
   position: relative;
 }

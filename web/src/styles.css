@@ -1516,8 +1516,8 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   margin-right: auto;
-  overflow-x: auto;
-  overflow-y: visible;
+  flex-wrap: wrap;
+  overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }
@@ -3224,7 +3224,7 @@ body[data-active-section="advisor"] .inspector {
   .app-tabs {
     order: 3;
     width: 100%;
-    overflow: auto;
+    overflow: visible;
   }
   .shell > .app {
     grid-template-columns: 1fr;
