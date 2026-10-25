@@ -26,10 +26,12 @@ it("preserves selection across publications and explicitly retires removed nodes
   expect(
     wrapper.find('[data-node="worker-b"]').attributes("aria-pressed"),
   ).toBe("true");
-  expect(wrapper.find(".detail").text()).toContain("Ready · 未 cordon");
+  expect(wrapper.find(".detail").text()).toContain("Ready · Uncordoned");
   updated.kubernetes!.nodes = [];
   await wrapper.setProps({ snapshot: structuredClone(updated) });
-  expect(wrapper.text()).toContain("所选节点已离开当前快照");
+  expect(wrapper.text()).toContain(
+    "The selected node is no longer in this snapshot",
+  );
   wrapper.unmount();
 });
 it("supports search, keyboard details, empty results and honest activity coverage", async () => {
@@ -50,7 +52,7 @@ it("supports search, keyboard details, empty results and honest activity coverag
   expect(wrapper.find('[role="tooltip"]').exists()).toBe(false);
   await wrapper.find("input").setValue("not-present");
   expect(wrapper.findAll("button.node")).toHaveLength(0);
-  expect(wrapper.text()).toContain("没有匹配的节点");
+  expect(wrapper.text()).toContain("No matching nodes");
   expect(wrapper.text()).toContain("Launching i-new");
   expect(wrapper.text()).toContain("Paused");
   wrapper.unmount();

@@ -100,42 +100,42 @@ const metrics = computed(() => {
     match = nodes.filter((n) => n.target === "match" && n.state === "ready");
   return [
     [
-      "目标模板就绪",
+      "Ready on target template",
       known.length
         ? `${match.length} / ${nodes.length}`
         : `— / ${nodes.length}`,
-      `可核对 ${known.length} 节点 · 未知 ${nodes.length - known.length}`,
+      `${known.length} verifiable nodes · ${nodes.length - known.length} unknown`,
     ],
     [
-      "Ready 节点",
+      "Ready nodes",
       `${nodes.filter((n) => n.node.ready === "True").length} / ${nodes.length}`,
-      "集群范围 · 含已 cordon 节点",
+      "Cluster-wide · includes cordoned nodes",
     ],
     [
       "Cordoned",
       nodes.filter((n) => n.node.unschedulable).length,
-      "暂停接收新调度",
+      "Not accepting new scheduling",
     ],
     [
       "non-DS / DS Pods",
       model.value.podsKnown
         ? `${nodes.reduce((s, n) => s + n.nonDS!, 0)} / ${nodes.reduce((s, n) => s + n.ds!, 0)}`
         : "— / —",
-      "节点绑定 · 非终态 · 含 Terminating",
+      "Bound, non-terminal · includes terminating",
     ],
     [
       "Pending / Terminating",
       `${formatCount(model.value.pending)} / ${formatCount(model.value.terminating)}`,
-      "集群范围 · 未绑定 Pending / 删除中",
+      "Cluster-wide · unbound pending / terminating",
     ],
   ];
 });
 const modeLabel = computed(() =>
   Object.values(props.sources).some((s) => s.mode === "recorded")
-    ? "Recorded · 历史快照"
+    ? "Recorded · historical snapshot"
     : props.mode === "offline"
-      ? "Offline · 离线报告"
-      : "Live · 实时采集",
+      ? "Offline · saved report"
+      : "Live · collecting updates",
 );
 function showTooltip(event: Event, node: WatchNode) {
   positionTooltip(event.currentTarget as HTMLElement, node);
@@ -176,20 +176,20 @@ function selectNode(node: WatchNode) {
 function info(node: WatchNode) {
   return [
     ["Node Group", node.group],
-    ["AMI ID", node.instance?.imageId || "未采集"],
-    ["实例 Launch Template", node.template],
-    ["EC2 启动时间", displayTime(node.instance?.launchTime)],
-    ["Node 注册时间", displayTime(node.node.createdAt)],
+    ["AMI ID", node.instance?.imageId || "Not collected"],
+    ["Instance launch template", node.template],
+    ["EC2 launch time", displayTime(node.instance?.launchTime)],
+    ["Node registration time", displayTime(node.node.createdAt)],
     [
       "Kubelet / Instance",
-      `${node.node.kubeletVersion || "未知"} / ${node.instance?.instanceType || node.node.labels?.["node.kubernetes.io/instance-type"] || "未知"}`,
+      `${node.node.kubeletVersion || "Unknown"} / ${node.instance?.instanceType || node.node.labels?.["node.kubernetes.io/instance-type"] || "Unknown"}`,
     ],
-    ["Instance ID", node.instance?.instanceId || "未关联"],
-    ["ASG", node.instance?.autoScalingGroupName || "未关联"],
-    ["ASG 生命周期", node.instance?.lifecycleState || "未采集"],
+    ["Instance ID", node.instance?.instanceId || "Not linked"],
+    ["ASG", node.instance?.autoScalingGroupName || "Not linked"],
+    ["ASG lifecycle", node.instance?.lifecycleState || "Not collected"],
     [
       "Cordon",
-      node.node.unschedulable ? "spec.unschedulable = true" : "未 cordon",
+      node.node.unschedulable ? "spec.unschedulable = true" : "Uncordoned",
     ],
     [
       "Taints",
@@ -198,7 +198,7 @@ function info(node: WatchNode) {
           (t: Resource) =>
             `${t.key}${t.value ? "=" + t.value : ""}:${t.effect}`,
         )
-        .join(", ") || "无",
+        .join(", ") || "None",
     ],
   ];
 }
@@ -208,20 +208,21 @@ function info(node: WatchNode) {
     <div class="intro">
       <div>
         <div class="eyebrow">EKS / UPGRADES / NODE WATCH</div>
-        <h1>节点升级观察</h1>
+        <h1>Node upgrade watch</h1>
         <p>
-          观察节点替换、Pod 迁移与容量恢复。按节点实际配置核对 ASG 目标模板。
+          Monitor node replacement, Pod migration, and capacity recovery.
+          Compare actual instance configuration with the ASG target template.
         </p>
       </div>
       <div class="source-summary">
         <span class="badge">{{ modeLabel }}</span
-        ><span v-if="paused" class="badge warn">Paused · 已暂停更新</span
+        ><span v-if="paused" class="badge warn">Paused · updates paused</span
         ><span v-if="loading" class="badge">Updating</span>
-        <p>快照 · {{ displayTime(snapshot.collectedAt) }}</p>
+        <p>Snapshot · {{ displayTime(snapshot.collectedAt) }}</p>
       </div>
     </div>
     <div class="row source-row">
-      <span class="badge">只读观察 · 集群范围</span>
+      <span class="badge">Read-only · cluster-wide</span>
       <div class="source-details">
         <span
           v-for="(source, name) in sources"
@@ -232,23 +233,23 @@ function info(node: WatchNode) {
           :title="
             sourceDetail(source) + (source.error ? ` · ${source.error}` : '')
           "
-          >{{ name }} · {{ sourceLabel(source) }} · 发布于
+          >{{ name }} · {{ sourceLabel(source) }} · published
           {{ displayTime(source.lastSuccess) }}</span
         >
       </div>
     </div>
     <p v-if="error" role="alert" class="notice">
-      更新失败，显示最后可用快照：{{ error }}
+      Update failed. Showing the last available snapshot:{{ error }}
     </p>
     <details v-if="coverage.length" class="coverage-note">
       <summary>
-        数据覆盖待核对 ·
-        {{
-          coverage.map((c) => c.resource).join(" / ")
-        }}（数字仅代表已观测对象）
+        Incomplete coverage ·
+        {{ coverage.map((c) => c.resource).join(" / ") }} (counts reflect
+        observed objects only)
       </summary>
       <p v-for="c in coverage" :key="c.resource">
-        {{ c.resource }} · {{ c.status }} · {{ c.reason || "采集未完成" }} ·
+        {{ c.resource }} · {{ c.status }} ·
+        {{ c.reason || "Collection incomplete" }} ·
         {{ displayTime(c.collectedAt) }}
       </p>
     </details>
@@ -262,23 +263,23 @@ function info(node: WatchNode) {
     <div class="main-grid">
       <section class="box" aria-label="Node map">
         <div class="section-head">
-          <h2>Node map <span class="badge">按 Node Group 分组</span></h2>
+          <h2>Node map <span class="badge">Grouped by Node Group</span></h2>
           <div class="controls">
-            <select v-model="group" aria-label="筛选节点组">
-              <option value="all">全部 Node Groups</option>
+            <select v-model="group" aria-label="Filter node group">
+              <option value="all">All Node Groups</option>
               <option
                 v-if="group !== 'all' && !groups.includes(group)"
                 :value="group"
               >
-                {{ group }}（已无节点）
+                {{ group }} (no nodes remaining)
               </option>
               <option v-for="name in groups" :key="name">
                 {{ name }}
               </option></select
             ><input
               v-model="search"
-              aria-label="搜索节点"
-              placeholder="搜索节点 / AZ / Instance"
+              aria-label="Search nodes"
+              placeholder="Search node / AZ / instance"
               size="22"
             />
           </div>
@@ -289,7 +290,7 @@ function info(node: WatchNode) {
             :key="id"
             :style="{ '--s': state.color }"
             >{{ state.label }}</span
-          ><span>大数字 non-DS Pods / 小数字 DS Pods</span>
+          ><span>Large: non-DS Pods / Small: DS Pods</span>
         </div>
         <div class="map-body">
           <div v-for="g in visibleGroups" :key="g.name" class="group">
@@ -301,9 +302,9 @@ function info(node: WatchNode) {
                 g.asgs
                   .map(
                     (a) =>
-                      `${a.name} · desired ${a.desiredCapacity} · 目标 ${a.launchTemplateId || "未知"} / ${a.launchTemplateVersion || "未知"}`,
+                      `${a.name} · desired ${a.desiredCapacity} · target ${a.launchTemplateId || "Unknown"} / ${a.launchTemplateVersion || "Unknown"}`,
                   )
-                  .join("；") || "未采集 ASG 目标配置"
+                  .join("; ") || "ASG target configuration not collected"
               }}</span>
             </div>
             <div class="honeycomb">
@@ -320,7 +321,7 @@ function info(node: WatchNode) {
                     ? 'node-watch-tooltip'
                     : undefined
                 "
-                :aria-label="`${node.name}, ${formatCount(node.nonDS)} non-DS Pods, ${formatCount(node.ds)} DS Pods, ${nodeStates[node.state].label}, ${node.node.unschedulable ? 'Cordoned' : '未 cordon'}`"
+                :aria-label="`${node.name}, ${formatCount(node.nonDS)} non-DS Pods, ${formatCount(node.ds)} DS Pods, ${nodeStates[node.state].label}, ${node.node.unschedulable ? 'Cordoned' : 'Uncordoned'}`"
                 @click="selectNode(node)"
                 @mouseenter="showTooltip($event, node)"
                 @mouseleave="tooltip = null"
@@ -346,7 +347,7 @@ function info(node: WatchNode) {
                         "autoscaling-instance" &&
                       node.instance?.launchTemplateVersion
                         ? "LT v" + node.instance.launchTemplateVersion
-                        : "LT 未知"
+                        : "LT unknown"
                     }}
                     · {{ node.az.split("-").at(-1) }}</span
                   ><span
@@ -368,8 +369,8 @@ function info(node: WatchNode) {
           <p v-if="!filtered.length" class="empty">
             {{
               model.nodes.length
-                ? "没有匹配的节点。"
-                : "当前快照没有节点数据；请检查 Kubernetes 采集范围与权限。"
+                ? "No matching nodes."
+                : "No node data in this snapshot. Check Kubernetes collection scope and permissions."
             }}
           </p>
           <button
@@ -377,18 +378,19 @@ function info(node: WatchNode) {
             class="control"
             @click="limit += 300"
           >
-            显示更多（已显示 {{ limit }} / {{ filtered.length }}）
+            Show more ({{ limit }} / {{ filtered.length }} shown)
           </button>
         </div>
         <div class="map-foot">
-          悬停 / 键盘聚焦查看节点信息，点击固定详情。Ready 且未 cordon
-          不保证可调度，仍需核对 taint、资源与 Pod 约束。
+          Hover or focus a node for information; click to pin details. Ready and
+          uncordoned does not guarantee scheduling: check taints, resources, and
+          Pod constraints.
         </div>
       </section>
-      <section class="box inspector" aria-label="选中节点详情">
+      <section class="box inspector" aria-label="Selected node details">
         <div class="section-head">
-          <h2>节点详情</h2>
-          <span class="badge">点击固定</span>
+          <h2>Node details</h2>
+          <span class="badge">Click to pin</span>
         </div>
         <div v-if="selected" class="detail">
           <strong class="node-name">{{ selected.name }}</strong>
@@ -400,10 +402,10 @@ function info(node: WatchNode) {
               >{{ nodeStates[selected.state].label }}</span
             ><span class="badge">{{
               selected.target === "match"
-                ? "目标模板一致"
+                ? "Matches target template"
                 : selected.target === "different"
-                  ? "与目标模板不同"
-                  : "目标模板待核对"
+                  ? "Differs from target template"
+                  : "Target template unknown"
             }}</span>
           </div>
           <dl>
@@ -415,12 +417,12 @@ function info(node: WatchNode) {
           <div class="notice">
             {{
               selected.node.unschedulable
-                ? `${formatCount(selected.nonDS)} 个 non-DS Pod 留在此节点，${formatCount(selected.terminating)} 个 Pod 正在删除。Cordon 本身不代表 drain 已开始或完成。`
-                : "节点状态来自最近的 Kubernetes 观测；AWS 生命周期与节点 Readiness 分别展示。"
+                ? `${formatCount(selected.nonDS)} non-DS Pods remain on this node; ${formatCount(selected.terminating)} Pods are terminating. Cordon alone does not indicate that draining has started or completed.`
+                : "Node status comes from the latest Kubernetes observation. AWS lifecycle and node readiness are shown separately."
             }}
           </div>
           <details v-if="selected.pods.length" class="pod-details">
-            <summary>已绑定 Pod（{{ selected.pods.length }}）</summary>
+            <summary>Bound Pods ({{ selected.pods.length }})</summary>
             <p
               v-for="pod in selected.pods"
               :key="pod.uid || `${pod.namespace}/${pod.name}`"
@@ -435,36 +437,39 @@ function info(node: WatchNode) {
         <p v-else class="empty">
           {{
             selectedKey
-              ? "所选节点已离开当前快照，请选择另一个节点。"
-              : "选择节点查看详情。"
+              ? "The selected node is no longer in this snapshot. Select another node."
+              : "Select a node to view details."
           }}
         </p>
       </section>
     </div>
     <div v-if="model.unregistered.length" class="box unregistered">
       <h2>
-        尚未关联 Kubernetes Node 的实例
+        Instances not linked to a Kubernetes Node
         <span class="badge">{{ model.unregistered.length }}</span>
       </h2>
-      <p>可能仍在启动、注册或已退出；是否缺失也取决于两侧采集时间。</p>
+      <p>
+        Instances may be starting, registering, or leaving the cluster. AWS and
+        Kubernetes collection times can also differ.
+      </p>
       <div class="instance-list">
         <span
           v-for="instance in model.unregistered"
           :key="instance.instanceId"
           class="badge"
           >{{ instance.instanceId }} ·
-          {{ instance.nodegroupName || "未知节点组" }} ·
+          {{ instance.nodegroupName || "Unknown node group" }} ·
           {{ instance.state || "Unknown" }} ·
-          {{ instance.lifecycleState || "生命周期未知" }}</span
+          {{ instance.lifecycleState || "Lifecycle unknown" }}</span
         >
       </div>
     </div>
     <div class="lower">
       <section class="box">
         <div class="section-head">
-          <h2>ASG 活动</h2>
+          <h2>ASG activity</h2>
           <span class="badge">{{
-            group === "all" ? "全部节点组" : group
+            group === "all" ? "All node groups" : group
           }}</span>
         </div>
         <div class="activity">
@@ -475,13 +480,15 @@ function info(node: WatchNode) {
           <p v-if="activityCoverage.status !== 'complete'" class="notice">
             {{
               activityCoverage.reason ||
-              "活动未采集。需要 autoscaling:DescribeScalingActivities 权限。"
+              "Activity not collected. Requires autoscaling:DescribeScalingActivities permission."
             }}
           </p>
           <div class="activity-scroll">
             <div v-for="a in activities" :key="a.activityId" class="event">
               <time :title="displayTime(a.startTime)">{{
-                a.startTime ? new Date(a.startTime).toLocaleTimeString() : "—"
+                a.startTime
+                  ? new Date(a.startTime).toLocaleTimeString("en-US")
+                  : "—"
               }}</time>
               <div>
                 {{ a.description || a.activityId
@@ -503,24 +510,24 @@ function info(node: WatchNode) {
           <p v-if="!activities.length" class="empty">
             {{
               activityCoverage.status === "complete"
-                ? "本次采集没有匹配的 ASG 活动。"
-                : "没有可展示的 ASG 活动证据。"
+                ? "No matching ASG activity in this collection."
+                : "No ASG activity data available."
             }}
           </p>
         </div>
       </section>
       <section class="box">
         <div class="section-head">
-          <h2>工作负载连续性</h2>
-          <span class="badge">集群范围</span>
+          <h2>Workload continuity</h2>
+          <span class="badge">Cluster-wide</span>
         </div>
         <div class="workload-scroll">
           <table>
             <thead>
               <tr>
-                <th>工作负载</th>
+                <th>Workload</th>
                 <th>Ready / Desired</th>
-                <th>观察</th>
+                <th>Observation</th>
               </tr>
             </thead>
             <tbody>
@@ -539,10 +546,10 @@ function info(node: WatchNode) {
                 >
                   {{
                     w.desired === null
-                      ? "期望数量未知"
+                      ? "Desired count unknown"
                       : w.ready < w.desired
-                        ? "就绪副本不足"
-                        : "就绪数量满足"
+                        ? "Below desired readiness"
+                        : "Ready count meets desired"
                   }}
                 </td>
               </tr>
@@ -550,12 +557,12 @@ function info(node: WatchNode) {
           </table>
         </div>
         <p v-if="!model.workloads.length" class="empty">
-          当前快照无 Deployment / StatefulSet / DaemonSet 数据。
+          No Deployment, StatefulSet, or DaemonSet data in this snapshot.
         </p>
         <div class="pdb-note">
           <details v-if="model.pdbs.length">
             <summary class="warn">
-              {{ model.pdbs.length }} 个 PDB 当前无可用驱逐预算
+              PDBs with no available disruption budget: {{ model.pdbs.length }}
             </summary>
             <p v-for="pdb in model.pdbs" :key="`${pdb.namespace}/${pdb.name}`">
               {{ pdb.namespace }}/{{ pdb.name }} · healthy
@@ -564,16 +571,18 @@ function info(node: WatchNode) {
             </p>
           </details>
           <p>
-            PDB 预算为风险提示，不代表已发生驱逐阻塞。Pending Pod
-            未绑定节点，单独统计。
+            PDB budgets indicate risk, not proof of a blocked eviction. Unbound
+            Pending Pods are counted separately.
           </p>
         </div>
       </section>
     </div>
     <p class="map-footnote">
-      口径：节点数字为已绑定且非终态的 Pod，包含 Terminating；DS 按 DaemonSet
-      ownerReference
-      分类。目标模板仅比较实例实际模板与明确的数字版本，未知配置不会计为匹配。工作负载数量仅代表快照观测。
+      Counts include bound, non-terminal Pods, including terminating Pods. DS
+      ownership is identified by DaemonSet ownerReference. Target comparison
+      uses actual instance templates and explicit numeric versions; unknown
+      configurations do not count as matches. Workload counts reflect the
+      snapshot only.
     </p>
     <div
       v-if="tooltip"
@@ -584,13 +593,13 @@ function info(node: WatchNode) {
     >
       <strong>{{ tooltip.node.name }}</strong
       ><br />Node Group: {{ tooltip.node.group }}<br />AMI:
-      {{ tooltip.node.instance?.imageId || "未采集" }}<br />Launch Template:
-      {{ tooltip.node.template }}<br />EC2 启动:
+      {{ tooltip.node.instance?.imageId || "Not collected" }}<br />Launch
+      Template: {{ tooltip.node.template }}<br />EC2 launch:
       {{ displayTime(tooltip.node.instance?.launchTime) }}<br />{{
         tooltip.node.az
       }}
       · {{ nodeStates[tooltip.node.state].label }}<br /><span class="muted"
-        >点击查看完整详情</span
+        >Click for full details</span
       >
     </div>
   </div>

@@ -47,7 +47,9 @@ describe("node upgrade observation", () => {
     const s = watchFixture();
     delete s.eks!.infrastructure.instances[0].launchTemplateSource;
     expect(nodeWatch(s).nodes[0].target).toBe("unknown");
-    expect(nodeWatch(s).nodes[0].template).toBe("未采集实例模板");
+    expect(nodeWatch(s).nodes[0].template).toBe(
+      "Instance template not collected",
+    );
     s.eks!.infrastructure.autoScalingGroups[0].launchTemplateVersion =
       "$Latest";
     expect(nodeWatch(s).nodes[1].target).toBe("unknown");

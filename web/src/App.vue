@@ -534,12 +534,13 @@ onUnmounted(() => {
         />
         <template v-else>
           <div v-if="page === 'eks-upgrades'" class="node-watch-entry">
-            <span>观察节点替换、Pod 迁移和 ASG 活动</span
+            <span
+              >Monitor node replacement, Pod migration, and ASG activity</span
             ><button
               class="action-button"
               @click="selectPage('eks-node-watch')"
             >
-              打开 Node watch
+              Open Node watch
             </button>
           </div>
           <ResourcePage

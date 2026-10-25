@@ -3,7 +3,7 @@ import type { Resource, Snapshot } from "../runtime/types";
 export const roundedNodePath =
   "M 71.2 8 Q 62.5 3 53.8 8 L 13.7 31 Q 5 36 5 46 L 5 93 Q 5 103 13.7 108 L 53.8 131 Q 62.5 136 71.2 131 L 111.3 108 Q 120 103 120 93 L 120 46 Q 120 36 111.3 31 Z";
 export const nodeStates = {
-  ready: { label: "Ready · 未 cordon", color: "var(--green)" },
+  ready: { label: "Ready · Uncordoned", color: "var(--green)" },
   cordon: { label: "Ready · Cordoned", color: "var(--amber)" },
   notready: { label: "NotReady", color: "var(--red)" },
   unknown: { label: "Unknown", color: "var(--muted)" },
@@ -25,16 +25,22 @@ export interface WatchNode {
   target: "match" | "different" | "unknown";
 }
 export function displayTime(value: unknown) {
-  if (!value) return "未采集";
+  if (!value) return "Not collected";
   const date = new Date(String(value));
-  return Number.isNaN(date.getTime()) ? "未知时间" : date.toLocaleString();
+  return Number.isNaN(date.getTime())
+    ? "Unknown time"
+    : date.toLocaleString("en-US");
 }
 export function collectionStatus(snapshot: Snapshot, resource: string) {
   const records = (snapshot.coverage || []).filter(
     (c) => c.resource === resource,
   );
   if (!records.length)
-    return { status: "unknown", reason: "无采集覆盖记录", collectedAt: "" };
+    return {
+      status: "unknown",
+      reason: "No collection coverage recorded",
+      collectedAt: "",
+    };
   const record = records.find((r) => r.status !== "complete") || records[0];
   return {
     status: String(record.status || "unknown"),
@@ -53,7 +59,7 @@ function actualTemplate(instance?: Resource) {
     !instance.launchTemplateId ||
     !instance.launchTemplateVersion
   )
-    return "未采集实例模板";
+    return "Instance template not collected";
   return `${instance.launchTemplateId} / v${instance.launchTemplateVersion}`;
 }
 function targetMatch(
@@ -123,11 +129,11 @@ export function nodeWatch(snapshot: Snapshot) {
         group:
           node.labels?.["eks.amazonaws.com/nodegroup"] ||
           instance?.nodegroupName ||
-          "未归属 Node Group",
+          "Unassigned Node Group",
         az:
           node.labels?.["topology.kubernetes.io/zone"] ||
           instance?.availabilityZone ||
-          "AZ 未知",
+          "AZ unknown",
         state: state(node),
         pods: bound,
         nonDS: podsKnown ? bound.length - ds : null,
