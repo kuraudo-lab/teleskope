@@ -804,6 +804,9 @@ func mapNode(node corev1.Node) inventory.Node {
 			"CNI files on disk",
 		},
 	}
+	if !node.CreationTimestamp.IsZero() {
+		out.CreatedAt = &node.CreationTimestamp.Time
+	}
 	for _, taint := range node.Spec.Taints {
 		out.Taints = append(out.Taints, inventory.Taint{Key: taint.Key, Value: taint.Value, Effect: string(taint.Effect)})
 	}
@@ -982,6 +985,9 @@ func mapPod(pod corev1.Pod) inventory.Pod {
 		EphemeralContainers: containersFromStatuses("ephemeral", pod.Status.EphemeralContainerStatuses),
 		Volumes:             volumes,
 		OwnerReferences:     ownerRefs(pod.OwnerReferences),
+	}
+	if pod.DeletionTimestamp != nil {
+		out.DeletionTimestamp = &pod.DeletionTimestamp.Time
 	}
 	if pod.Spec.RuntimeClassName != nil {
 		out.RuntimeClassName = *pod.Spec.RuntimeClassName

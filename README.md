@@ -102,6 +102,10 @@ Use AWS profile and region overrides when needed:
 teleskope scan eks --cluster my-cluster --profile prod --region ap-northeast-1
 ```
 
+The **EKS → Node watch** view observes node replacement with rounded node tiles,
+Pod counts, readiness/cordon state, instance metadata and recent ASG activities.
+See [Node watch](docs/node-watch.md) for counting rules, permissions and data limits.
+
 Deep EKS infrastructure collection follows references from the target cluster
 and its managed node groups instead of scanning unrelated account resources. In
 addition to the existing EKS and STS permissions, grant these read-only actions
@@ -109,6 +113,7 @@ to populate the Compute, Network, and Security pages:
 
 ```text
 autoscaling:DescribeAutoScalingGroups
+autoscaling:DescribeScalingActivities
 ec2:DescribeInstances
 ec2:DescribeVpcs
 ec2:DescribeVpcAttribute

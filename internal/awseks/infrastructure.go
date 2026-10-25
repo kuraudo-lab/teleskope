@@ -17,6 +17,7 @@ import (
 )
 
 type autoScalingAPI interface {
+	DescribeScalingActivities(context.Context, *autoscaling.DescribeScalingActivitiesInput, ...func(*autoscaling.Options)) (*autoscaling.DescribeScalingActivitiesOutput, error)
 	DescribeAutoScalingGroups(context.Context, *autoscaling.DescribeAutoScalingGroupsInput, ...func(*autoscaling.Options)) (*autoscaling.DescribeAutoScalingGroupsOutput, error)
 }
 
@@ -79,6 +80,12 @@ func collectInfrastructure(ctx context.Context, asgClient autoScalingAPI, ec2Cli
 	securityGroups, err := collectSecurityGroups(ctx, ec2Client, sortedMapKeys(securityGroupIDs))
 	infra.SecurityGroups = securityGroups
 	recordInfrastructureCoverage(&snapshot.Coverage, "ec2", "DescribeSecurityGroups", len(securityGroups), err, now)
+
+	// Optional history must not delay collection of the current infrastructure facts.
+	activities, activityErr := collectScalingActivities(ctx, asgClient, nodegroupByASG)
+	infra.ScalingActivities = activities
+	recordInfrastructureCoverage(&snapshot.Coverage, "autoscaling", "DescribeScalingActivities", len(activities), activityErr, now)
+
 }
 
 func recordInfrastructureCoverage(coverage *[]inventory.CoverageItem, area, resource string, count int, err error, now time.Time) {
@@ -146,6 +153,12 @@ func mapAutoScalingGroup(group autoscalingtypes.AutoScalingGroup, nodegroupName 
 	}
 	for _, instance := range group.Instances {
 		addStringSlice(&out.InstanceIDs, awssdk.ToString(instance.InstanceId))
+		actual := inventory.AutoScalingInstance{InstanceID: awssdk.ToString(instance.InstanceId), LifecycleState: string(instance.LifecycleState), HealthStatus: awssdk.ToString(instance.HealthStatus)}
+		if instance.LaunchTemplate != nil {
+			actual.LaunchTemplateID = awssdk.ToString(instance.LaunchTemplate.LaunchTemplateId)
+			actual.LaunchTemplateVersion = awssdk.ToString(instance.LaunchTemplate.Version)
+		}
+		out.Instances = append(out.Instances, actual)
 	}
 	if group.LaunchTemplate != nil {
 		out.LaunchTemplateID = awssdk.ToString(group.LaunchTemplate.LaunchTemplateId)
@@ -155,6 +168,7 @@ func mapAutoScalingGroup(group autoscalingtypes.AutoScalingGroup, nodegroupName 
 		out.LaunchTemplateID = awssdk.ToString(template.LaunchTemplateId)
 		out.LaunchTemplateVersion = awssdk.ToString(template.Version)
 	}
+	sort.Slice(out.Instances, func(i, j int) bool { return out.Instances[i].InstanceID < out.Instances[j].InstanceID })
 	sort.Strings(out.InstanceIDs)
 	return out
 }
@@ -180,8 +194,15 @@ func collectEC2Instances(ctx context.Context, client ec2API, ids []string, asgBy
 					seen[instanceID] = struct{}{}
 					asgName := asgByInstance[instanceID]
 					item := mapEC2Instance(instance, asgName, nodegroupByASG[asgName])
-					item.LaunchTemplateID = groupByName[asgName].LaunchTemplateID
-					item.LaunchTemplateVersion = groupByName[asgName].LaunchTemplateVersion
+					for _, actual := range groupByName[asgName].Instances {
+						if actual.InstanceID == instanceID {
+							item.LaunchTemplateID = actual.LaunchTemplateID
+							item.LaunchTemplateVersion = actual.LaunchTemplateVersion
+							item.LaunchTemplateSource = "autoscaling-instance"
+							item.LifecycleState = actual.LifecycleState
+							break
+						}
+					}
 					instances = append(instances, item)
 				}
 			}
@@ -210,6 +231,7 @@ func mapEC2Instance(instance ec2types.Instance, asgName, nodegroupName string) i
 		AutoScalingGroupName: asgName,
 		KubernetesNodeName:   awssdk.ToString(instance.PrivateDnsName),
 		ImageID:              awssdk.ToString(instance.ImageId),
+		LaunchTime:           instance.LaunchTime,
 		Tags:                 tags,
 	}
 	if instance.State != nil {

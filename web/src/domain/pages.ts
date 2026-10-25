@@ -25,6 +25,7 @@ export const pages = [
       },
     ],
   },
+  { id: "eks-node-watch", panels: [] },
   {
     id: "eks-compute",
     panels: [

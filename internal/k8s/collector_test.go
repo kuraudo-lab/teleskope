@@ -794,3 +794,18 @@ func TestCollectGatewaysFallsBackToContextNamespaceWhenAllNamespacesDenied(t *te
 		t.Fatalf("gateway routes = %#v, want one route from context namespace", kubernetes.GatewayRoutes)
 	}
 }
+
+func TestNodeWatchLifecycleTimestamps(t *testing.T) {
+	stamp := metav1.NewTime(time.Date(2026, 10, 25, 6, 30, 0, 0, time.UTC))
+	node := mapNode(corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker", CreationTimestamp: stamp}, Spec: corev1.NodeSpec{Unschedulable: true}, Status: corev1.NodeStatus{Conditions: []corev1.NodeCondition{{Type: corev1.NodeReady, Status: corev1.ConditionTrue}}}})
+	if node.CreatedAt == nil || !node.CreatedAt.Equal(stamp.Time) || !node.Unschedulable || node.Ready != "True" {
+		t.Fatalf("node lifecycle facts: %#v", node)
+	}
+	pod := mapPod(corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "terminating", DeletionTimestamp: &stamp}})
+	if pod.DeletionTimestamp == nil || !pod.DeletionTimestamp.Equal(stamp.Time) {
+		t.Fatal("deletion timestamp lost")
+	}
+	if mapNode(corev1.Node{}).CreatedAt != nil || mapPod(corev1.Pod{}).DeletionTimestamp != nil {
+		t.Fatal("missing timestamps invented")
+	}
+}

@@ -10,6 +10,7 @@ import {
 } from "vue";
 import type { BootConfig, Resource } from "./runtime/types";
 import { createReportStore } from "./runtime/report-store";
+import NodeWatch from "./components/NodeWatch.vue";
 import ResourcePage from "./components/ResourcePage.vue";
 import DetailDrawer from "./components/DetailDrawer.vue";
 import AdvisorPage from "./components/AdvisorPage.vue";
@@ -51,6 +52,12 @@ const page = ref(
 );
 const namespace = ref(url.searchParams.get("namespace") || "all"),
   resource = ref(url.searchParams.get("resource") || "all");
+const namespaceSelection = computed({
+  get: () => (page.value === "eks-node-watch" ? "all" : namespace.value),
+  set: (value: string) => {
+    namespace.value = value;
+  },
+});
 const selected = ref<Resource | null>(null),
   menu = ref(""),
   exportOpen = ref(false),
@@ -86,6 +93,7 @@ const groups = [
     items: [
       ["eks", "Overview"],
       ["eks-upgrades", "Upgrades"],
+      ["eks-node-watch", "Node watch"],
       ["eks-compute", "Compute"],
       ["eks-network", "Network"],
       ["eks-security", "Security"],
@@ -386,10 +394,10 @@ onUnmounted(() => {
       <div class="global-actions">
         <select
           id="focus"
-          v-model="namespace"
+          v-model="namespaceSelection"
           class="select"
           aria-label="Namespace"
-          :disabled="['advisor', 'events'].includes(page)"
+          :disabled="['advisor', 'events', 'eks-node-watch'].includes(page)"
         >
           <option value="all">All namespaces</option>
           <option v-for="ns in namespaces" :key="ns" :value="ns">
@@ -515,15 +523,34 @@ onUnmounted(() => {
             <p v-if="!s.events.length">No events yet</p>
           </div>
         </div>
-        <ResourcePage
-          v-else
-          :key="page"
-          :page="page"
+        <NodeWatch
+          v-else-if="page === 'eks-node-watch'"
           :snapshot="s.snapshot"
-          :projection="s.eksProjection"
-          :namespace="namespace"
-          @select="selectResource"
+          :sources="s.sources"
+          :mode="boot.mode"
+          :paused="s.paused"
+          :loading="s.loading"
+          :error="s.error"
         />
+        <template v-else>
+          <div v-if="page === 'eks-upgrades'" class="node-watch-entry">
+            <span>观察节点替换、Pod 迁移和 ASG 活动</span
+            ><button
+              class="action-button"
+              @click="selectPage('eks-node-watch')"
+            >
+              打开 Node watch
+            </button>
+          </div>
+          <ResourcePage
+            :key="page"
+            :page="page"
+            :snapshot="s.snapshot"
+            :projection="s.eksProjection"
+            :namespace="namespace"
+            @select="selectResource"
+          />
+        </template>
       </section>
     </main>
   </div>
@@ -536,6 +563,20 @@ onUnmounted(() => {
   />
 </template>
 <style>
+.node-watch-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 13px;
+  color: var(--muted);
+}
 #ui-root {
   min-height: 100vh;
 }

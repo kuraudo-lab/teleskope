@@ -15,9 +15,12 @@ import (
 )
 
 type fakeAutoScaling struct {
-	output *autoscaling.DescribeAutoScalingGroupsOutput
-	err    error
-	inputs []*autoscaling.DescribeAutoScalingGroupsInput
+	activities     *autoscaling.DescribeScalingActivitiesOutput
+	activityErr    error
+	activityInputs []*autoscaling.DescribeScalingActivitiesInput
+	output         *autoscaling.DescribeAutoScalingGroupsOutput
+	err            error
+	inputs         []*autoscaling.DescribeAutoScalingGroupsInput
 }
 
 func (f *fakeAutoScaling) DescribeAutoScalingGroups(_ context.Context, input *autoscaling.DescribeAutoScalingGroupsInput, _ ...func(*autoscaling.Options)) (*autoscaling.DescribeAutoScalingGroupsOutput, error) {
@@ -76,7 +79,7 @@ func TestCollectInfrastructureBuildsRelationships(t *testing.T) {
 		AvailabilityZones:    []string{"example-1a"},
 		VPCZoneIdentifier:    awssdk.String("subnet-example"),
 		HealthCheckType:      awssdk.String("EC2"),
-		Instances:            []autoscalingtypes.Instance{{InstanceId: awssdk.String("i-example")}},
+		Instances:            []autoscalingtypes.Instance{{InstanceId: awssdk.String("i-example"), LaunchTemplate: &autoscalingtypes.LaunchTemplateSpecification{LaunchTemplateId: awssdk.String("lt-example"), Version: awssdk.String("6")}}},
 		LaunchTemplate:       &autoscalingtypes.LaunchTemplateSpecification{LaunchTemplateId: awssdk.String("lt-example"), Version: awssdk.String("7")},
 	}}}}
 	ec2Client := infrastructureFakeEC2(nil)
@@ -92,7 +95,7 @@ func TestCollectInfrastructureBuildsRelationships(t *testing.T) {
 	if got := snapshot.EKS.Infrastructure.AutoScalingGroups; len(got) != 1 || got[0].NodegroupName != "workers" || got[0].InstanceIDs[0] != "i-example" {
 		t.Fatalf("unexpected Auto Scaling groups: %#v", got)
 	}
-	if got := snapshot.EKS.Infrastructure.Instances; len(got) != 1 || got[0].NodegroupName != "workers" || got[0].AutoScalingGroupName != "demo-workers" || got[0].KubernetesNodeName != "ip-192-0-2-10.example.internal" || got[0].LaunchTemplateID != "lt-example" {
+	if got := snapshot.EKS.Infrastructure.Instances; len(got) != 1 || got[0].NodegroupName != "workers" || got[0].AutoScalingGroupName != "demo-workers" || got[0].KubernetesNodeName != "ip-192-0-2-10.example.internal" || got[0].LaunchTemplateID != "lt-example" || got[0].LaunchTemplateVersion != "6" || got[0].LaunchTemplateSource != "autoscaling-instance" {
 		t.Fatalf("unexpected instances: %#v", got)
 	}
 	if got := snapshot.EKS.Infrastructure.VPCs; len(got) != 1 || got[0].DNSSupport == nil || !*got[0].DNSSupport || got[0].DNSHostnames == nil || !*got[0].DNSHostnames {
@@ -180,4 +183,12 @@ func assertCoverage(t *testing.T, coverage []inventory.CoverageItem, resource, s
 		}
 	}
 	t.Fatalf("coverage %s not found in %#v", resource, coverage)
+}
+
+func (f *fakeAutoScaling) DescribeScalingActivities(_ context.Context, input *autoscaling.DescribeScalingActivitiesInput, _ ...func(*autoscaling.Options)) (*autoscaling.DescribeScalingActivitiesOutput, error) {
+	f.activityInputs = append(f.activityInputs, input)
+	if f.activities == nil {
+		return &autoscaling.DescribeScalingActivitiesOutput{}, f.activityErr
+	}
+	return f.activities, f.activityErr
 }

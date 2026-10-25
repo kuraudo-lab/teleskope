@@ -44,6 +44,7 @@ type EKSInventory struct {
 // EKSInfrastructure records optional AWS infrastructure evidence associated with an EKS cluster.
 // Collectors may leave it empty when EC2 and Auto Scaling APIs are outside their configured scope.
 type EKSInfrastructure struct {
+	ScalingActivities []ScalingActivity     `json:"scalingActivities,omitempty"`
 	Instances         []EC2Instance         `json:"instances,omitempty"`
 	AutoScalingGroups []AutoScalingGroup    `json:"autoScalingGroups,omitempty"`
 	VPCs              []VPCDetail           `json:"vpcs,omitempty"`
@@ -53,6 +54,9 @@ type EKSInfrastructure struct {
 
 // EC2Instance records compute evidence and its EKS/Kubernetes associations.
 type EC2Instance struct {
+	LaunchTime            *time.Time        `json:"launchTime,omitempty"`
+	LaunchTemplateSource  string            `json:"launchTemplateSource,omitempty"`
+	LifecycleState        string            `json:"lifecycleState,omitempty"`
 	InstanceID            string            `json:"instanceId"`
 	Name                  string            `json:"name,omitempty"`
 	State                 string            `json:"state,omitempty"`
@@ -74,18 +78,42 @@ type EC2Instance struct {
 
 // AutoScalingGroup records the capacity envelope behind an EKS nodegroup.
 type AutoScalingGroup struct {
-	Name                  string   `json:"name"`
-	ARN                   string   `json:"arn,omitempty"`
-	NodegroupName         string   `json:"nodegroupName,omitempty"`
-	MinSize               int32    `json:"minSize"`
-	MaxSize               int32    `json:"maxSize"`
-	DesiredCapacity       int32    `json:"desiredCapacity"`
-	AvailabilityZones     []string `json:"availabilityZones,omitempty"`
-	SubnetIDs             []string `json:"subnetIds,omitempty"`
-	InstanceIDs           []string `json:"instanceIds,omitempty"`
-	LaunchTemplateID      string   `json:"launchTemplateId,omitempty"`
-	LaunchTemplateVersion string   `json:"launchTemplateVersion,omitempty"`
-	HealthCheckType       string   `json:"healthCheckType,omitempty"`
+	Instances             []AutoScalingInstance `json:"instances,omitempty"`
+	Name                  string                `json:"name"`
+	ARN                   string                `json:"arn,omitempty"`
+	NodegroupName         string                `json:"nodegroupName,omitempty"`
+	MinSize               int32                 `json:"minSize"`
+	MaxSize               int32                 `json:"maxSize"`
+	DesiredCapacity       int32                 `json:"desiredCapacity"`
+	AvailabilityZones     []string              `json:"availabilityZones,omitempty"`
+	SubnetIDs             []string              `json:"subnetIds,omitempty"`
+	InstanceIDs           []string              `json:"instanceIds,omitempty"`
+	LaunchTemplateID      string                `json:"launchTemplateId,omitempty"`
+	LaunchTemplateVersion string                `json:"launchTemplateVersion,omitempty"`
+	HealthCheckType       string                `json:"healthCheckType,omitempty"`
+}
+
+// AutoScalingInstance preserves actual instance configuration separately from the group target.
+type AutoScalingInstance struct {
+	InstanceID            string `json:"instanceId"`
+	LaunchTemplateID      string `json:"launchTemplateId,omitempty"`
+	LaunchTemplateVersion string `json:"launchTemplateVersion,omitempty"`
+	LifecycleState        string `json:"lifecycleState,omitempty"`
+	HealthStatus          string `json:"healthStatus,omitempty"`
+}
+
+// ScalingActivity is an AWS-reported activity, not an inferred Kubernetes drain event.
+type ScalingActivity struct {
+	ActivityID           string     `json:"activityId"`
+	AutoScalingGroupName string     `json:"autoScalingGroupName"`
+	NodegroupName        string     `json:"nodegroupName,omitempty"`
+	Description          string     `json:"description,omitempty"`
+	Cause                string     `json:"cause,omitempty"`
+	StatusCode           string     `json:"statusCode,omitempty"`
+	StatusMessage        string     `json:"statusMessage,omitempty"`
+	Progress             *int32     `json:"progress,omitempty"`
+	StartTime            *time.Time `json:"startTime,omitempty"`
+	EndTime              *time.Time `json:"endTime,omitempty"`
 }
 
 // VPCDetail records VPC attributes useful for EKS network inspection.
@@ -438,6 +466,7 @@ type Namespace struct {
 
 // Node records node facts visible through the Kubernetes API.
 type Node struct {
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
 	ObjectRef
 	ProviderID          string            `json:"providerId,omitempty"`
 	Unschedulable       bool              `json:"unschedulable,omitempty"`
@@ -500,6 +529,7 @@ type Workload struct {
 
 // Pod records a running or historical Pod summary.
 type Pod struct {
+	DeletionTimestamp *time.Time `json:"deletionTimestamp,omitempty"`
 	ObjectRef
 	Phase               string      `json:"phase,omitempty"`
 	NodeName            string      `json:"nodeName,omitempty"`
