@@ -175,7 +175,7 @@ export function nodeWatch(snapshot: Snapshot) {
       ? pods.filter((p) => p.deletionTimestamp).length
       : null,
     workloads,
-    pdbs: ((k.policies?.podDisruptionBudgets || []) as Resource[]).filter(
+    pdbs: ((k.policies?.podDisruptionBudgetDetails || []) as Resource[]).filter(
       (p: Resource) =>
         (p.disruptionsAllowed ?? 0) === 0 && (p.expectedPods ?? 0) > 0,
     ),

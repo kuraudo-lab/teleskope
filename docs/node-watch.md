@@ -55,3 +55,24 @@ requests, truncation, access denial, actual template provenance and timestamps.
 AWS references:
 - https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_DescribeScalingActivities.html
 - https://docs.aws.amazon.com/autoscaling/ec2/APIReference/API_Instance.html
+
+## Local mock demo and UI validation
+
+Use `make node-watch-demo` to build and start the shared, explicitly synthetic
+local UI demo (no credentials). The equivalent manual commands are:
+
+```sh
+python3 scripts/node-watch-fixture.py
+bin/teleskope serve snapshot testdata/synthetic/node-watch.json --listen 127.0.0.1:8768
+```
+
+Open `http://127.0.0.1:8768/?page=eks-node-watch`. The cluster title is
+**MOCK · EKS upgrade demo**. This is the production UI and snapshot API backed by
+mock data, not the standalone HTML design mock. The recorded label means the
+scenario is static; it does not imply observations from a real cluster.
+
+The same JSON fixture is used by browser validation. It includes 11 nodes across
+two nodegroups, Ready/Cordoned/NotReady/Unknown states, 115 non-DS and 61 DS Pods,
+4 unbound Pending Pods, 2 terminating Pods, old/new instance templates, launch
+and registration times, three ASG activities and a zero-budget PDB risk signal.
+Regenerate the committed JSON with the script whenever the scenario changes.

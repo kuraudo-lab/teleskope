@@ -1,0 +1,3366 @@
+{
+  "schemaVersion": "teleskope.io/snapshot/v1alpha1",
+  "collectedAt": "2026-10-25T06:32:08Z",
+  "source": {
+    "tool": "teleskope-node-watch-fixture",
+    "version": "1",
+    "mode": "synthetic"
+  },
+  "aws": {
+    "region": "ap-northeast-1"
+  },
+  "eks": {
+    "cluster": {
+      "name": "MOCK · EKS upgrade demo",
+      "version": "1.34"
+    },
+    "nodegroups": [
+      {
+        "name": "app-workers",
+        "autoScalingGroups": [
+          "app-workers-asg"
+        ]
+      },
+      {
+        "name": "system-workers",
+        "autoScalingGroups": [
+          "system-workers-asg"
+        ]
+      }
+    ],
+    "infrastructure": {
+      "instances": [
+        {
+          "instanceId": "i-demo-a01",
+          "kubernetesNodeName": "a01",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1a",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v18",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "18",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-25T06:24:10Z"
+        },
+        {
+          "instanceId": "i-demo-a02",
+          "kubernetesNodeName": "a02",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1c",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v18",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "18",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-25T06:24:10Z"
+        },
+        {
+          "instanceId": "i-demo-a03",
+          "kubernetesNodeName": "a03",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1d",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v17",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "17",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-03T01:12:00Z"
+        },
+        {
+          "instanceId": "i-demo-a04",
+          "kubernetesNodeName": "a04",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1a",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v17",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "17",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "Terminating:Wait",
+          "launchTime": "2026-10-03T01:12:00Z"
+        },
+        {
+          "instanceId": "i-demo-a05",
+          "kubernetesNodeName": "a05",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1c",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v17",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "17",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-03T01:12:00Z"
+        },
+        {
+          "instanceId": "i-demo-a06",
+          "kubernetesNodeName": "a06",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1d",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v17",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "17",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-03T01:12:00Z"
+        },
+        {
+          "instanceId": "i-demo-b01",
+          "kubernetesNodeName": "b01",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1a",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v18",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "18",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-25T06:24:10Z"
+        },
+        {
+          "instanceId": "i-demo-b02",
+          "kubernetesNodeName": "b02",
+          "nodegroupName": "app-workers",
+          "autoScalingGroupName": "app-workers-asg",
+          "availabilityZone": "ap-northeast-1c",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v18",
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "18",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-25T06:24:10Z"
+        },
+        {
+          "instanceId": "i-demo-s01",
+          "kubernetesNodeName": "s01",
+          "nodegroupName": "system-workers",
+          "autoScalingGroupName": "system-workers-asg",
+          "availabilityZone": "ap-northeast-1d",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v12",
+          "launchTemplateId": "lt-demo-system-workers",
+          "launchTemplateVersion": "12",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-03T01:12:00Z"
+        },
+        {
+          "instanceId": "i-demo-s02",
+          "kubernetesNodeName": "s02",
+          "nodegroupName": "system-workers",
+          "autoScalingGroupName": "system-workers-asg",
+          "availabilityZone": "ap-northeast-1a",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v12",
+          "launchTemplateId": "lt-demo-system-workers",
+          "launchTemplateVersion": "12",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-03T01:12:00Z"
+        },
+        {
+          "instanceId": "i-demo-s03",
+          "kubernetesNodeName": "s03",
+          "nodegroupName": "system-workers",
+          "autoScalingGroupName": "system-workers-asg",
+          "availabilityZone": "ap-northeast-1c",
+          "state": "running",
+          "instanceType": "m6i.xlarge",
+          "imageId": "ami-demo-v12",
+          "launchTemplateId": "lt-demo-system-workers",
+          "launchTemplateVersion": "12",
+          "launchTemplateSource": "autoscaling-instance",
+          "lifecycleState": "InService",
+          "launchTime": "2026-10-03T01:12:00Z"
+        }
+      ],
+      "autoScalingGroups": [
+        {
+          "name": "app-workers-asg",
+          "nodegroupName": "app-workers",
+          "desiredCapacity": 8,
+          "minSize": 8,
+          "maxSize": 10,
+          "launchTemplateId": "lt-demo-app-workers",
+          "launchTemplateVersion": "18",
+          "instanceIds": [
+            "i-demo-a01",
+            "i-demo-a02",
+            "i-demo-a03",
+            "i-demo-a04",
+            "i-demo-a05",
+            "i-demo-a06",
+            "i-demo-b01",
+            "i-demo-b02"
+          ],
+          "instances": [
+            {
+              "instanceId": "i-demo-a01",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "18",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-a02",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "18",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-a03",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "17",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-a04",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "17",
+              "lifecycleState": "Terminating:Wait"
+            },
+            {
+              "instanceId": "i-demo-a05",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "17",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-a06",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "17",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-b01",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "18",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-b02",
+              "launchTemplateId": "lt-demo-app-workers",
+              "launchTemplateVersion": "18",
+              "lifecycleState": "InService"
+            }
+          ]
+        },
+        {
+          "name": "system-workers-asg",
+          "nodegroupName": "system-workers",
+          "desiredCapacity": 3,
+          "minSize": 3,
+          "maxSize": 5,
+          "launchTemplateId": "lt-demo-system-workers",
+          "launchTemplateVersion": "12",
+          "instanceIds": [
+            "i-demo-s01",
+            "i-demo-s02",
+            "i-demo-s03"
+          ],
+          "instances": [
+            {
+              "instanceId": "i-demo-s01",
+              "launchTemplateId": "lt-demo-system-workers",
+              "launchTemplateVersion": "12",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-s02",
+              "launchTemplateId": "lt-demo-system-workers",
+              "launchTemplateVersion": "12",
+              "lifecycleState": "InService"
+            },
+            {
+              "instanceId": "i-demo-s03",
+              "launchTemplateId": "lt-demo-system-workers",
+              "launchTemplateVersion": "12",
+              "lifecycleState": "InService"
+            }
+          ]
+        }
+      ],
+      "scalingActivities": [
+        {
+          "activityId": "mock-launch-b02",
+          "autoScalingGroupName": "app-workers-asg",
+          "nodegroupName": "app-workers",
+          "description": "Launching replacement instance i-demo-b02",
+          "statusCode": "InProgress",
+          "progress": 70,
+          "startTime": "2026-10-25T06:31:00Z",
+          "cause": "Synthetic rolling replacement"
+        },
+        {
+          "activityId": "mock-terminate-a04",
+          "autoScalingGroupName": "app-workers-asg",
+          "nodegroupName": "app-workers",
+          "description": "Terminating instance i-demo-a04",
+          "statusCode": "MidLifecycleAction",
+          "progress": 40,
+          "startTime": "2026-10-25T06:29:00Z",
+          "statusMessage": "Synthetic lifecycle hook wait"
+        },
+        {
+          "activityId": "mock-launch-b01",
+          "autoScalingGroupName": "app-workers-asg",
+          "nodegroupName": "app-workers",
+          "description": "Launched replacement instance i-demo-b01",
+          "statusCode": "Successful",
+          "progress": 100,
+          "startTime": "2026-10-25T06:24:00Z",
+          "endTime": "2026-10-25T06:26:00Z"
+        }
+      ]
+    }
+  },
+  "kubernetes": {
+    "context": "mock-upgrade-demo",
+    "version": {
+      "gitVersion": "v1.34.2"
+    },
+    "nodes": [
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-a01",
+        "name": "a01",
+        "providerId": "aws:///ap-northeast-1a/i-demo-a01",
+        "ready": "True",
+        "unschedulable": false,
+        "createdAt": "2026-10-25T06:25:02Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1a",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-a02",
+        "name": "a02",
+        "providerId": "aws:///ap-northeast-1c/i-demo-a02",
+        "ready": "True",
+        "unschedulable": false,
+        "createdAt": "2026-10-25T06:25:02Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1c",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-a03",
+        "name": "a03",
+        "providerId": "aws:///ap-northeast-1d/i-demo-a03",
+        "ready": "True",
+        "unschedulable": true,
+        "createdAt": "2026-10-03T01:13:00Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1d",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-a04",
+        "name": "a04",
+        "providerId": "aws:///ap-northeast-1a/i-demo-a04",
+        "ready": "True",
+        "unschedulable": true,
+        "createdAt": "2026-10-03T01:13:00Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1a",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-a05",
+        "name": "a05",
+        "providerId": "aws:///ap-northeast-1c/i-demo-a05",
+        "ready": "True",
+        "unschedulable": false,
+        "createdAt": "2026-10-03T01:13:00Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1c",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-a06",
+        "name": "a06",
+        "providerId": "aws:///ap-northeast-1d/i-demo-a06",
+        "ready": "True",
+        "unschedulable": false,
+        "createdAt": "2026-10-03T01:13:00Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1d",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-b01",
+        "name": "b01",
+        "providerId": "aws:///ap-northeast-1a/i-demo-b01",
+        "ready": "True",
+        "unschedulable": false,
+        "createdAt": "2026-10-25T06:25:02Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1a",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-b02",
+        "name": "b02",
+        "providerId": "aws:///ap-northeast-1c/i-demo-b02",
+        "ready": "False",
+        "unschedulable": false,
+        "createdAt": "2026-10-25T06:25:02Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "app-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1c",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-s01",
+        "name": "s01",
+        "providerId": "aws:///ap-northeast-1d/i-demo-s01",
+        "ready": "True",
+        "unschedulable": false,
+        "createdAt": "2026-10-03T01:13:00Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "system-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1d",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-s02",
+        "name": "s02",
+        "providerId": "aws:///ap-northeast-1a/i-demo-s02",
+        "ready": "True",
+        "unschedulable": false,
+        "createdAt": "2026-10-03T01:13:00Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "system-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1a",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "uid": "mock-node-s03",
+        "name": "s03",
+        "providerId": "aws:///ap-northeast-1c/i-demo-s03",
+        "ready": "Unknown",
+        "unschedulable": false,
+        "createdAt": "2026-10-03T01:13:00Z",
+        "kubeletVersion": "v1.34.2",
+        "labels": {
+          "eks.amazonaws.com/nodegroup": "system-workers",
+          "topology.kubernetes.io/zone": "ap-northeast-1c",
+          "node.kubernetes.io/instance-type": "m6i.xlarge"
+        }
+      }
+    ],
+    "pods": [
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-0",
+        "name": "a01-app-0",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-1",
+        "name": "a01-app-1",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-2",
+        "name": "a01-app-2",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-3",
+        "name": "a01-app-3",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-4",
+        "name": "a01-app-4",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-5",
+        "name": "a01-app-5",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-6",
+        "name": "a01-app-6",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-7",
+        "name": "a01-app-7",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-8",
+        "name": "a01-app-8",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-9",
+        "name": "a01-app-9",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-10",
+        "name": "a01-app-10",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-11",
+        "name": "a01-app-11",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-12",
+        "name": "a01-app-12",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-13",
+        "name": "a01-app-13",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-14",
+        "name": "a01-app-14",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-15",
+        "name": "a01-app-15",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-16",
+        "name": "a01-app-16",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-ReplicaSet-17",
+        "name": "a01-app-17",
+        "namespace": "shop",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-DaemonSet-0",
+        "name": "a01-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-DaemonSet-1",
+        "name": "a01-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-DaemonSet-2",
+        "name": "a01-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-DaemonSet-3",
+        "name": "a01-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-DaemonSet-4",
+        "name": "a01-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a01-DaemonSet-5",
+        "name": "a01-agent-5",
+        "namespace": "kube-system",
+        "nodeName": "a01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-5"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-0",
+        "name": "a02-app-0",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-1",
+        "name": "a02-app-1",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-2",
+        "name": "a02-app-2",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-3",
+        "name": "a02-app-3",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-4",
+        "name": "a02-app-4",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-5",
+        "name": "a02-app-5",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-6",
+        "name": "a02-app-6",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-7",
+        "name": "a02-app-7",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-8",
+        "name": "a02-app-8",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-9",
+        "name": "a02-app-9",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-10",
+        "name": "a02-app-10",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-11",
+        "name": "a02-app-11",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-12",
+        "name": "a02-app-12",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-13",
+        "name": "a02-app-13",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-14",
+        "name": "a02-app-14",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-ReplicaSet-15",
+        "name": "a02-app-15",
+        "namespace": "shop",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-DaemonSet-0",
+        "name": "a02-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-DaemonSet-1",
+        "name": "a02-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-DaemonSet-2",
+        "name": "a02-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-DaemonSet-3",
+        "name": "a02-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-DaemonSet-4",
+        "name": "a02-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a02-DaemonSet-5",
+        "name": "a02-agent-5",
+        "namespace": "kube-system",
+        "nodeName": "a02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-5"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-ReplicaSet-0",
+        "name": "a03-app-0",
+        "namespace": "shop",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ],
+        "deletionTimestamp": "2026-10-25T06:30:00Z"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-ReplicaSet-1",
+        "name": "a03-app-1",
+        "namespace": "shop",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ],
+        "deletionTimestamp": "2026-10-25T06:30:00Z"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-ReplicaSet-2",
+        "name": "a03-app-2",
+        "namespace": "shop",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-DaemonSet-0",
+        "name": "a03-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-DaemonSet-1",
+        "name": "a03-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-DaemonSet-2",
+        "name": "a03-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-DaemonSet-3",
+        "name": "a03-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-DaemonSet-4",
+        "name": "a03-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a03-DaemonSet-5",
+        "name": "a03-agent-5",
+        "namespace": "kube-system",
+        "nodeName": "a03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-5"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a04-DaemonSet-0",
+        "name": "a04-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "a04",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a04-DaemonSet-1",
+        "name": "a04-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "a04",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a04-DaemonSet-2",
+        "name": "a04-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "a04",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a04-DaemonSet-3",
+        "name": "a04-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "a04",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a04-DaemonSet-4",
+        "name": "a04-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "a04",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a04-DaemonSet-5",
+        "name": "a04-agent-5",
+        "namespace": "kube-system",
+        "nodeName": "a04",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-5"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-0",
+        "name": "a05-app-0",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-1",
+        "name": "a05-app-1",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-2",
+        "name": "a05-app-2",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-3",
+        "name": "a05-app-3",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-4",
+        "name": "a05-app-4",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-5",
+        "name": "a05-app-5",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-6",
+        "name": "a05-app-6",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-7",
+        "name": "a05-app-7",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-8",
+        "name": "a05-app-8",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-9",
+        "name": "a05-app-9",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-10",
+        "name": "a05-app-10",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-11",
+        "name": "a05-app-11",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-12",
+        "name": "a05-app-12",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-13",
+        "name": "a05-app-13",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-14",
+        "name": "a05-app-14",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-15",
+        "name": "a05-app-15",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-16",
+        "name": "a05-app-16",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-17",
+        "name": "a05-app-17",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-18",
+        "name": "a05-app-18",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-19",
+        "name": "a05-app-19",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-ReplicaSet-20",
+        "name": "a05-app-20",
+        "namespace": "shop",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-DaemonSet-0",
+        "name": "a05-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-DaemonSet-1",
+        "name": "a05-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-DaemonSet-2",
+        "name": "a05-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-DaemonSet-3",
+        "name": "a05-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-DaemonSet-4",
+        "name": "a05-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a05-DaemonSet-5",
+        "name": "a05-agent-5",
+        "namespace": "kube-system",
+        "nodeName": "a05",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-5"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-0",
+        "name": "a06-app-0",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-1",
+        "name": "a06-app-1",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-2",
+        "name": "a06-app-2",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-3",
+        "name": "a06-app-3",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-4",
+        "name": "a06-app-4",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-5",
+        "name": "a06-app-5",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-6",
+        "name": "a06-app-6",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-7",
+        "name": "a06-app-7",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-8",
+        "name": "a06-app-8",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-9",
+        "name": "a06-app-9",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-10",
+        "name": "a06-app-10",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-11",
+        "name": "a06-app-11",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-12",
+        "name": "a06-app-12",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-13",
+        "name": "a06-app-13",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-14",
+        "name": "a06-app-14",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-15",
+        "name": "a06-app-15",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-16",
+        "name": "a06-app-16",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-17",
+        "name": "a06-app-17",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-ReplicaSet-18",
+        "name": "a06-app-18",
+        "namespace": "shop",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-DaemonSet-0",
+        "name": "a06-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-DaemonSet-1",
+        "name": "a06-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-DaemonSet-2",
+        "name": "a06-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-DaemonSet-3",
+        "name": "a06-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-DaemonSet-4",
+        "name": "a06-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-a06-DaemonSet-5",
+        "name": "a06-agent-5",
+        "namespace": "kube-system",
+        "nodeName": "a06",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-5"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-0",
+        "name": "b01-app-0",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-1",
+        "name": "b01-app-1",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-2",
+        "name": "b01-app-2",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-3",
+        "name": "b01-app-3",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-4",
+        "name": "b01-app-4",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-5",
+        "name": "b01-app-5",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-6",
+        "name": "b01-app-6",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-7",
+        "name": "b01-app-7",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-8",
+        "name": "b01-app-8",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-9",
+        "name": "b01-app-9",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-10",
+        "name": "b01-app-10",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-11",
+        "name": "b01-app-11",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-12",
+        "name": "b01-app-12",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-ReplicaSet-13",
+        "name": "b01-app-13",
+        "namespace": "shop",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-DaemonSet-0",
+        "name": "b01-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-DaemonSet-1",
+        "name": "b01-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-DaemonSet-2",
+        "name": "b01-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-DaemonSet-3",
+        "name": "b01-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-DaemonSet-4",
+        "name": "b01-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b01-DaemonSet-5",
+        "name": "b01-agent-5",
+        "namespace": "kube-system",
+        "nodeName": "b01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-5"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b02-DaemonSet-0",
+        "name": "b02-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "b02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b02-DaemonSet-1",
+        "name": "b02-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "b02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b02-DaemonSet-2",
+        "name": "b02-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "b02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-b02-DaemonSet-3",
+        "name": "b02-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "b02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-0",
+        "name": "s01-app-0",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-1",
+        "name": "s01-app-1",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-2",
+        "name": "s01-app-2",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-3",
+        "name": "s01-app-3",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-4",
+        "name": "s01-app-4",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-5",
+        "name": "s01-app-5",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-6",
+        "name": "s01-app-6",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-ReplicaSet-7",
+        "name": "s01-app-7",
+        "namespace": "shop",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-DaemonSet-0",
+        "name": "s01-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-DaemonSet-1",
+        "name": "s01-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-DaemonSet-2",
+        "name": "s01-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-DaemonSet-3",
+        "name": "s01-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s01-DaemonSet-4",
+        "name": "s01-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "s01",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-0",
+        "name": "s02-app-0",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-1",
+        "name": "s02-app-1",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-2",
+        "name": "s02-app-2",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-3",
+        "name": "s02-app-3",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-4",
+        "name": "s02-app-4",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-5",
+        "name": "s02-app-5",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-6",
+        "name": "s02-app-6",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-7",
+        "name": "s02-app-7",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-ReplicaSet-8",
+        "name": "s02-app-8",
+        "namespace": "shop",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-DaemonSet-0",
+        "name": "s02-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-DaemonSet-1",
+        "name": "s02-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-DaemonSet-2",
+        "name": "s02-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-DaemonSet-3",
+        "name": "s02-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s02-DaemonSet-4",
+        "name": "s02-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "s02",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-ReplicaSet-0",
+        "name": "s03-app-0",
+        "namespace": "shop",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-ReplicaSet-1",
+        "name": "s03-app-1",
+        "namespace": "shop",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-ReplicaSet-2",
+        "name": "s03-app-2",
+        "namespace": "shop",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-ReplicaSet-3",
+        "name": "s03-app-3",
+        "namespace": "shop",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-ReplicaSet-4",
+        "name": "s03-app-4",
+        "namespace": "shop",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-ReplicaSet-5",
+        "name": "s03-app-5",
+        "namespace": "shop",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-ReplicaSet-6",
+        "name": "s03-app-6",
+        "namespace": "shop",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "ReplicaSet",
+            "name": "payments-api-rs"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-DaemonSet-0",
+        "name": "s03-agent-0",
+        "namespace": "kube-system",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-0"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-DaemonSet-1",
+        "name": "s03-agent-1",
+        "namespace": "kube-system",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-1"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-DaemonSet-2",
+        "name": "s03-agent-2",
+        "namespace": "kube-system",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-2"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-DaemonSet-3",
+        "name": "s03-agent-3",
+        "namespace": "kube-system",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-3"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-s03-DaemonSet-4",
+        "name": "s03-agent-4",
+        "namespace": "kube-system",
+        "nodeName": "s03",
+        "phase": "Running",
+        "ownerReferences": [
+          {
+            "kind": "DaemonSet",
+            "name": "agent-4"
+          }
+        ]
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-pending-0",
+        "name": "checkout-pending-0",
+        "namespace": "shop",
+        "phase": "Pending"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-pending-1",
+        "name": "checkout-pending-1",
+        "namespace": "shop",
+        "phase": "Pending"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-pending-2",
+        "name": "checkout-pending-2",
+        "namespace": "shop",
+        "phase": "Pending"
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "uid": "mock-pending-3",
+        "name": "checkout-pending-3",
+        "namespace": "shop",
+        "phase": "Pending"
+      }
+    ],
+    "namespaces": [
+      {
+        "name": "shop"
+      },
+      {
+        "name": "kube-system"
+      }
+    ],
+    "workloads": [
+      {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "payments-api",
+        "namespace": "shop",
+        "replicas": 6,
+        "readyReplicas": 5
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "checkout",
+        "namespace": "shop",
+        "replicas": 12,
+        "readyReplicas": 10
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "name": "worker-queue",
+        "namespace": "shop",
+        "replicas": 8,
+        "readyReplicas": 6
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "DaemonSet",
+        "name": "agent-0",
+        "namespace": "kube-system",
+        "desiredScheduled": 11,
+        "readyReplicas": 10
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "DaemonSet",
+        "name": "agent-1",
+        "namespace": "kube-system",
+        "desiredScheduled": 11,
+        "readyReplicas": 10
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "DaemonSet",
+        "name": "agent-2",
+        "namespace": "kube-system",
+        "desiredScheduled": 11,
+        "readyReplicas": 10
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "DaemonSet",
+        "name": "agent-3",
+        "namespace": "kube-system",
+        "desiredScheduled": 11,
+        "readyReplicas": 10
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "DaemonSet",
+        "name": "agent-4",
+        "namespace": "kube-system",
+        "desiredScheduled": 11,
+        "readyReplicas": 9
+      },
+      {
+        "apiVersion": "apps/v1",
+        "kind": "DaemonSet",
+        "name": "agent-5",
+        "namespace": "kube-system",
+        "desiredScheduled": 8,
+        "readyReplicas": 7
+      }
+    ],
+    "policies": {
+      "podDisruptionBudgetDetails": [
+        {
+          "apiVersion": "policy/v1",
+          "kind": "PodDisruptionBudget",
+          "name": "payments-api",
+          "namespace": "shop",
+          "expectedPods": 6,
+          "currentHealthy": 5,
+          "desiredHealthy": 5,
+          "disruptionsAllowed": 0
+        }
+      ]
+    }
+  },
+  "coverage": [
+    {
+      "area": "kubernetes",
+      "resource": "Nodes",
+      "status": "complete",
+      "objectCount": 11,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "Pods",
+      "status": "complete",
+      "objectCount": 180,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "aws",
+      "resource": "Nodegroups",
+      "status": "complete",
+      "objectCount": 2,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "aws",
+      "resource": "DescribeInstances",
+      "status": "complete",
+      "objectCount": 11,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "aws",
+      "resource": "DescribeAutoScalingGroups",
+      "status": "complete",
+      "objectCount": 2,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "aws",
+      "resource": "DescribeScalingActivities",
+      "status": "complete",
+      "objectCount": 3,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "Deployments",
+      "status": "complete",
+      "objectCount": 3,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "StatefulSets",
+      "status": "complete",
+      "objectCount": 0,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "DaemonSets",
+      "status": "complete",
+      "objectCount": 6,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    },
+    {
+      "area": "kubernetes",
+      "resource": "PodDisruptionBudgets",
+      "status": "complete",
+      "objectCount": 1,
+      "collectedAt": "2026-10-25T06:32:08Z"
+    }
+  ]
+}

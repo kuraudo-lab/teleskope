@@ -4,6 +4,7 @@ VERSION ?= dev
 SCALE_PROFILE ?= small
 SCALE_ADDR ?= 127.0.0.1:8092
 LIVE_DEMO_ADDR ?= 127.0.0.1:8093
+NODE_WATCH_DEMO_ADDR ?= 127.0.0.1:8768
 
 .PHONY: build run test vet fixture-test topology-bench topology-scale-demo topology-live-demo scope-release-check fmt check clean
 
@@ -53,3 +54,8 @@ ui-check:
 
 ui-test:
 	cd web && npm test && npm run test:e2e
+
+.PHONY: node-watch-demo
+node-watch-demo: build
+	$(PYTHON) scripts/node-watch-fixture.py
+	bin/teleskope serve snapshot testdata/synthetic/node-watch.json --listen $(NODE_WATCH_DEMO_ADDR)

@@ -70,7 +70,7 @@ export function watchFixture(): Snapshot {
         },
       ],
       policies: {
-        podDisruptionBudgets: [
+        podDisruptionBudgetDetails: [
           { name: "payments", expectedPods: 6 },
           { name: "empty", expectedPods: 0 },
         ],

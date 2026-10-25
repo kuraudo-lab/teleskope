@@ -138,7 +138,10 @@ const modeLabel = computed(() =>
       : "Live · 实时采集",
 );
 function showTooltip(event: Event, node: WatchNode) {
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  positionTooltip(event.currentTarget as HTMLElement, node);
+}
+function positionTooltip(element: HTMLElement, node: WatchNode) {
+  const rect = element.getBoundingClientRect();
   tooltip.value = {
     node,
     left: Math.max(8, Math.min(window.innerWidth - 290, rect.right + 10)),
@@ -146,6 +149,16 @@ function showTooltip(event: Event, node: WatchNode) {
   };
 }
 function hideTooltip() {
+  const active = document.activeElement;
+  if (
+    tooltip.value &&
+    active instanceof HTMLElement &&
+    active.matches("button.node") &&
+    active.dataset.node === tooltip.value.node.name
+  ) {
+    positionTooltip(active, tooltip.value.node);
+    return;
+  }
   tooltip.value = null;
 }
 onMounted(() => {

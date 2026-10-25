@@ -12,6 +12,12 @@ export default defineConfig({
   webServer: [
     {
       command:
+        "../bin/teleskope serve snapshot ../testdata/synthetic/node-watch.json --listen 127.0.0.1:18946",
+      url: "http://127.0.0.1:18946",
+      reuseExistingServer: false,
+    },
+    {
+      command:
         "../bin/teleskope serve snapshot ../testdata/recorded/eks-demo-snapshot.json --listen 127.0.0.1:18943",
       url: "http://127.0.0.1:18943",
       reuseExistingServer: false,
