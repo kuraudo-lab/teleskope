@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Teleskope · Node upgrade watch · Mock</title>
+    <link rel="stylesheet" href="../../web/src/styles.css" />
+    <style>
+      .shell {
+        height: auto;
+        min-height: 100vh;
+      }
+      .app-topbar {
+        flex-wrap: wrap;
+      }
+      .app-topbar .brand {
+        flex-basis: 245px;
+      }
+      .mock-nav {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex: 1;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .mock-nav b {
+        color: var(--cyan);
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--cyan);
+        outline-offset: 4px;
+      }
+      .watch {
+        display: grid;
+        gap: 16px;
+        padding: 10px 8px;
+      }
+      .intro,
+      .row,
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.15em;
+        color: var(--cyan);
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: 27px;
+        margin: 8px 0;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0;
+      }
+      h3 {
+        font-size: 13px;
+        margin: 0;
+      }
+      p {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.7;
+        margin: 6px 0;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .demo {
+        color: var(--warning-text);
+        border-color: var(--amber);
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button.control,
+      select,
+      input {
+        background: var(--control-bg);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        color: var(--text);
+        padding: 9px 11px;
+        font-size: 12px;
+      }
+      button.primary {
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+      }
+      .metric {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .metric label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .metric strong {
+        display: block;
+        font-size: 28px;
+        margin: 8px 0 4px;
+        letter-spacing: -1px;
+      }
+      .metric small {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .main-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 14px;
+      }
+      .box {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .section-head {
+        padding: 17px 19px;
+        border-bottom: 1px solid var(--line);
+      }
+      .map-body {
+        padding: 18px;
+        background-image: radial-gradient(var(--line) 0.7px, transparent 0.7px);
+        background-size: 16px 16px;
+      }
+      .legend {
+        position: static;
+        inset: auto;
+        margin: 0;
+        background: var(--panel);
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        color: var(--muted);
+        padding: 12px 19px;
+        border-bottom: 1px solid var(--line);
+      }
+      .legend span {
+        padding: 0;
+        border: 0;
+        background: none;
+        border-radius: 0;
+      }
+      .legend span:before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        background: var(--s);
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+      .group {
+        padding: 14px 4px 20px;
+      }
+      .group + .group {
+        border-top: 1px solid var(--line);
+      }
+      .group-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 11px;
+        margin-bottom: 15px;
+      }
+      .group-title b {
+        font-size: 13px;
+        color: var(--text);
+      }
+      .honeycomb {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+      }
+      .node {
+        position: relative;
+        width: 125px;
+        height: 140px;
+        border: 0;
+        padding: 0;
+        background: none;
+        color: var(--text);
+        flex-shrink: 0;
+      }
+      .node svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .node path {
+        fill: var(--panel-2);
+        stroke: var(--s);
+        stroke-width: 1.4;
+        stroke-linejoin: round;
+        transition: fill 160ms ease, stroke-width 160ms ease;
+      }
+      .node:hover path,
+      .node:focus-visible path,
+      .node.selected path {
+        fill: var(--panel-3);
+        stroke-width: 2.4;
+      }
+      .node-content {
+        position: relative;
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 10px;
+      }
+      .node-id {
+        color: var(--muted);
+        font-family: monospace;
+      }
+      .pod-count {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+      }
+      .pod-count strong {
+        font-size: 28px;
+        line-height: 1.1;
+      }
+      .pod-count span {
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .node-state {
+        color: var(--s);
+        font-size: 10px;
+      }
+      .node-version {
+        font-size: 9px;
+        color: var(--muted);
+      }
+      .map-foot {
+        padding: 12px 19px;
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .detail {
+        padding: 18px;
+      }
+      .detail dl {
+        margin: 16px 0;
+        display: grid;
+        gap: 14px;
+      }
+      .detail dt {
+        font-size: 10px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .detail dd {
+        margin: 0;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+      .detail .status-line {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .notice {
+        padding: 12px;
+        border-left: 2px solid var(--amber);
+        background: var(--panel-2);
+        font-size: 12px;
+        line-height: 1.7;
+      }
+      .lower {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 14px;
+      }
+      .activity {
+        padding: 0 18px;
+      }
+      .event {
+        display: grid;
+        grid-template-columns: 55px 1fr auto;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .event:last-child {
+        border: 0;
+      }
+      .event time {
+        font-family: monospace;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .event small {
+        display: block;
+        color: var(--muted);
+        margin-top: 5px;
+        font-size: 11px;
+      }
+      .event-status {
+        color: var(--cyan);
+        font-size: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        font-size: 10px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .tooltip {
+        position: fixed;
+        z-index: 10;
+        pointer-events: none;
+        width: 270px;
+        padding: 14px;
+        background: var(--drawer-bg);
+        border: 1px solid var(--line-strong);
+        border-radius: 7px;
+        box-shadow: var(--shadow);
+        font-size: 11px;
+        line-height: 1.9;
+      }
+      .tooltip strong {
+        color: var(--cyan);
+      }
+      .tooltip[hidden] {
+        display: none;
+      }
+      .phasebar {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+      .phasebar button {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 7px 10px;
+        font-size: 11px;
+      }
+      .phasebar button.active {
+        background: var(--chip);
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .empty {
+        padding: 35px;
+        text-align: center;
+      }
+      .good {
+        color: var(--green);
+      }
+      .warn {
+        color: var(--warning-text);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      @media (min-width: 1600px) {
+        .node {
+          width: 140px;
+          height: 153px;
+        }
+        .main-grid {
+          grid-template-columns: minmax(0, 1fr) 330px;
+        }
+      }
+      @media (max-width: 1000px) {
+        .main-grid {
+          grid-template-columns: 1fr;
+        }
+        .stats {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .lower {
+          grid-template-columns: 1fr;
+        }
+        .detail dl {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      @media (max-width: 620px) {
+        .intro,
+        .row {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .detail dl {
+          grid-template-columns: 1fr 1fr;
+        }
+        .shell {
+          padding: 8px;
+        }
+        .watch {
+          padding: 0;
+        }
+        .node {
+          width: 112px;
+          height: 130px;
+        }
+        .mock-nav {
+          display: none;
+        }
+        .section-head {
+          flex-wrap: wrap;
+        }
+        .group-title {
+          flex-wrap: wrap;
+        }
+        .phasebar {
+          flex-wrap: wrap;
+        }
+        input {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="app-topbar">
+        <div class="brand">
+          <div class="logo"><img id="logo" alt="" /></div>
+          <div>
+            <strong>production-eks</strong>
+            <p>ap-northeast-1 · Teleskope</p>
+          </div>
+        </div>
+        <nav class="mock-nav" aria-label="现有导航示意">
+          <span>Overview</span><span>Advisory</span><b>EKS / Upgrades</b
+          ><span>Kubernetes</span><span>Events</span>
+        </nav>
+        <span class="badge demo">MOCK · 模拟数据</span
+        ><button class="control" id="theme">切换浅色</button>
+      </header>
+      <main class="watch">
+        <div class="intro">
+          <div>
+            <div class="eyebrow">EKS / UPGRADES / NODE WATCH</div>
+            <h1>节点升级观察</h1>
+            <p>
+              观察节点替换、Pod 迁移与容量恢复。演示场景：Launch Template v17 →
+              v18 / AMI 滚动替换。
+            </p>
+          </div>
+          <div>
+            <div class="badge demo">交互原型 · 未连接 AWS / Kubernetes</div>
+            <p id="snapshot" style="text-align: right">
+              模拟快照 · 14:32:08 CST
+            </p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="phasebar" aria-label="模拟场景">
+            <span class="muted" style="font-size: 11px; margin-right: 7px"
+              >场景回放</span
+            ><button data-phase="0">01 替换启动</button
+            ><button data-phase="1" class="active">02 排空受阻</button
+            ><button data-phase="2">03 恢复完成</button>
+          </div>
+          <div class="controls">
+            <button class="control primary" id="play">播放模拟变化</button
+            ><button class="control" id="reset">重置</button>
+          </div>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="main-grid">
+          <section class="box">
+            <div class="section-head">
+              <h2>Node map <span class="badge">按 Node Group 分组</span></h2>
+              <div class="controls">
+                <select id="group" aria-label="筛选节点组">
+                  <option value="all">全部 Node Groups</option>
+                  <option>app-workers</option>
+                  <option>system-workers</option></select
+                ><input
+                  id="search"
+                  aria-label="搜索节点"
+                  placeholder="搜索节点 / AZ"
+                  size="17"
+                />
+              </div>
+            </div>
+            <div class="legend">
+              <span style="--s: var(--green)">Ready · 未 cordon</span
+              ><span style="--s: var(--amber)">Ready · Cordoned</span
+              ><span style="--s: var(--red)">NotReady</span
+              ><span style="--s: var(--muted)">Unknown</span
+              ><span>大数字 non-DS Pods / 小数字 DS Pods</span>
+            </div>
+            <div class="map-body" id="map"></div>
+            <div class="map-foot">
+              悬停 / 键盘聚焦查看节点信息，点击固定到右侧。DS 指 DaemonSet
+              管理的 Pod；未 cordon 不保证所有 Pod 均可调度。
+            </div>
+          </section>
+          <section class="box" aria-label="选中节点详情">
+            <div class="section-head">
+              <h2>节点详情</h2>
+              <span class="badge">点击固定</span>
+            </div>
+            <div class="detail" id="detail"></div>
+          </section>
+        </div>
+        <div class="lower">
+          <section class="box">
+            <div class="section-head">
+              <h2>ASG 活动</h2>
+              <span class="badge">app-workers-asg · 模拟</span>
+            </div>
+            <div class="activity" id="activities"></div>
+          </section>
+          <section class="box">
+            <div class="section-head">
+              <h2>工作负载连续性</h2>
+              <span class="badge">集群范围</span>
+            </div>
+            <div id="workloads"></div>
+            <p style="padding: 8px 18px">
+              Pending Pod 未绑定节点，单独统计；PDB 阻塞为模拟事件证据，不由 Pod
+              数量推断。
+            </p>
+          </section>
+        </div>
+        <p>
+          口径：节点数字为已绑定且非终态的 Pod，包含 Terminating；DS 按
+          ownerReference 分类。AMI / LT 为示例值；实际接入需分别展示 Kubernetes
+          与 AWS 的采集时间和缺失状态。
+        </p>
+      </main>
+    </div>
+    <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+    <script>
+      const $ = (s) => document.querySelector(s);
+      let phase = 1,
+        selected = "a03",
+        timer = null;
+      const states = {
+        ready: ["var(--green)", "Ready · 可调度*"],
+        cordon: ["var(--amber)", "Ready · Cordoned"],
+        notready: ["var(--red)", "NotReady"],
+        unknown: ["var(--muted)", "Unknown"],
+      };
+      function nodes() {
+        const n = [
+          ["a01", 18, 6, "ready", 18],
+          ["a02", 16, 6, "ready", 18],
+          ["a03", 3, 6, "cordon", 17],
+          ["a04", 0, 6, "cordon", 17],
+          ["a05", 21, 6, "ready", 17],
+          ["a06", 19, 6, "ready", 17],
+          ["b01", 14, 6, "ready", 18],
+          ["b02", 0, 4, "notready", 18],
+          ["s01", 8, 5, "ready", 12],
+          ["s02", 9, 5, "ready", 12],
+          ["s03", 7, 5, "ready", 12],
+        ];
+        return n.map(([id, p, ds, state, lt], i) => {
+          if (phase === 0 && id === "a03") {
+            p = 12;
+            state = "ready";
+          }
+          if (phase === 0 && id === "a04") {
+            p = 8;
+            state = "ready";
+          }
+          if (phase === 0 && id === "b02") state = "unknown";
+          const replaced = phase === 2 && lt === 17;
+          if (phase === 2 && !id.startsWith("s")) {
+            lt = 18;
+            state = "ready";
+            p = [12, 13, 14, 14, 12, 13, 13, 12][i];
+            ds = 6;
+          }
+          return {
+            id: replaced ? id.replace("a", "c") : id,
+            p,
+            ds,
+            state,
+            lt,
+            group: id.startsWith("s") ? "system-workers" : "app-workers",
+            az: "ap-northeast-1" + ["a", "c", "d"][i % 3],
+            name:
+              "ip-10-42-" +
+              (10 + Math.floor(i / 3)) +
+              "-" +
+              (21 + i + (replaced ? 100 : 0)),
+            age: lt === 18 ? "14:24:10 CST" : "10-03 09:12 CST",
+            ami: lt === 18 ? "ami-0demo20261025" : "ami-0demo20260918",
+          };
+        });
+      }
+      function details(n) {
+        return `<strong>${n.name}</strong><p>${n.id} · ${n.az}</p><div class="status-line"><span class="badge" style="color:${states[n.state][0]}">${states[n.state][1]}</span><span class="badge">LT v${n.lt}</span></div><dl>${[
+          ["Node Group", n.group],
+          ["AMI ID", n.ami],
+          ["Launch Template", `lt-demo-${n.group} / v${n.lt}`],
+          ["EC2 启动时间", n.age],
+          ["Node 注册时间", n.lt === 18 ? "14:25:02 CST" : "10-03 09:13 CST"],
+          ["Kubelet / Instance", "v1.34.2 / m6i.xlarge"],
+          ["ASG", n.group + "-asg"],
+          [
+            "调度约束",
+            n.state === "cordon"
+              ? "spec.unschedulable = true"
+              : n.state === "ready"
+                ? "未 cordon · 无示例 taint"
+                : "Readiness 未满足 / 待核实",
+          ],
+        ]
+          .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
+          .join(
+            "",
+          )}</dl><div class="notice">${n.id === "a03" && phase === 1 ? "排空等待 6m 12s<br>3 个 non-DS Pod 剩余，其中 payments-api 受 PDB 限制：disruptionsAllowed = 0。" : n.state === "notready" ? "节点已注册，等待 Ready。DaemonSet Pod 为 4 / 6，网络插件尚未就绪。" : n.state === "unknown" ? "尚无可靠的节点 readiness 观测；请核对节点注册与采集状态。" : n.state === "cordon" ? "non-DS Pod 已清空；仍有 6 个 DS Pod。等待实例终止活动。" : "节点状态正常。可调度标识仅表示 Ready 且未 cordon；仍需结合 taint、资源和 Pod 约束。"}</div>`;
+      }
+      function render() {
+        let all = nodes(),
+          filtered = all.filter(
+            (n) =>
+              ($("#group").value === "all" || n.group === $("#group").value) &&
+              (n.name + " " + n.id + " " + n.az).includes(
+                $("#search").value.toLowerCase(),
+              ),
+          );
+        let app = all.filter((n) => n.group === "app-workers");
+        $("#stats").innerHTML = [
+          [
+            "目标模板就绪",
+            app.filter((n) => n.lt === 18 && n.state === "ready").length +
+              " / 8",
+            "app-workers · 目标 LT v18",
+          ],
+          [
+            "Ready 节点",
+            all.filter((n) => ["ready", "cordon"].includes(n.state)).length +
+              " / 11",
+            "全部 Node Groups",
+          ],
+          [
+            "Cordoned",
+            all.filter((n) => n.state === "cordon").length,
+            "暂停接收新调度",
+          ],
+          [
+            "non-DS / DS Pods",
+            all.reduce((s, n) => s + n.p, 0) +
+              " / " +
+              all.reduce((s, n) => s + n.ds, 0),
+            "节点绑定 · 非终态",
+          ],
+          [
+            "Pending / PDB 阻塞",
+            phase === 2 ? "0 / 0" : phase === 1 ? "4 / 1" : "2 / 0",
+            "未绑定 Pod / 受阻工作负载",
+          ],
+        ]
+          .map(
+            ([a, b, c]) =>
+              `<div class="metric"><label>${a}</label><strong>${b}</strong><small>${c}</small></div>`,
+          )
+          .join("");
+        $("#map").innerHTML =
+          ["app-workers", "system-workers"]
+            .map((g) => {
+              let list = filtered.filter((n) => n.group === g);
+              if (!list.length) return "";
+              return `<div class="group"><div class="group-title"><b>${g} <span class="badge">${list.length} nodes</span></b><span>${g === "app-workers" ? "滚动替换 · LT v17 → v18 · desired 8" : "未参与升级 · LT v12 · desired 3"}</span></div><div class="honeycomb">${list.map((n) => `<button class="node ${selected === n.id ? "selected" : ""}" data-node="${n.id}" style="--s:${states[n.state][0]}" aria-label="${n.name}, ${n.p} non-DS Pods, ${n.ds} DS Pods, ${states[n.state][1]}" aria-pressed="${selected === n.id}"><svg viewBox="0 0 125 140" aria-hidden="true"><path d="M 71.2 8 Q 62.5 3 53.8 8 L 13.7 31 Q 5 36 5 46 L 5 93 Q 5 103 13.7 108 L 53.8 131 Q 62.5 136 71.2 131 L 111.3 108 Q 120 103 120 93 L 120 46 Q 120 36 111.3 31 Z"/></svg><span class="node-content"><span class="node-id">${n.id} · ${n.az.slice(-2)}</span><span class="pod-count"><strong>${n.p}</strong><span>/ ${n.ds}</span></span><span class="node-state">${states[n.state][1]}</span><span class="node-version">LT v${n.lt} · ${n.lt === 18 ? "新节点" : "现有节点"}</span></span></button>`).join("")}</div></div>`;
+            })
+            .join("") || '<p class="empty">没有匹配的节点</p>';
+        $("#detail").innerHTML = all.some((n) => n.id === selected)
+          ? details(all.find((n) => n.id === selected))
+          : `<p>所选旧节点已退出当前快照。</p><div class="notice">${selected} 已被替换；请选择新的 c 系列节点查看详情。历史关联将在实际接入时设计。</div>`;
+        document.querySelectorAll("[data-phase]").forEach((b) => {
+          b.classList.toggle("active", +b.dataset.phase === phase);
+          b.setAttribute("aria-pressed", +b.dataset.phase === phase);
+        });
+        $("#snapshot").textContent =
+          "模拟快照 · " + ["14:26:08", "14:32:08", "14:40:08"][phase] + " CST";
+        let events =
+          phase === 2
+            ? [
+                [
+                  "14:40",
+                  "替换完成",
+                  "8 / 8 个节点已使用 LT v18 且 Ready",
+                  "Successful",
+                ],
+                [
+                  "14:38",
+                  "旧实例终止完成",
+                  "a03–a06 · 旧节点退出，由 c03–c06 替换",
+                  "Successful",
+                ],
+                [
+                  "14:35",
+                  "新增容量就绪",
+                  "b02 · Ready / 6 个 DS Pod",
+                  "Successful",
+                ],
+              ]
+            : [
+                [
+                  "14:31",
+                  "启动替换实例",
+                  "b02 · LT v18 · EC2 已启动，等待节点 Ready",
+                  "In progress",
+                ],
+                [
+                  "14:29",
+                  "等待旧节点退出",
+                  "a04 · non-DS Pods = 0 · 等待实例终止",
+                  "In progress",
+                ],
+                ["14:24", "增加替换容量", "b01 · 已注册并 Ready", "Successful"],
+              ];
+        if (phase === 0) events = events.slice(2);
+        $("#activities").innerHTML = events
+          .map(
+            (e) =>
+              `<div class="event"><time>${e[0]}</time><div>${e[1]}<small>${e[2]}</small></div><span class="event-status">${e[3]}</span></div>`,
+          )
+          .join("");
+        $("#workloads").innerHTML =
+          `<table><thead><tr><th>工作负载</th><th>Ready / Desired</th><th>观察</th></tr></thead><tbody><tr><td>payments-api</td><td>${phase === 1 ? "5" : "6"} / 6</td><td class="${phase === 1 ? "warn" : "good"}">${phase === 1 ? "PDB 阻塞 · a03" : "Available"}</td></tr><tr><td>checkout</td><td>${phase === 2 ? "12" : "10"} / 12</td><td class="${phase === 2 ? "good" : "warn"}">${phase === 2 ? "Available" : "2 Pending"}</td></tr><tr><td>worker-queue</td><td>${phase === 1 ? "6" : "8"} / 8</td><td class="${phase === 1 ? "warn" : "good"}">${phase === 1 ? "2 Pending" : "Available"}</td></tr></tbody></table>`;
+        document.querySelectorAll("[data-node]").forEach((b) => {
+          b.onclick = () => {
+            selected = b.dataset.node;
+            hide();
+            render();
+          };
+          b.onmouseenter = () => tip(b);
+          b.onmouseleave = hide;
+          b.onfocus = () => tip(b);
+          b.onblur = hide;
+        });
+      }
+      function hide() {
+        $("#tooltip").hidden = true;
+      }
+      function tip(b) {
+        let n = nodes().find((n) => n.id === b.dataset.node),
+          r = b.getBoundingClientRect(),
+          t = $("#tooltip");
+        t.innerHTML = `<strong>${n.name}</strong><br>Node Group: ${n.group}<br>AMI: ${n.ami}<br>Launch Template: v${n.lt}<br>EC2 启动: ${n.age}<br>${n.az} · ${states[n.state][1]}<br><span class="muted">点击查看完整详情</span>`;
+        t.hidden = false;
+        t.style.left =
+          Math.max(8, Math.min(innerWidth - 282, r.right + 10)) + "px";
+        t.style.top =
+          Math.max(8, Math.min(innerHeight - t.offsetHeight - 8, r.top)) + "px";
+      }
+      function stop() {
+        clearInterval(timer);
+        timer = null;
+        $("#play").textContent = "播放模拟变化";
+      }
+      document.querySelectorAll("[data-phase]").forEach(
+        (b) =>
+          (b.onclick = () => {
+            stop();
+            phase = +b.dataset.phase;
+            hide();
+            render();
+          }),
+      );
+      $("#group").onchange = render;
+      $("#search").oninput = render;
+      $("#theme").onclick = () => {
+        let light = document.documentElement.dataset.theme !== "light";
+        document.documentElement.dataset.theme = light ? "light" : "dark";
+        $("#theme").textContent = light ? "切换深色" : "切换浅色";
+      };
+      $("#reset").onclick = () => {
+        stop();
+        phase = 1;
+        selected = "a03";
+        $("#group").value = "all";
+        $("#search").value = "";
+        hide();
+        render();
+      };
+      $("#play").onclick = () => {
+        if (timer) {
+          stop();
+          return;
+        }
+        phase = 0;
+        hide();
+        render();
+        $("#play").textContent = "暂停模拟";
+        timer = setInterval(() => {
+          phase++;
+          hide();
+          render();
+          if (phase === 2) stop();
+        }, 5000);
+      };
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") hide();
+      });
+      addEventListener("scroll", hide, true);
+      addEventListener("resize", hide);
+      fetch("../../web/src/logo.ts")
+        .then((r) => r.text())
+        .then((s) => {
+          $("#logo").src = s.match(/"(data:image[^\"]+)"/)[1];
+        })
+        .catch(() => {});
+      render();
+    </script>
+  </body>
+</html>
